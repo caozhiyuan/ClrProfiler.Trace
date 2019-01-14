@@ -1,0 +1,436 @@
+.method assembly hidebysig instance !!T ExecuteSyncImpl<T>(class StackExchange.Redis.Message message, class StackExchange.Redis.ResultProcessor`1<!!T> processor, class StackExchange.Redis.ServerEndPoint server) cil managed
+//BYTE testSignature[] = {
+//    IMAGE_CEE_CS_CALLCONV_HASTHIS | IMAGE_CEE_CS_CALLCONV_GENERIC,
+//    0x01, //generic type num
+//    0x03, //param num
+//    ELEMENT_TYPE_MVAR, 0x00, //ret
+//    ELEMENT_TYPE_CLASS, 0x81 ,0x28, // FindTypeDefByName( L"StackExchange.Redis.Message") -> CorSigCompressToken(messageTypeDef) -> 0x810x28
+//    ELEMENT_TYPE_GENERICINST , ELEMENT_TYPE_CLASS ,0x81 ,0xa4, 0x01,ELEMENT_TYPE_MVAR , 0x00,
+//    ELEMENT_TYPE_CLASS , 0x81, 0xbc };
+{
+    .maxstack 10
+
+    // 1b 30  CorILMethod_FatFormat, CorILMethod_MoreSects,CorILMethod_InitLocals header size: 3*4 bytes
+    // 0a 00  max stack size: 10
+    // ea 03 00 00  code size 
+    // 67 00 00 11  locals signature token
+
+    .locals init (
+        [0] !!T local,
+        [1] class StackExchange.Redis.ResultBox`1<!!T> box,
+        [2] class [System.Runtime]System.Exception exception,
+        [3] !!T local2,
+        [4] class StackExchange.Redis.ResultBox`1<!!T> box2,
+        [5] bool flag,
+        [6] class StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_0`1<!!T> class_,
+        [7] string str,
+        [8] class [System.Runtime]System.Exception exception2,
+        [9] valuetype StackExchange.Redis.RedisCommand command,
+        [10] class StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T> class_2,
+        [11] int32 num,
+        [12] int32 num2,
+        [13] int32 num3,
+        [14] int32 num4,
+        [15] int32 num5,
+        [16] int32 num6,
+        [17] int32 num7,
+        [18] int32 num8,
+        [19] class [System.Runtime]System.Action`3<string, string, string> action,
+        [20] int32 num9,
+        [21] int32 num10,
+        [22] int32 num11,
+        [23] string str2,
+        [24] valuetype [System.Collections]System.Collections.Generic.List`1/Enumerator`0<class [System.Runtime]System.Tuple`2<string, string>> enumerator,
+        [25] class [System.Runtime]System.Tuple`2<string, string> tuple)
+     //07  SIG_LOCAL_SIG used for the .locals directive
+     //1a 26¸ö²ÎÊý
+     //1e00
+     //1512819c011e00
+     //1280c1
+     //1e00
+     //1512819c011e00
+     //02
+     //15128270011e00
+     //0e string
+     //1280c1
+     //118160 valuetype StackExchange.Redis.RedisCommand
+     //15128274011e00
+     //08
+     //08
+     //08
+     //08
+     //08
+     //08
+     //08
+     //08
+     //1512817d030e0e0e
+     //08
+     //08
+     //08
+     //0e
+     //15 118181(List<T>.Enumerator) 01 (15 128185 02 0e0e)
+     //15 128185 02 0e0e
+
+
+   
+
+// 02 ldarg.0
+// fe 13 volatile. 
+// 7b ldfld    b3000004
+// 2c 0c brfalse.s +12 offset 8 len 2  22->0016
+// 02 ldarg.0 
+// 6f callvirt 6100000a
+// 73 newobj   0c01000a
+// 7a throw
+// 03 ldarg.1 
+// 2d 0a  brtrue.s +10
+// 12 00 ldloca.s 0
+// fe 15 initobj 5900001b
+// 06 ldloc.0 
+// 2a ret
+// 03 ldarg.1 
+// 6f callvirt   2a040006
+// 2c 22 brfalse.s +34
+// 02 ldarg.0 
+// 03 ldarg.1 
+// 04 ldarg.2 
+// 14
+// 0f 03
+// 28 2600002b
+// 26 
+// 02 
+// 7c cf000004
+// 28 9b00000a
+// 26
+// 12 00 
+// fe 15 initobj 5900001b
+// 06
+// 2a
+// 14282a01000a0b07130416130511041205288300000a020304070f03282600002b2d20022893010006022895010006036f23040006030502288001000628c60100067a07027bb0000004282e01000a2c05dd35030000732f01000a1306027cce000004289b00000a261106147d3001000a052c080228930100062d2672d60e0070036f2304000613091209fe16580000026f6100000a289200000a1307385e020000733101000a130a110a11067d3201000a110a72d60e0070733301000a036f24040006286400000a7d3401000a110a7b3201000a733501000a2572fe0e0070036f24040006282900002b6f3701000a7d3001000a110afe063801000a733901000a131305036f23040006120b120c120d120e120f1210121112126fee07000613141113720e0f0070722a0f0070120b283a01000a6f3b01000a111372340f0070724e0f00701214283a01000a6f3b01000a1113725a0f0070727e0f0070120c283a01000a6f3b01000a111372840f007072b40f0070120d283a01000a6f3b01000a111372ba0f007072f40f0070120e283a01000a6f3b01000a111372fa0f00707218100070120f283a01000a6f3b01000a1113721e10007072361000701210283a01000a6f3b01000a1113723c10007072581000701211283a01000a6f3b01000a1113725e100070727c1000701212283a01000a6f3b01000a11137282100070729a1000700228260100066f3b01000a111372b010007072d0100070056fc80700066f6100000a6f3b01000a030228890100066f4304000613151115152e26111372ee1000707208110070030228890100066f4304000613161216283a01000a6f3b01000a110a7b3401000a72201100706f6400000a26110a7b3401000a7ea70000046f6400000a26110a7b3401000a72e51100706f6400000a26110a7b3401000a6f6100000a1307027bcc00000416324d1114027bcc0000043243027ccb000004171628a600000a2d3405036f230400066ff107000613171117283b00000a2c0f027ccb00000416281401000a262b0e027ccd0000041117282a00002b260228930100061107030528ca010006130811087ea70000046f3c01000a11067b3001000a2c5611067b3001000a6f3d01000a13182b2d1218283e01000a131911086f3f01000a72e911007011196f4001000a289200000a11196f4101000a6f4201000a1218284301000a2dcade0e1218fe168200001b6f1700000adc11087a11052c071104288700000adc071712031202284401000a082c02087a092a00004134000002000000810300003a000000bb0300000e00000000000000020000005a00000072030000cc0300000c00000000000000
+    L_0000: ldarg.0 
+    L_0001: volatile. 
+    L_0003: ldfld bool modreq([System.Runtime]System.Runtime.CompilerServices.IsVolatile) StackExchange.Redis.ConnectionMultiplexer::isDisposed
+    L_0008: brfalse.s L_0016
+    L_000a: ldarg.0 
+    L_000b: callvirt instance string [System.Runtime]System.Object::ToString()
+    L_0010: newobj instance void [System.Runtime]System.ObjectDisposedException::.ctor(string)
+    L_0015: throw 
+    L_0016: ldarg.1 
+    L_0017: brtrue.s L_0023
+    L_0019: ldloca.s local
+    L_001b: initobj !!T
+    L_0021: ldloc.0 
+    L_0022: ret 
+    L_0023: ldarg.1 
+    L_0024: callvirt instance bool StackExchange.Redis.Message::get_IsFireAndForget()
+    L_0029: brfalse.s L_004d
+    L_002b: ldarg.0 
+    L_002c: ldarg.1 
+    L_002d: ldarg.2 
+    L_002e: ldnull 
+    L_002f: ldarga.s server
+    L_0031: call instance bool StackExchange.Redis.ConnectionMultiplexer::TryPushMessageToBridge<!!T>(class StackExchange.Redis.Message, class StackExchange.Redis.ResultProcessor`1<!!0>, class StackExchange.Redis.ResultBox`1<!!0>, class StackExchange.Redis.ServerEndPoint&)
+    L_0036: pop 
+    L_0037: ldarg.0 
+    L_0038: ldflda int64 StackExchange.Redis.ConnectionMultiplexer::fireAndForgets
+    L_003d: call int64 [System.Threading]System.Threading.Interlocked::Increment(int64&)
+    L_0042: pop 
+    L_0043: ldloca.s local
+    L_0045: initobj !!T
+    L_004b: ldloc.0 
+    L_004c: ret 
+    L_004d: ldnull 
+    L_004e: call class StackExchange.Redis.ResultBox`1<!0> StackExchange.Redis.ResultBox`1<!!T>::Get(object)
+    L_0053: stloc.1 
+    L_0054: ldloc.1 
+    L_0055: stloc.s box2
+    L_0057: ldc.i4.0 
+    L_0058: stloc.s flag
+    L_005a: ldloc.s box2
+    L_005c: ldloca.s flag
+    L_005e: call void [System.Threading]System.Threading.Monitor::Enter(object, bool&)
+    L_0063: ldarg.0 
+    L_0064: ldarg.1 
+    L_0065: ldarg.2 
+    L_0066: ldloc.1 
+    L_0067: ldarga.s server
+    L_0069: call instance bool StackExchange.Redis.ConnectionMultiplexer::TryPushMessageToBridge<!!T>(class StackExchange.Redis.Message, class StackExchange.Redis.ResultProcessor`1<!!0>, class StackExchange.Redis.ResultBox`1<!!0>, class StackExchange.Redis.ServerEndPoint&)
+    L_006e: brtrue.s L_0090
+    L_0070: ldarg.0 
+    L_0071: call instance bool StackExchange.Redis.ConnectionMultiplexer::get_IncludeDetailInExceptions()
+    L_0076: ldarg.0 
+    L_0077: call instance bool StackExchange.Redis.ConnectionMultiplexer::get_IncludePerformanceCountersInExceptions()
+    L_007c: ldarg.1 
+    L_007d: callvirt instance valuetype StackExchange.Redis.RedisCommand StackExchange.Redis.Message::get_Command()
+    L_0082: ldarg.1 
+    L_0083: ldarg.3 
+    L_0084: ldarg.0 
+    L_0085: call instance class StackExchange.Redis.ServerEndPoint[] StackExchange.Redis.ConnectionMultiplexer::GetServerSnapshot()
+    L_008a: call class [System.Runtime]System.Exception StackExchange.Redis.ExceptionFactory::NoConnectionAvailable(bool, bool, valuetype StackExchange.Redis.RedisCommand, class StackExchange.Redis.Message, class StackExchange.Redis.ServerEndPoint, class StackExchange.Redis.ServerEndPoint[])
+    L_008f: throw 
+    L_0090: ldloc.1 
+    L_0091: ldarg.0 
+    L_0092: ldfld int32 StackExchange.Redis.ConnectionMultiplexer::timeoutMilliseconds
+    L_0097: call bool [System.Threading]System.Threading.Monitor::Wait(object, int32)
+    L_009c: brfalse.s L_00a3
+    L_009e: leave L_03d8
+    L_00a3: newobj instance void StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_0`1<!!T>::.ctor()
+    L_00a8: stloc.s class_
+    L_00aa: ldarg.0 
+    L_00ab: ldflda int64 StackExchange.Redis.ConnectionMultiplexer::syncTimeouts
+    L_00b0: call int64 [System.Threading]System.Threading.Interlocked::Increment(int64&)
+    L_00b5: pop 
+    L_00b6: ldloc.s class_
+    L_00b8: ldnull 
+    L_00b9: stfld class [System.Collections]System.Collections.Generic.List`1<class [System.Runtime]System.Tuple`2<string, string>> StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_0`1<!!T>::data
+    L_00be: ldarg.3 
+    L_00bf: brfalse.s L_00c9
+    L_00c1: ldarg.0 
+    L_00c2: call instance bool StackExchange.Redis.ConnectionMultiplexer::get_IncludeDetailInExceptions()
+    L_00c7: brtrue.s L_00ef
+    L_00c9: ldstr "Timeout performing "
+    L_00ce: ldarg.1 
+    L_00cf: callvirt instance valuetype StackExchange.Redis.RedisCommand StackExchange.Redis.Message::get_Command()
+    L_00d4: stloc.s command
+    L_00d6: ldloca.s command
+    L_00d8: constrained. StackExchange.Redis.RedisCommand
+    L_00de: callvirt instance string [System.Runtime]System.Object::ToString()
+    L_00e3: call string [System.Runtime]System.String::Concat(string, string)
+    L_00e8: stloc.s str
+    L_00ea: br L_034d
+    L_00ef: newobj instance void StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T>::.ctor()
+    L_00f4: stloc.s class_2
+    L_00f6: ldloc.s class_2
+    L_00f8: ldloc.s class_
+    L_00fa: stfld class StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_0`1<!0> StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T>::CS$<>8__locals1
+    L_00ff: ldloc.s class_2
+    L_0101: ldstr "Timeout performing "
+    L_0106: newobj instance void [System.Runtime]System.Text.StringBuilder::.ctor(string)
+    L_010b: ldarg.1 
+    L_010c: callvirt instance string StackExchange.Redis.Message::get_CommandAndKey()
+    L_0111: call instance class [System.Runtime]System.Text.StringBuilder [System.Runtime]System.Text.StringBuilder::Append(string)
+    L_0116: stfld class [System.Runtime]System.Text.StringBuilder StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T>::sb
+    L_011b: ldloc.s class_2
+    L_011d: ldfld class StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_0`1<!0> StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T>::CS$<>8__locals1
+    L_0122: newobj instance void [System.Collections]System.Collections.Generic.List`1<class [System.Runtime]System.Tuple`2<string, string>>::.ctor()
+    L_0127: dup 
+    L_0128: ldstr "Message"
+    L_012d: ldarg.1 
+    L_012e: callvirt instance string StackExchange.Redis.Message::get_CommandAndKey()
+    L_0133: call class [System.Runtime]System.Tuple`2<!!0, !!1> [System.Runtime]System.Tuple::Create<string, string>(!!0, !!1)
+    L_0138: callvirt instance void [System.Collections]System.Collections.Generic.List`1<class [System.Runtime]System.Tuple`2<string, string>>::Add(!0)
+    L_013d: stfld class [System.Collections]System.Collections.Generic.List`1<class [System.Runtime]System.Tuple`2<string, string>> StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_0`1<!!T>::data
+    L_0142: ldloc.s class_2
+    L_0144: ldftn instance void StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T>::<ExecuteSyncImpl>b__0(string, string, string)
+    L_014a: newobj instance void [System.Runtime]System.Action`3<string, string, string>::.ctor(object, native int)
+    L_014f: stloc.s action
+    L_0151: ldarg.3 
+    L_0152: ldarg.1 
+    L_0153: callvirt instance valuetype StackExchange.Redis.RedisCommand StackExchange.Redis.Message::get_Command()
+    L_0158: ldloca.s num
+    L_015a: ldloca.s num2
+    L_015c: ldloca.s num3
+    L_015e: ldloca.s num4
+    L_0160: ldloca.s num5
+    L_0162: ldloca.s num6
+    L_0164: ldloca.s num7
+    L_0166: ldloca.s num8
+    L_0168: callvirt instance int32 StackExchange.Redis.ServerEndPoint::GetOutstandingCount(valuetype StackExchange.Redis.RedisCommand, int32&, int32&, int32&, int32&, int32&, int32&, int32&, int32&)
+    L_016d: stloc.s num9
+    L_016f: ldloc.s action
+    L_0171: ldstr "Instantaneous"
+    L_0176: ldstr "inst"
+    L_017b: ldloca.s num
+    L_017d: call instance string [System.Runtime]System.Int32::ToString()
+    L_0182: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_0187: ldloc.s action
+    L_0189: ldstr "Queue-Length"
+    L_018e: ldstr "queue"
+    L_0193: ldloca.s num9
+    L_0195: call instance string [System.Runtime]System.Int32::ToString()
+    L_019a: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_019f: ldloc.s action
+    L_01a1: ldstr "Queue-Outstanding"
+    L_01a6: ldstr "qu"
+    L_01ab: ldloca.s num2
+    L_01ad: call instance string [System.Runtime]System.Int32::ToString()
+    L_01b2: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_01b7: ldloc.s action
+    L_01b9: ldstr "Queue-Awaiting-Response"
+    L_01be: ldstr "qs"
+    L_01c3: ldloca.s num3
+    L_01c5: call instance string [System.Runtime]System.Int32::ToString()
+    L_01ca: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_01cf: ldloc.s action
+    L_01d1: ldstr "Queue-Completion-Outstanding"
+    L_01d6: ldstr "qc"
+    L_01db: ldloca.s num4
+    L_01dd: call instance string [System.Runtime]System.Int32::ToString()
+    L_01e2: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_01e7: ldloc.s action
+    L_01e9: ldstr "Active-Writers"
+    L_01ee: ldstr "wr"
+    L_01f3: ldloca.s num5
+    L_01f5: call instance string [System.Runtime]System.Int32::ToString()
+    L_01fa: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_01ff: ldloc.s action
+    L_0201: ldstr "Write-Queue"
+    L_0206: ldstr "wq"
+    L_020b: ldloca.s num6
+    L_020d: call instance string [System.Runtime]System.Int32::ToString()
+    L_0212: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_0217: ldloc.s action
+    L_0219: ldstr "Inbound-Bytes"
+    L_021e: ldstr "in"
+    L_0223: ldloca.s num7
+    L_0225: call instance string [System.Runtime]System.Int32::ToString()
+    L_022a: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_022f: ldloc.s action
+    L_0231: ldstr "Active-Readers"
+    L_0236: ldstr "ar"
+    L_023b: ldloca.s num8
+    L_023d: call instance string [System.Runtime]System.Int32::ToString()
+    L_0242: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_0247: ldloc.s action
+    L_0249: ldstr "Client-Name"
+    L_024e: ldstr "clientName"
+    L_0253: ldarg.0 
+    L_0254: call instance string StackExchange.Redis.ConnectionMultiplexer::get_ClientName()
+    L_0259: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_025e: ldloc.s action
+    L_0260: ldstr "Server-Endpoint"
+    L_0265: ldstr "serverEndpoint"
+    L_026a: ldarg.3 
+    L_026b: callvirt instance class [System.Net.Primitives]System.Net.EndPoint StackExchange.Redis.ServerEndPoint::get_EndPoint()
+    L_0270: callvirt instance string [System.Runtime]System.Object::ToString()
+    L_0275: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_027a: ldarg.1 
+    L_027b: ldarg.0 
+    L_027c: call instance class StackExchange.Redis.ServerSelectionStrategy StackExchange.Redis.ConnectionMultiplexer::get_ServerSelectionStrategy()
+    L_0281: callvirt instance int32 StackExchange.Redis.Message::GetHashSlot(class StackExchange.Redis.ServerSelectionStrategy)
+    L_0286: stloc.s num10
+    L_0288: ldloc.s num10
+    L_028a: ldc.i4.m1 
+    L_028b: beq.s L_02b3
+    L_028d: ldloc.s action
+    L_028f: ldstr "Key-HashSlot"
+    L_0294: ldstr "keyHashSlot"
+    L_0299: ldarg.1 
+    L_029a: ldarg.0 
+    L_029b: call instance class StackExchange.Redis.ServerSelectionStrategy StackExchange.Redis.ConnectionMultiplexer::get_ServerSelectionStrategy()
+    L_02a0: callvirt instance int32 StackExchange.Redis.Message::GetHashSlot(class StackExchange.Redis.ServerSelectionStrategy)
+    L_02a5: stloc.s num11
+    L_02a7: ldloca.s num11
+    L_02a9: call instance string [System.Runtime]System.Int32::ToString()
+    L_02ae: callvirt instance void [System.Runtime]System.Action`3<string, string, string>::Invoke(!0, !1, !2)
+    L_02b3: ldloc.s class_2
+    L_02b5: ldfld class [System.Runtime]System.Text.StringBuilder StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T>::sb
+    L_02ba: ldstr " (Please take a look at this article for some common client-side issues that can cause timeouts: "
+    L_02bf: callvirt instance class [System.Runtime]System.Text.StringBuilder [System.Runtime]System.Text.StringBuilder::Append(string)
+    L_02c4: pop 
+    L_02c5: ldloc.s class_2
+    L_02c7: ldfld class [System.Runtime]System.Text.StringBuilder StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T>::sb
+    L_02cc: ldsfld string StackExchange.Redis.ConnectionMultiplexer::timeoutHelpLink
+    L_02d1: callvirt instance class [System.Runtime]System.Text.StringBuilder [System.Runtime]System.Text.StringBuilder::Append(string)
+    L_02d6: pop 
+    L_02d7: ldloc.s class_2
+    L_02d9: ldfld class [System.Runtime]System.Text.StringBuilder StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T>::sb
+    L_02de: ldstr ")"
+    L_02e3: callvirt instance class [System.Runtime]System.Text.StringBuilder [System.Runtime]System.Text.StringBuilder::Append(string)
+    L_02e8: pop 
+    L_02e9: ldloc.s class_2
+    L_02eb: ldfld class [System.Runtime]System.Text.StringBuilder StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_1`1<!!T>::sb
+    L_02f0: callvirt instance string [System.Runtime]System.Object::ToString()
+    L_02f5: stloc.s str
+    L_02f7: ldarg.0 
+    L_02f8: ldfld int32 StackExchange.Redis.ConnectionMultiplexer::stormLogThreshold
+    L_02fd: ldc.i4.0 
+    L_02fe: blt.s L_034d
+    L_0300: ldloc.s num9
+    L_0302: ldarg.0 
+    L_0303: ldfld int32 StackExchange.Redis.ConnectionMultiplexer::stormLogThreshold
+    L_0308: blt.s L_034d
+    L_030a: ldarg.0 
+    L_030b: ldflda int32 StackExchange.Redis.ConnectionMultiplexer::haveStormLog
+    L_0310: ldc.i4.1 
+    L_0311: ldc.i4.0 
+    L_0312: call int32 [System.Threading]System.Threading.Interlocked::CompareExchange(int32&, int32, int32)
+    L_0317: brtrue.s L_034d
+    L_0319: ldarg.3 
+    L_031a: ldarg.1 
+    L_031b: callvirt instance valuetype StackExchange.Redis.RedisCommand StackExchange.Redis.Message::get_Command()
+    L_0320: callvirt instance string StackExchange.Redis.ServerEndPoint::GetStormLog(valuetype StackExchange.Redis.RedisCommand)
+    L_0325: stloc.s str2
+    L_0327: ldloc.s str2
+    L_0329: call bool [System.Runtime]System.String::IsNullOrWhiteSpace(string)
+    L_032e: brfalse.s L_033f
+    L_0330: ldarg.0 
+    L_0331: ldflda int32 StackExchange.Redis.ConnectionMultiplexer::haveStormLog
+    L_0336: ldc.i4.0 
+    L_0337: call int32 [System.Threading]System.Threading.Interlocked::Exchange(int32&, int32)
+    L_033c: pop 
+    L_033d: br.s L_034d
+    L_033f: ldarg.0 
+    L_0340: ldflda string StackExchange.Redis.ConnectionMultiplexer::stormLogSnapshot
+    L_0345: ldloc.s str2
+    L_0347: call !!0 [System.Threading]System.Threading.Interlocked::Exchange<string>(!!0&, !!0)
+    L_034c: pop 
+    L_034d: ldarg.0 
+    L_034e: call instance bool StackExchange.Redis.ConnectionMultiplexer::get_IncludeDetailInExceptions()
+    L_0353: ldloc.s str
+    L_0355: ldarg.1 
+    L_0356: ldarg.3 
+    L_0357: call class [System.Runtime]System.Exception StackExchange.Redis.ExceptionFactory::Timeout(bool, string, class StackExchange.Redis.Message, class StackExchange.Redis.ServerEndPoint)
+    L_035c: stloc.s exception2
+    L_035e: ldloc.s exception2
+    L_0360: ldsfld string StackExchange.Redis.ConnectionMultiplexer::timeoutHelpLink
+    L_0365: callvirt instance void [System.Runtime]System.Exception::set_HelpLink(string)
+    L_036a: ldloc.s class_
+    L_036c: ldfld class [System.Collections]System.Collections.Generic.List`1<class [System.Runtime]System.Tuple`2<string, string>> StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_0`1<!!T>::data
+    L_0371: brfalse.s L_03c9
+    L_0373: ldloc.s class_
+    L_0375: ldfld class [System.Collections]System.Collections.Generic.List`1<class [System.Runtime]System.Tuple`2<string, string>> StackExchange.Redis.ConnectionMultiplexer/<>c__DisplayClass163_0`1<!!T>::data
+    L_037a: callvirt instance valuetype [System.Collections]System.Collections.Generic.List`1/Enumerator`0<!0> [System.Collections]System.Collections.Generic.List`1<class [System.Runtime]System.Tuple`2<string, string>>::GetEnumerator()
+    L_037f: stloc.s enumerator
+    L_0381: br.s L_03b0
+    L_0383: ldloca.s enumerator
+    L_0385: call instance !0 [System.Collections]System.Collections.Generic.List`1/Enumerator`0<class [System.Runtime]System.Tuple`2<string, string>>::get_Current()
+    L_038a: stloc.s tuple
+    L_038c: ldloc.s exception2
+    L_038e: callvirt instance class [System.Runtime]System.Collections.IDictionary [System.Runtime]System.Exception::get_Data()
+    L_0393: ldstr "Redis-"
+    L_0398: ldloc.s tuple
+    L_039a: callvirt instance !0 [System.Runtime]System.Tuple`2<string, string>::get_Item1()
+    L_039f: call string [System.Runtime]System.String::Concat(string, string)
+    L_03a4: ldloc.s tuple
+    L_03a6: callvirt instance !1 [System.Runtime]System.Tuple`2<string, string>::get_Item2()
+    L_03ab: callvirt instance void [System.Runtime]System.Collections.IDictionary::set_Item(object, object)
+    L_03b0: ldloca.s enumerator
+    L_03b2: call instance bool [System.Collections]System.Collections.Generic.List`1/Enumerator`0<class [System.Runtime]System.Tuple`2<string, string>>::MoveNext()
+    L_03b7: brtrue.s L_0383
+    L_03b9: leave.s L_03c9
+    L_03bb: ldloca.s enumerator
+    L_03bd: constrained. [System.Collections]System.Collections.Generic.List`1/Enumerator`0<class [System.Runtime]System.Tuple`2<string, string>>
+    L_03c3: callvirt instance void [System.Runtime]System.IDisposable::Dispose()
+    L_03c8: endfinally 
+    L_03c9: ldloc.s exception2
+    L_03cb: throw 
+    L_03cc: ldloc.s flag
+    L_03ce: brfalse.s L_03d7
+    L_03d0: ldloc.s box2
+    L_03d2: call void [System.Threading]System.Threading.Monitor::Exit(object)
+    L_03d7: endfinally 
+    L_03d8: ldloc.1 
+    L_03d9: ldc.i4.1 
+    L_03da: ldloca.s local2
+    L_03dc: ldloca.s exception
+    L_03de: call void StackExchange.Redis.ResultBox`1<!!T>::UnwrapAndRecycle(class StackExchange.Redis.ResultBox`1<!0>, bool, !0&, class [System.Runtime]System.Exception&)
+    L_03e3: ldloc.2 
+    L_03e4: brfalse.s L_03e8
+    L_03e6: ldloc.2 
+    L_03e7: throw 
+    L_03e8: ldloc.3 
+    L_03e9: ret 
+    .try L_0381 to L_03bb finally handler L_03bb to L_03c9
+    .try L_005a to L_03cc finally handler L_03cc to L_03d8
+}
