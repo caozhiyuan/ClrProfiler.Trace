@@ -39,7 +39,7 @@ namespace Samples.RedisCore
 
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                for (int i = 0; i < 30000; i++)
+                for (int i = 0; i < 10000; i++)
                 {
                     db.StringSet($"{prefix}INCR{i}", "0");
                 }

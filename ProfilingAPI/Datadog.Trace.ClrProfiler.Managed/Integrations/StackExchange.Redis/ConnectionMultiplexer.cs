@@ -38,6 +38,10 @@ namespace Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis
                     new[] { messageType, processorType, serverType },
                     new[] { resultType });
 
+#if DEBUG
+            return originalMethod(multiplexer, message, processor, server);
+#else
+
             using (var scope = CreateScope(multiplexer, message))
             {
                 try
@@ -50,6 +54,8 @@ namespace Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis
                     throw;
                 }
             }
+#endif
+
         }
 
         /// <summary>
