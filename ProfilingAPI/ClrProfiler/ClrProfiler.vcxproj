@@ -164,10 +164,6 @@
     <None Include="ClrProfiler.def" />
     <None Include="sigparse.inl" />
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="il.txt" />
-    <Text Include="ilmeta.txt" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
