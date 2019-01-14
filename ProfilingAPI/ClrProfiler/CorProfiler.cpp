@@ -401,25 +401,25 @@ namespace trace {
                 &pdwImplFlags);
             RETURN_OK_IF_FAILED(hr);
 
-            const WSTRING prefixStr = "Trace_"_W;
-            WSTRING mdProbeWrapperName = prefixStr + WSTRING(smdProbeName);
-            mdMethodDef mdWrapper;
-            hr = pEmit->DefineMethod(
-                typeToProb,
-                mdProbeWrapperName.data(),
-                pdwAttr,
-                ppvSigBlob,
-                pcbSigBlob,
-                pulCodeRVA,
-                pdwImplFlags,
-                &mdWrapper);
-            RETURN_OK_IF_FAILED(hr);
-
             auto signature = MethodSignature(ppvSigBlob, pcbSigBlob);
             auto numberOfArguments = signature.NumberOfArguments();
-            if(numberOfArguments < 16)
+            auto numberOfTypeArguments = signature.NumberOfTypeArguments();
+            if(numberOfArguments < 16 && numberOfTypeArguments < 16)
             {
-                auto numberOfTypeArguments = signature.NumberOfTypeArguments();
+                const WSTRING prefixStr = "Trace_"_W;
+                WSTRING mdProbeWrapperName = prefixStr + WSTRING(smdProbeName);
+                mdMethodDef mdWrapper;
+                hr = pEmit->DefineMethod(
+                    typeToProb,
+                    mdProbeWrapperName.data(),
+                    pdwAttr,
+                    ppvSigBlob,
+                    pcbSigBlob,
+                    pulCodeRVA,
+                    pdwImplFlags,
+                    &mdWrapper);
+                RETURN_OK_IF_FAILED(hr);
+
                 if (numberOfTypeArguments > 0)
                 {
                     hr = copyGenericParams(metadata_import, pEmit, mdProb, mdWrapper);
