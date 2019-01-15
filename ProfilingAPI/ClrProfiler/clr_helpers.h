@@ -10,7 +10,7 @@ namespace trace {
     constexpr char HexMap[] = { '0', '1', '2', '3', '4', '5', '6', '7',
                            '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
-    std::wstring HexStr(const unsigned char *data, int len)
+    inline std::wstring HexStr(const unsigned char *data, int len)
     {
         std::wstring s(len * 2, ' ');
         for (int i = 0; i < len; ++i) {
@@ -24,10 +24,32 @@ namespace trace {
     public:
         const unsigned char * data;
         int len = 0;
+        ULONG numberOfTypeArguments;
+        ULONG numberOfArguments;
+        BYTE* returnBytes;
+        std::vector<BYTE[]> paramBytes;
 
-        MethodSignature(const unsigned char * data, const int len) : data(data),len(len) {}
+        MethodSignature(const unsigned char * data, const int len)
+        {
+            this->data = data;
+            this->len = len;
+            const unsigned char * ppvSigBlob;
+            if ((CallingConvention() & IMAGE_CEE_CS_CALLCONV_GENERIC) != 0) {
+                ppvSigBlob = this->data + 1;
+                this->numberOfTypeArguments = CorSigUncompressData(ppvSigBlob);
+                this->numberOfArguments = CorSigUncompressData(ppvSigBlob);
+            }
+            else
+            {
+                this->numberOfTypeArguments = 0;
+                ppvSigBlob = this->data + 1;
+                this->numberOfArguments = CorSigUncompressData(ppvSigBlob);
+            }
+            paramBytes = std::vector<BYTE[]>(this->numberOfArguments);
 
-        inline bool operator==(const MethodSignature& other) const {
+        }
+
+        inline bool operator ==(const MethodSignature& other) const {
             return memcmp(data, other.data, len);
         }
 
@@ -36,25 +58,11 @@ namespace trace {
         }
 
         ULONG NumberOfTypeArguments() const {
-            if (len > 1 &&
-                (CallingConvention() & IMAGE_CEE_CS_CALLCONV_GENERIC) != 0) {
-                auto temp = data + 1;
-                return CorSigUncompressData(temp);
-            }
-            return 0;
+            return numberOfTypeArguments;
         }
 
         ULONG NumberOfArguments() const {
-            if (len > 2 &&
-                (CallingConvention() & IMAGE_CEE_CS_CALLCONV_GENERIC) != 0) {
-                auto temp = data + 2;
-                return CorSigUncompressData(temp);
-            }
-            if (len > 1) {
-                auto temp = data + 1;
-                return CorSigUncompressData(temp);
-            }
-            return 0;
+            return numberOfArguments;
         }
 
         WSTRING str() const {
