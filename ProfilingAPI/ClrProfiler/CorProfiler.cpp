@@ -15,21 +15,6 @@
 
 namespace trace {
 
-    static void STDMETHODCALLTYPE Enter(FunctionID functionId)
-    {
-        //printf("\r\nEnter %" UINT_PTR_FORMAT "", (UINT64)functionId);
-    }
-
-    static void STDMETHODCALLTYPE Leave(FunctionID functionId)
-    {
-        //printf("\r\nLeave %" UINT_PTR_FORMAT "", (UINT64)functionId);
-    }
-
-    COR_SIGNATURE enterLeaveMethodSignature[] = { IMAGE_CEE_CS_CALLCONV_STDCALL, 0x01, ELEMENT_TYPE_VOID, ELEMENT_TYPE_I };
-
-    void(STDMETHODCALLTYPE *EnterMethodAddress)(FunctionID) = &Enter;
-    void(STDMETHODCALLTYPE *LeaveMethodAddress)(FunctionID) = &Leave;
-
     CorProfiler::CorProfiler() : refCount(0), corProfilerInfo(nullptr)
     {
     }
@@ -45,20 +30,20 @@ namespace trace {
 
     HRESULT STDMETHODCALLTYPE CorProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
     {
-        HRESULT queryInterfaceResult = pICorProfilerInfoUnk->QueryInterface(__uuidof(ICorProfilerInfo8), reinterpret_cast<void **>(&this->corProfilerInfo));
+        const HRESULT queryHR = pICorProfilerInfoUnk->QueryInterface(__uuidof(ICorProfilerInfo8), reinterpret_cast<void **>(&this->corProfilerInfo));
 
-        if (FAILED(queryInterfaceResult))
+        if (FAILED(queryHR))
         {
             return E_FAIL;
         }
 
-        DWORD eventMask = COR_PRF_MONITOR_JIT_COMPILATION |
+        const DWORD eventMask = COR_PRF_MONITOR_JIT_COMPILATION |
             COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST | /* helps the case where this profiler is used on Full CLR */
             COR_PRF_DISABLE_INLINING |
             COR_PRF_MONITOR_MODULE_LOADS |
             COR_PRF_DISABLE_ALL_NGEN_IMAGES;
 
-        auto hr = this->corProfilerInfo->SetEventMask(eventMask);
+        this->corProfilerInfo->SetEventMask(eventMask);
 
         return S_OK;
     }
@@ -119,7 +104,7 @@ namespace trace {
         return S_OK;
     }
 
-    HRESULT getConstraintTypes(IMetaDataImport2* metadata_import, const unsigned mdGenericParam, mdToken constraintTypes[])
+    HRESULT getConstraintTypes(IMetaDataImport2* pImport, const unsigned mdGenericParam, mdToken constraintTypes[])
     {
         std::vector<mdToken> ptkConstraintTypes;
         HCORENUM hEnum = HCORENUM();
@@ -129,7 +114,7 @@ namespace trace {
         do
         {
             mdGenericParamConstraint mdGenericParamConstraints[maxGpcCount];
-            HRESULT hr = metadata_import->EnumGenericParamConstraints(&hEnum,
+            HRESULT hr = pImport->EnumGenericParamConstraints(&hEnum,
                                                                       mdGenericParam,
                                                                       mdGenericParamConstraints,
                                                                       maxGpcCount,
@@ -139,7 +124,7 @@ namespace trace {
             for (auto k = 0u; k < gpcCount; ++k)
             {
                 mdToken ptkConstraintType;
-                hr = metadata_import->GetGenericParamConstraintProps(mdGenericParamConstraints[k],
+                hr = pImport->GetGenericParamConstraintProps(mdGenericParamConstraints[k],
                                                                      NULL,
                                                                      &ptkConstraintType);
                 IfFailRet(hr);
@@ -148,13 +133,13 @@ namespace trace {
         } while (0 < gpcCount);
         if (hEnum)
         {
-            metadata_import->CloseEnum(hEnum);
+            pImport->CloseEnum(hEnum);
         }
         constraintTypes = ptkConstraintTypes.data();
         return S_OK;
     }
 
-    HRESULT copyGenericParams(IMetaDataImport2* metadata_import, IMetaDataEmit2* pEmit, mdMethodDef mdProb, mdMethodDef mdWrapper)
+    HRESULT copyGenericParams(IMetaDataImport2* pImport, IMetaDataEmit2* pEmit, mdMethodDef mdProb, mdMethodDef mdWrapper)
     {
         HCORENUM hEnum = HCORENUM();
         ULONG count = 0ul;
@@ -162,7 +147,7 @@ namespace trace {
         mdGenericParam mdGenericParams[maxCount];
         do
         {
-            HRESULT hr = metadata_import->EnumGenericParams(&hEnum, mdProb, mdGenericParams, maxCount, &count);
+            HRESULT hr = pImport->EnumGenericParams(&hEnum, mdProb, mdGenericParams, maxCount, &count);
             IfFailRet(hr);
             for (auto j = 0u; j < count; ++j)
             {
@@ -175,13 +160,13 @@ namespace trace {
                 mdToken      ptOwner;
                 DWORD       reserved;
                 ULONG        pchName;
-                hr = metadata_import->GetGenericParamProps(kmdGenericParam,
+                hr = pImport->GetGenericParamProps(kmdGenericParam,
                     &pulParamSeq,
                     &pdwParamFlags,
                     &ptOwner,
                     &reserved,
                     paramName,
-                    sizeof(knNameMaxSize),
+                    knNameMaxSize,
                     &pchName);
 
                 IfFailRet(hr);
@@ -189,7 +174,7 @@ namespace trace {
                 auto paramNameStr = WSTRING(paramName);
 
                 mdToken* constraintTypes = NULL;
-                hr = getConstraintTypes(metadata_import, kmdGenericParam, constraintTypes);
+                hr = getConstraintTypes(pImport, kmdGenericParam, constraintTypes);
                 IfFailRet(hr);
 
                 mdGenericParam pgp;
@@ -206,13 +191,13 @@ namespace trace {
         } while (0 < count);
         if (hEnum)
         {
-            metadata_import->CloseEnum(hEnum);
+            pImport->CloseEnum(hEnum);
         }
 
         return S_OK;
     }
 
-    HRESULT copyParams(IMetaDataImport2* metadata_import, IMetaDataEmit2* pEmit, mdMethodDef mdProb, mdMethodDef mdWrapper)
+    HRESULT copyParams(IMetaDataImport2* pImport, IMetaDataEmit2* pEmit, mdMethodDef mdProb, mdMethodDef mdWrapper)
     {
         HCORENUM hEnum = HCORENUM();
         ULONG count = 0ul;
@@ -220,7 +205,7 @@ namespace trace {
         mdParamDef mdParamDefs[maxCount];
         do
         {
-            HRESULT hr = metadata_import->EnumParams(&hEnum, mdProb, mdParamDefs, maxCount, &count);
+            HRESULT hr = pImport->EnumParams(&hEnum, mdProb, mdParamDefs, maxCount, &count);
             IfFailRet(hr);
 
             for (auto j = 0u; j < count; ++j)
@@ -234,11 +219,11 @@ namespace trace {
                 DWORD       pdwCPlusTypeFlag;
                 UVCP_CONSTANT ppValue;
                 ULONG       pcchValue;
-                hr = metadata_import->GetParamProps(kmdParamDef,
+                hr = pImport->GetParamProps(kmdParamDef,
                     NULL,
                     &pulParamSeq,
                     paramName,
-                    sizeof(paramName),
+                    knNameMaxSize,
                     NULL,
                     &pdwAttr,
                     &pdwCPlusTypeFlag,
@@ -263,9 +248,229 @@ namespace trace {
         } while (0 < count);
         if(hEnum)
         {
-            metadata_import->CloseEnum(hEnum);
+            pImport->CloseEnum(hEnum);
         }
 
+        return S_OK;
+    }
+
+    mdToken getMethodToken(IMetaDataEmit2* pEmit, mdMemberRef pmr, ULONG numberOfTypeArguments)
+    {
+        if(numberOfTypeArguments > 0)
+        {
+            const ULONG raw_signature_len = numberOfTypeArguments * 2 + 2;
+            BYTE* raw_signature = new BYTE[raw_signature_len];
+            ULONG offset = 0;
+            raw_signature[offset++] = (BYTE)IMAGE_CEE_CS_CALLCONV_GENERICINST;
+            raw_signature[offset++] = (BYTE)numberOfTypeArguments;
+            for (ULONG i = 0; i < numberOfTypeArguments; i++)
+            {
+                raw_signature[offset++] = (BYTE)ELEMENT_TYPE_MVAR;
+                raw_signature[offset++] = (BYTE)0x00;
+            }
+
+            mdMethodSpec kpmi;
+            auto hr = pEmit->DefineMethodSpec(pmr, raw_signature, raw_signature_len, &kpmi);
+            RETURN_OK_IF_FAILED(hr);
+            return kpmi;
+        }
+        else
+        {
+            return pmr;
+        }
+    }
+
+    void genLoadArgumentBytes(ULONG numberOfArguments, LPBYTE pwMethodBytes, unsigned& offset)
+    {
+        for (unsigned i = 1; i <= numberOfArguments; i++)
+        {
+            if (i == 1)
+            {
+                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_1;
+            }
+            else if (i == 2)
+            {
+                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_2;
+            }
+            else if (i == 3)
+            {
+                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_3;
+            }
+            else
+            {
+                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_S;
+                pwMethodBytes[offset++] = (BYTE)i;
+            }
+        }
+    }
+
+    HRESULT CorProfiler::MethodWrapperSample(ModuleID moduleId, IMetaDataImport2* pImport, IMetaDataAssemblyEmit* pAssemblyEmit, IMetaDataEmit2* pEmit) const
+    {
+        HRESULT hr = S_FALSE
+        ;
+        //1. .net framework gac or net core DOTNET_ADDITIONAL_DEPS=%PROGRAMFILES%\dotnet\x64\additionalDeps\Datadog.Trace.ClrProfiler.Managed
+        //2. just proj ref
+        BYTE rgbPublicKeyToken[] = { 0xde, 0xf8, 0x6d, 0x06, 0x1d, 0x0d, 0x2e, 0xeb };
+        WCHAR wszLocale[MAX_PATH];
+        wcscpy_s(wszLocale, L"neutral");
+
+        ASSEMBLYMETADATA assemblyMetaData;
+        ZeroMemory(&assemblyMetaData, sizeof(assemblyMetaData));
+        assemblyMetaData.usMajorVersion = 0;
+        assemblyMetaData.usMinorVersion = 6;
+        assemblyMetaData.usBuildNumber = 0;
+        assemblyMetaData.usRevisionNumber = 0;
+        assemblyMetaData.szLocale = wszLocale;
+        assemblyMetaData.cbLocale = _countof(wszLocale);
+
+        mdAssemblyRef assemblyRef = NULL;
+        hr = pAssemblyEmit->DefineAssemblyRef(
+            (void *)rgbPublicKeyToken,
+            sizeof(rgbPublicKeyToken),
+            L"Datadog.Trace.ClrProfiler.Managed",
+            &assemblyMetaData,
+            NULL,
+            NULL,                  
+            0,                 
+            &assemblyRef);
+        RETURN_OK_IF_FAILED(hr);
+
+        const LPCWSTR wszTypeToReference = L"Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis.ConnectionMultiplexer";
+        mdTypeRef typeRef = mdTokenNil;
+        hr = pEmit->DefineTypeRefByName(
+            assemblyRef,
+            wszTypeToReference,
+            &typeRef);
+        RETURN_OK_IF_FAILED(hr);
+
+        const LPCWSTR mdProbeName = L"ExecuteSyncImpl";
+        std::vector<BYTE> sigFunctionProbe = { 0x10,0x01,0x04,0x1E,0x00,0x1C,0x1C,0x1C,0x1C };          
+        mdMemberRef pmr;
+        hr = pEmit->DefineMemberRef(
+            typeRef,
+            mdProbeName,
+            sigFunctionProbe.data(),
+            (DWORD)sigFunctionProbe.size(),
+            &pmr);
+            
+        RETURN_OK_IF_FAILED(hr);
+
+        const LPCWSTR typeNameToProb = L"StackExchange.Redis.ConnectionMultiplexer";
+        mdTypeDef typeToProb;
+        hr = pImport->FindTypeDefByName(
+            typeNameToProb,
+            mdTokenNil,
+            &typeToProb);
+        RETURN_OK_IF_FAILED(hr);
+
+        LPCWSTR smdProbeName = L"ExecuteSyncImpl";
+        mdMethodDef mdProb;
+        std::vector<BYTE> sigFunctionProbe2;
+        hr = pImport->FindMember(
+            typeToProb,
+            smdProbeName,
+            sigFunctionProbe2.data(),
+            (DWORD)sigFunctionProbe2.size(),
+            &mdProb);
+        RETURN_OK_IF_FAILED(hr);
+
+        DWORD       pdwAttr;
+        PCCOR_SIGNATURE ppvSigBlob;
+        ULONG       pcbSigBlob;
+        ULONG       pulCodeRVA;
+        DWORD       pdwImplFlags;
+        hr = pImport->GetMethodProps(
+            mdProb,
+            NULL,	   // Put method's class here. 
+            NULL,		   // Put method's name here.  
+            0,			       // Size of szMethod buffer in wide chars.   
+            NULL,		   // Put actual size here 
+            &pdwAttr,		   // Put flags here.  
+            &ppvSigBlob,       // [OUT] point to the blob value of meta data   
+            &pcbSigBlob,	   // [OUT] actual size of signature blob  
+            &pulCodeRVA,
+            &pdwImplFlags);
+        RETURN_OK_IF_FAILED(hr);
+
+        auto signature = MethodSignature(ppvSigBlob, pcbSigBlob);
+        auto numberOfArguments = signature.NumberOfArguments();
+        auto numberOfTypeArguments = signature.NumberOfTypeArguments();
+        if(numberOfArguments < 16 && numberOfTypeArguments < 16)
+        {
+            const WSTRING prefixStr = "Trace_"_W;
+            WSTRING mdProbeWrapperName = prefixStr + WSTRING(smdProbeName);
+            mdMethodDef mdWrapper;
+            hr = pEmit->DefineMethod(
+                typeToProb,
+                mdProbeWrapperName.data(),
+                pdwAttr,
+                ppvSigBlob,
+                pcbSigBlob,
+                pulCodeRVA,
+                pdwImplFlags,
+                &mdWrapper);
+            RETURN_OK_IF_FAILED(hr);
+
+            if (numberOfTypeArguments > 0)
+            {
+                hr = copyGenericParams(pImport, pEmit, mdProb, mdWrapper);
+                RETURN_OK_IF_FAILED(hr);
+            }
+
+            if (numberOfArguments > 0)
+            {
+                hr = copyParams(pImport, pEmit, mdProb, mdWrapper);
+                RETURN_OK_IF_FAILED(hr);
+            }
+
+            LPCBYTE pMethodBytes;
+            ULONG pMethodSize;
+            hr = corProfilerInfo->GetILFunctionBody(moduleId, mdProb, &pMethodBytes, &pMethodSize);
+            RETURN_OK_IF_FAILED(hr);
+
+            IMethodMalloc* pIMethodMalloc;
+            hr = corProfilerInfo->GetILFunctionBodyAllocator(moduleId, &pIMethodMalloc);
+            RETURN_OK_IF_FAILED(hr);
+
+            LPBYTE pNewMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(pMethodSize);
+            memcpy(pNewMethodBytes, pMethodBytes, pMethodSize);
+            hr = corProfilerInfo->SetILFunctionBody(moduleId, mdWrapper, pNewMethodBytes);
+            RETURN_OK_IF_FAILED(hr);
+
+            //ldarg.0 call mdtoken ret
+            unsigned codeSizeNew = 1 + 1 + 4 + 1;
+            for (unsigned i = 1; i <= numberOfArguments; i++)
+            {
+                if (i < 4)
+                {
+                    codeSizeNew += 1;
+                }
+                else
+                {
+                    //ldarg.s 1
+                    codeSizeNew += 2;
+                }
+            }
+            LPBYTE pwMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(codeSizeNew + 1);
+            unsigned offset = 0;
+            pwMethodBytes[offset++] = (BYTE)(CorILMethod_TinyFormat | (codeSizeNew << 2));
+            pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
+
+            genLoadArgumentBytes((ULONG)numberOfArguments, pwMethodBytes, offset);
+
+            pwMethodBytes[offset++] = (BYTE)CEE_CALL;
+
+            mdToken pmi = getMethodToken(pEmit, pmr, (ULONG)numberOfTypeArguments);
+            *(UNALIGNED INT32*)&(pwMethodBytes[offset]) = pmi;
+            offset += 4;
+
+            pwMethodBytes[offset++] = (BYTE)CEE_RET;
+
+            hr = corProfilerInfo->SetILFunctionBody(moduleId, mdProb, pwMethodBytes);
+            RETURN_OK_IF_FAILED(hr);
+
+            pIMethodMalloc->Release();
+        }
         return S_OK;
     }
 
@@ -291,236 +496,32 @@ namespace trace {
         hr = corProfilerInfo->GetAssemblyInfo(assembly_id, kNameMaxSize, &name_len, name,
             NULL, NULL);
         RETURN_OK_IF_FAILED(hr);
+        CComPtr<IUnknown> metadata_interfaces;
+        hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
+            IID_IMetaDataImport2,
+            &metadata_interfaces);
+        RETURN_OK_IF_FAILED(hr);
+
+        CComPtr<IMetaDataImport2> pImport;
+        hr = metadata_interfaces->QueryInterface(IID_IMetaDataImport, (LPVOID *)&pImport);
+        RETURN_OK_IF_FAILED(hr);
+
+        CComPtr<IMetaDataAssemblyEmit> pAssemblyEmit;
+        hr = metadata_interfaces->QueryInterface(IID_IMetaDataAssemblyEmit, (LPVOID *)&pAssemblyEmit);
+        RETURN_OK_IF_FAILED(hr);
+
+        CComPtr<IMetaDataEmit2> pEmit;
+        hr = metadata_interfaces->QueryInterface(IID_IMetaDataEmit, (LPVOID *)&pEmit);
+        RETURN_OK_IF_FAILED(hr);
+
+        mdModule module;
+        hr = pImport->GetModuleFromScope(&module);
+        RETURN_OK_IF_FAILED(hr);
 
         if (WSTRING(name) == "StackExchange.Redis"_W)
         {
-            CComPtr<IUnknown> metadata_interfaces;
-            hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
-                IID_IMetaDataImport2,
-                &metadata_interfaces);
+            hr = MethodWrapperSample(moduleId, pImport, pAssemblyEmit, pEmit);
             RETURN_OK_IF_FAILED(hr);
-
-            CComPtr<IMetaDataImport2> metadata_import;
-            hr = metadata_interfaces->QueryInterface(IID_IMetaDataImport, (LPVOID *)&metadata_import);
-            RETURN_OK_IF_FAILED(hr);
-
-            CComPtr<IMetaDataAssemblyEmit> pAssemblyEmit;
-            hr = metadata_interfaces->QueryInterface(IID_IMetaDataAssemblyEmit, (LPVOID *)&pAssemblyEmit);
-            RETURN_OK_IF_FAILED(hr);
-
-            CComPtr<IMetaDataEmit2> pEmit;
-            hr = metadata_interfaces->QueryInterface(IID_IMetaDataEmit, (LPVOID *)&pEmit);
-            RETURN_OK_IF_FAILED(hr);
-
-            mdModule module;
-            hr = metadata_import->GetModuleFromScope(&module);
-            RETURN_OK_IF_FAILED(hr);
-
-            //1. .net framework gac or net core DOTNET_ADDITIONAL_DEPS=%PROGRAMFILES%\dotnet\x64\additionalDeps\Datadog.Trace.ClrProfiler.Managed
-            //2. just proj ref
-            BYTE rgbPublicKeyToken[] = { 0xde, 0xf8, 0x6d, 0x06, 0x1d, 0x0d, 0x2e, 0xeb };
-            WCHAR wszLocale[MAX_PATH];
-            wcscpy_s(wszLocale, L"neutral");
-
-            ASSEMBLYMETADATA assemblyMetaData;
-            ZeroMemory(&assemblyMetaData, sizeof(assemblyMetaData));
-            assemblyMetaData.usMajorVersion = 0;
-            assemblyMetaData.usMinorVersion = 6;
-            assemblyMetaData.usBuildNumber = 0;
-            assemblyMetaData.usRevisionNumber = 0;
-            assemblyMetaData.szLocale = wszLocale;
-            assemblyMetaData.cbLocale = _countof(wszLocale);
-
-            mdAssemblyRef assemblyRef = NULL;
-            hr = pAssemblyEmit->DefineAssemblyRef(
-                (void *)rgbPublicKeyToken,
-                sizeof(rgbPublicKeyToken),
-                L"Datadog.Trace.ClrProfiler.Managed",
-                &assemblyMetaData,
-                NULL,                   // hash blob
-                NULL,                   // cb of hash blob
-                0,                      // flags
-                &assemblyRef);
-            RETURN_OK_IF_FAILED(hr);
-
-            const LPCWSTR wszTypeToReference = L"Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis.ConnectionMultiplexer";
-            mdTypeRef typeRef = mdTokenNil;
-            hr = pEmit->DefineTypeRefByName(
-                assemblyRef,
-                wszTypeToReference,
-                &typeRef);
-            RETURN_OK_IF_FAILED(hr);
-
-            const LPCWSTR mdProbeName = L"ExecuteSyncImpl";
-            std::vector<BYTE> sigFunctionProbe = { 0x10,0x01,0x04,0x1E,0x00,0x1C,0x1C,0x1C,0x1C };
-            
-            mdMemberRef pmr;
-            hr = pEmit->DefineMemberRef(
-                typeRef,
-                mdProbeName,
-                sigFunctionProbe.data(),
-                (DWORD)sigFunctionProbe.size(),
-                &pmr);
-            
-            RETURN_OK_IF_FAILED(hr);
-
-            const LPCWSTR typeNameToProb = L"StackExchange.Redis.ConnectionMultiplexer";
-            mdTypeDef typeToProb;
-            hr = metadata_import->FindTypeDefByName(
-                typeNameToProb,
-                mdTokenNil,
-                &typeToProb);
-            RETURN_OK_IF_FAILED(hr);
-
-            LPCWSTR smdProbeName = L"ExecuteSyncImpl";
-            mdMethodDef mdProb;
-            std::vector<BYTE> sigFunctionProbe2;
-            hr = metadata_import->FindMember(
-                typeToProb,
-                smdProbeName,
-                sigFunctionProbe2.data(),
-                (DWORD)sigFunctionProbe2.size(),
-                &mdProb);
-            RETURN_OK_IF_FAILED(hr);
-
-            DWORD       pdwAttr;
-            PCCOR_SIGNATURE ppvSigBlob;
-            ULONG       pcbSigBlob;
-            ULONG       pulCodeRVA;
-            DWORD       pdwImplFlags;
-            hr = metadata_import->GetMethodProps(
-                mdProb,
-                NULL,	   // Put method's class here. 
-                NULL,		   // Put method's name here.  
-                0,			       // Size of szMethod buffer in wide chars.   
-                NULL,		   // Put actual size here 
-                &pdwAttr,		   // Put flags here.  
-                &ppvSigBlob,       // [OUT] point to the blob value of meta data   
-                &pcbSigBlob,	   // [OUT] actual size of signature blob  
-                &pulCodeRVA,
-                &pdwImplFlags);
-            RETURN_OK_IF_FAILED(hr);
-
-            auto signature = MethodSignature(ppvSigBlob, pcbSigBlob);
-            auto numberOfArguments = signature.NumberOfArguments();
-            auto numberOfTypeArguments = signature.NumberOfTypeArguments();
-            if(numberOfArguments < 16 && numberOfTypeArguments < 16)
-            {
-                const WSTRING prefixStr = "Trace_"_W;
-                WSTRING mdProbeWrapperName = prefixStr + WSTRING(smdProbeName);
-                mdMethodDef mdWrapper;
-                hr = pEmit->DefineMethod(
-                    typeToProb,
-                    mdProbeWrapperName.data(),
-                    pdwAttr,
-                    ppvSigBlob,
-                    pcbSigBlob,
-                    pulCodeRVA,
-                    pdwImplFlags,
-                    &mdWrapper);
-                RETURN_OK_IF_FAILED(hr);
-
-                if (numberOfTypeArguments > 0)
-                {
-                    hr = copyGenericParams(metadata_import, pEmit, mdProb, mdWrapper);
-                    RETURN_OK_IF_FAILED(hr);
-                }
-
-                if (numberOfArguments > 0)
-                {
-                    hr = copyParams(metadata_import, pEmit, mdProb, mdWrapper);
-                    RETURN_OK_IF_FAILED(hr);
-                }
-
-                LPCBYTE pMethodBytes;
-                ULONG pMethodSize;
-                hr = corProfilerInfo->GetILFunctionBody(moduleId, mdProb, &pMethodBytes, &pMethodSize);
-                RETURN_OK_IF_FAILED(hr);
-
-                IMethodMalloc* pIMethodMalloc;
-                hr = corProfilerInfo->GetILFunctionBodyAllocator(moduleId, &pIMethodMalloc);
-                RETURN_OK_IF_FAILED(hr);
-
-                LPBYTE pNewMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(pMethodSize);
-                memcpy(pNewMethodBytes, pMethodBytes, pMethodSize);
-                hr = corProfilerInfo->SetILFunctionBody(moduleId, mdWrapper, pNewMethodBytes);
-                RETURN_OK_IF_FAILED(hr);
-
-                //ldarg.0 call mdtoken ret
-                unsigned codeSizeNew = 1 + 1 + 4 + 1;
-                for (unsigned i = 1; i <= numberOfArguments; i++)
-                {
-                    if (i < 4)
-                    {
-                        codeSizeNew += 1;
-                    }
-                    else
-                    {
-                        //ldarg.s 1
-                        codeSizeNew += 2;
-                    }
-                }
-                LPBYTE pwMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(codeSizeNew + 1);
-                unsigned offset = 0;
-                pwMethodBytes[offset++] = (BYTE)(CorILMethod_TinyFormat | (codeSizeNew << 2));
-                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
-                
-                for (unsigned i = 1; i <= numberOfArguments; i++)
-                {
-                    if (i == 1)
-                    {
-                        pwMethodBytes[offset++] = (BYTE)CEE_LDARG_1;
-                    }
-                    else if (i == 2)
-                    {
-                        pwMethodBytes[offset++] = (BYTE)CEE_LDARG_2;
-                    }
-                    else if (i == 3)
-                    {
-                        pwMethodBytes[offset++] = (BYTE)CEE_LDARG_3;
-                    }
-                    else
-                    {
-                        pwMethodBytes[offset++] = (BYTE)CEE_LDARG_S;
-                        pwMethodBytes[offset++] = (BYTE)i;
-                    }
-                }
-                pwMethodBytes[offset++] = (BYTE)CEE_CALL;
-
-                mdToken pmi = pmr;
-                if(numberOfTypeArguments >0)
-                {
-                    ULONG raw_signature_len = (ULONG)numberOfTypeArguments * 2 + 2;
-                    BYTE* raw_signature = new BYTE[raw_signature_len];
-                    ULONG goffset = 0;
-                    raw_signature[goffset++] = (BYTE)IMAGE_CEE_CS_CALLCONV_GENERICINST;
-                    raw_signature[goffset++] = (BYTE)numberOfTypeArguments;
-                    for (ULONG i = 0; i < numberOfTypeArguments; i++)
-                    {
-                        raw_signature[goffset++] = (BYTE)ELEMENT_TYPE_MVAR;
-                        raw_signature[goffset++] = (BYTE)0x00;
-                    }
-                    Info(HexStr(raw_signature, raw_signature_len));
-                    mdMethodSpec kpmi;
-                    hr = pEmit->DefineMethodSpec(pmr, raw_signature, raw_signature_len, &kpmi);
-                    RETURN_OK_IF_FAILED(hr);
-                    pmi = kpmi;
-                }
-
-                *(UNALIGNED INT32*)&(pwMethodBytes[offset]) = pmi;
-                offset += 4;
-
-                pwMethodBytes[offset++] = (BYTE)CEE_RET;
-
-
-                Info(offset);
-                Info(HexStr(pwMethodBytes, offset));
-
-                hr = corProfilerInfo->SetILFunctionBody(moduleId, mdProb, pwMethodBytes);
-                RETURN_OK_IF_FAILED(hr);
-
-                pIMethodMalloc->Release();
-            }
         }
 
         return S_OK;
@@ -912,14 +913,12 @@ namespace trace {
     }
 
     HRESULT STDMETHODCALLTYPE CorProfiler::DynamicMethodJITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock, LPCBYTE ilHeader, ULONG cbILHeader)
-    {
-        //printf("\r\nDynamic Function JIT Compilation Started. %" UINT_PTR_FORMAT "", (UINT64)functionId);
+    { 
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE CorProfiler::DynamicMethodJITCompilationFinished(FunctionID functionId, HRESULT hrStatus, BOOL fIsSafeToBlock)
     {
-        //printf("\r\nDynamic Function JIT Compilation Finished. %" UINT_PTR_FORMAT "", (UINT64)functionId);
         return S_OK;
     }
 }

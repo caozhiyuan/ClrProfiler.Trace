@@ -6,7 +6,6 @@
 #include <atomic>
 #include "cor.h"
 #include "corprof.h"
-#include "CComPtr.h"
 
 namespace trace {
 
@@ -29,7 +28,6 @@ namespace trace {
         HRESULT STDMETHODCALLTYPE AssemblyUnloadStarted(AssemblyID assemblyId) override;
         HRESULT STDMETHODCALLTYPE AssemblyUnloadFinished(AssemblyID assemblyId, HRESULT hrStatus) override;
         HRESULT STDMETHODCALLTYPE ModuleLoadStarted(ModuleID moduleId) override;
-        void get_value(CComPtr<IMetaDataImport2> metadata_import, CComPtr<IMetaDataEmit2> pEmit, mdMethodDef mdProb);
         HRESULT STDMETHODCALLTYPE ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) override;
         HRESULT STDMETHODCALLTYPE ModuleUnloadStarted(ModuleID moduleId) override;
         HRESULT STDMETHODCALLTYPE ModuleUnloadFinished(ModuleID moduleId, HRESULT hrStatus) override;
@@ -149,5 +147,7 @@ namespace trace {
 
             return count;
         }
+
+        HRESULT MethodWrapperSample(ModuleID moduleId, IMetaDataImport2* pImport, IMetaDataAssemblyEmit* pAssemblyEmit, IMetaDataEmit2* pEmit) const;
     };
 }
