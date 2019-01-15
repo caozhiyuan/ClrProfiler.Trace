@@ -524,8 +524,9 @@ namespace trace {
         AssemblyID assembly_id = 0;
         DWORD module_flags = 0;
         HRESULT hr = corProfilerInfo->GetModuleInfo2(
-            moduleId, &base_load_address, module_path_size, &module_path_len,
-            module_path, &assembly_id, &module_flags);
+            moduleId, &base_load_address, module_path_size,
+            &module_path_len, module_path, &assembly_id, 
+            &module_flags);
         RETURN_OK_IF_FAILED(hr);
         if ((module_flags & COR_PRF_MODULE_WINDOWS_RUNTIME) != 0 || module_path_len == 0) {
             return S_OK;
@@ -534,18 +535,39 @@ namespace trace {
         const size_t kNameMaxSize = 1024;
         WCHAR name[kNameMaxSize];
         DWORD name_len = 0;
-        hr = corProfilerInfo->GetAssemblyInfo(assembly_id, kNameMaxSize, &name_len, name,
-            NULL, NULL);
+        hr = corProfilerInfo->GetAssemblyInfo(assembly_id,
+            kNameMaxSize, 
+            &name_len,
+            name,
+            NULL,
+            NULL);
         RETURN_OK_IF_FAILED(hr);
+
+        const auto assemblyName = WSTRING(name);
+        auto assemblies = { "StackExchange.Redis"_W, "System.Private.CoreLib"_W };
+        bool flag = false;
+        for (auto assembly : assemblies) {
+            if(assembly == assemblyName) {
+                flag = true;
+                break;
+            }
+        }
+
+        if(!flag) {
+            return S_OK;
+        }
+
         CComPtr<IUnknown> pInterfaces;
         hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
             IID_IMetaDataImport2,
             &pInterfaces);
         RETURN_OK_IF_FAILED(hr);
+        pInterfaces->AddRef();
 
         CComPtr<IMetaDataImport2> pImport;
         hr = pInterfaces->QueryInterface(IID_IMetaDataImport, (LPVOID *)&pImport);
         RETURN_OK_IF_FAILED(hr);
+        pImport->AddRef();
 
         mdModule module;
         hr = pImport->GetModuleFromScope(&module);
@@ -554,24 +576,22 @@ namespace trace {
         CComPtr<IMetaDataAssemblyEmit> pAssemblyEmit;
         hr = pInterfaces->QueryInterface(IID_IMetaDataAssemblyEmit, (LPVOID *)&pAssemblyEmit);
         RETURN_OK_IF_FAILED(hr);
+        pAssemblyEmit->AddRef();
 
         CComPtr<IMetaDataEmit2> pEmit;
         hr = pInterfaces->QueryInterface(IID_IMetaDataEmit, (LPVOID *)&pEmit);
         RETURN_OK_IF_FAILED(hr);
+        pEmit->AddRef();
 
-        const auto assemblyName = WSTRING(name);
-        if (assemblyName == "StackExchange.Redis"_W)
-        {
+        if (assemblyName == "StackExchange.Redis"_W) {
             hr = MethodWrapperSample(moduleId, pImport, pAssemblyEmit, pEmit);
             RETURN_OK_IF_FAILED(hr);
         }
 
-        if (assemblyName == "System.Private.CoreLib"_W)
-        {
+        if (assemblyName == "System.Private.CoreLib"_W) {
             pImport->FindTypeDefByName(L"System.Threading.Tasks.Task", NULL, &this->taskDef);
             pImport->FindTypeDefByName(L"System.Threading.Tasks.Task`1", NULL, &this->taskGenericDef);
         }
-
         return S_OK;
     }
 
