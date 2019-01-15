@@ -15,7 +15,7 @@
 
 namespace trace {
 
-    CorProfiler::CorProfiler() : refCount(0), corProfilerInfo(nullptr)
+    CorProfiler::CorProfiler() : refCount(0), corProfilerInfo(nullptr), taskDef(0), taskGenericDef(0)
     {
     }
 
@@ -258,11 +258,16 @@ namespace trace {
     {
         if(numberOfTypeArguments > 0)
         {
-            const ULONG raw_signature_len = numberOfTypeArguments * 2 + 2;
+            BYTE * data = new BYTE[4];
+            const auto dataSize = CorSigCompressData(numberOfTypeArguments, data);
+            const ULONG raw_signature_len = numberOfTypeArguments * 2 + 1 + dataSize;
             BYTE* raw_signature = new BYTE[raw_signature_len];
-            ULONG offset = 0;
-            raw_signature[offset++] = (BYTE)IMAGE_CEE_CS_CALLCONV_GENERICINST;
-            raw_signature[offset++] = (BYTE)numberOfTypeArguments;
+
+            raw_signature[0] = (BYTE)IMAGE_CEE_CS_CALLCONV_GENERICINST;
+
+            memcpy(raw_signature + 1, data, dataSize);
+
+            ULONG offset = 1 + dataSize;
             for (ULONG i = 0; i < numberOfTypeArguments; i++)
             {
                 raw_signature[offset++] = (BYTE)ELEMENT_TYPE_MVAR;
@@ -280,11 +285,17 @@ namespace trace {
         }
     }
 
-    void genLoadArgumentBytes(ULONG numberOfArguments, LPBYTE pwMethodBytes, unsigned& offset)
+    void genLoadArgumentBytes(ULONG numberOfArguments, LPBYTE pwMethodBytes, ULONG& offset, bool staticFlag)
     {
-        for (unsigned i = 1; i <= numberOfArguments; i++)
+        const unsigned k = staticFlag ? 0 : 1;
+        const ULONG count = staticFlag ? numberOfArguments - 1 : numberOfArguments;
+        for (unsigned i = k; i <= count; i++)
         {
-            if (i == 1)
+            if (i == 0)
+            {
+                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
+            }
+            else if (i == 1)
             {
                 pwMethodBytes[offset++] = (BYTE)CEE_LDARG_1;
             }
@@ -296,12 +307,42 @@ namespace trace {
             {
                 pwMethodBytes[offset++] = (BYTE)CEE_LDARG_3;
             }
-            else
+            else if (i >= 4 && i <= 255)
             {
                 pwMethodBytes[offset++] = (BYTE)CEE_LDARG_S;
                 pwMethodBytes[offset++] = (BYTE)i;
             }
+            else
+            {
+                *(UNALIGNED INT16*)&(pwMethodBytes[offset]) = CEE_LDARG;
+                offset += 2;
+                *(UNALIGNED INT16*)&(pwMethodBytes[offset]) = i;
+                offset += 2;
+            }
         }
+    }
+
+    unsigned getNumberOfArgumentsSize(ULONG numberOfArguments)
+    {
+        ULONG codeSize = 0;
+        for (ULONG i = 1; i <= numberOfArguments; i++)
+        {
+            if (i < 4)
+            {
+                codeSize += 1;
+            }
+            else  if (i >= 4 && i <= 255)
+            {
+                //ldarg.s 5
+                codeSize += 2;
+            }
+            else
+            { 
+                //ldarg 555
+                codeSize += 4;
+            }
+        }
+        return codeSize;
     }
 
     HRESULT CorProfiler::MethodWrapperSample(ModuleID moduleId, IMetaDataImport2* pImport, IMetaDataAssemblyEmit* pAssemblyEmit, IMetaDataEmit2* pEmit) const
@@ -381,13 +422,13 @@ namespace trace {
         DWORD       pdwImplFlags;
         hr = pImport->GetMethodProps(
             mdProb,
-            NULL,	   // Put method's class here. 
-            NULL,		   // Put method's name here.  
-            0,			       // Size of szMethod buffer in wide chars.   
-            NULL,		   // Put actual size here 
-            &pdwAttr,		   // Put flags here.  
-            &ppvSigBlob,       // [OUT] point to the blob value of meta data   
-            &pcbSigBlob,	   // [OUT] actual size of signature blob  
+            NULL,
+            NULL,
+            0,
+            NULL,
+            &pdwAttr,
+            &ppvSigBlob,
+            &pcbSigBlob,
             &pulCodeRVA,
             &pdwImplFlags);
         RETURN_OK_IF_FAILED(hr);
@@ -395,7 +436,8 @@ namespace trace {
         auto signature = MethodSignature(ppvSigBlob, pcbSigBlob);
         auto numberOfArguments = signature.NumberOfArguments();
         auto numberOfTypeArguments = signature.NumberOfTypeArguments();
-        if(numberOfArguments < 16 && numberOfTypeArguments < 16)
+        auto staticFlag = (pdwAttr & mdStatic) == mdStatic;
+        if(numberOfArguments < 8 && numberOfTypeArguments < 8)
         {
             const WSTRING prefixStr = "Trace_"_W;
             WSTRING mdProbeWrapperName = prefixStr + WSTRING(smdProbeName);
@@ -437,30 +479,29 @@ namespace trace {
             hr = corProfilerInfo->SetILFunctionBody(moduleId, mdWrapper, pNewMethodBytes);
             RETURN_OK_IF_FAILED(hr);
 
-            //ldarg.0 call mdtoken ret
-            unsigned codeSizeNew = 1 + 1 + 4 + 1;
-            for (unsigned i = 1; i <= numberOfArguments; i++)
+            //call mdToken ret
+            ULONG codeSizeNew = 1 + 4 + 1;
+            if(!staticFlag)
             {
-                if (i < 4)
-                {
-                    codeSizeNew += 1;
-                }
-                else
-                {
-                    //ldarg.s 1
-                    codeSizeNew += 2;
-                }
+                //ldArg.0 
+                codeSizeNew += 1;
             }
-            LPBYTE pwMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(codeSizeNew + 1);
-            unsigned offset = 0;
-            pwMethodBytes[offset++] = (BYTE)(CorILMethod_TinyFormat | (codeSizeNew << 2));
-            pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
+            codeSizeNew += getNumberOfArgumentsSize(numberOfArguments);
 
-            genLoadArgumentBytes((ULONG)numberOfArguments, pwMethodBytes, offset);
+            LPBYTE pwMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(codeSizeNew + 1);
+            ULONG offset = 0;
+            pwMethodBytes[offset++] = (BYTE)(CorILMethod_TinyFormat | (codeSizeNew << 2));
+
+            if(!staticFlag)
+            {
+                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
+            }
+
+            genLoadArgumentBytes(numberOfArguments, pwMethodBytes, offset, staticFlag);
 
             pwMethodBytes[offset++] = (BYTE)CEE_CALL;
 
-            mdToken pmi = getMethodToken(pEmit, pmr, (ULONG)numberOfTypeArguments);
+            mdToken pmi = getMethodToken(pEmit, pmr, numberOfTypeArguments);
             *(UNALIGNED INT32*)&(pwMethodBytes[offset]) = pmi;
             offset += 4;
 
@@ -496,32 +537,39 @@ namespace trace {
         hr = corProfilerInfo->GetAssemblyInfo(assembly_id, kNameMaxSize, &name_len, name,
             NULL, NULL);
         RETURN_OK_IF_FAILED(hr);
-        CComPtr<IUnknown> metadata_interfaces;
+        CComPtr<IUnknown> pInterfaces;
         hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
             IID_IMetaDataImport2,
-            &metadata_interfaces);
+            &pInterfaces);
         RETURN_OK_IF_FAILED(hr);
 
         CComPtr<IMetaDataImport2> pImport;
-        hr = metadata_interfaces->QueryInterface(IID_IMetaDataImport, (LPVOID *)&pImport);
-        RETURN_OK_IF_FAILED(hr);
-
-        CComPtr<IMetaDataAssemblyEmit> pAssemblyEmit;
-        hr = metadata_interfaces->QueryInterface(IID_IMetaDataAssemblyEmit, (LPVOID *)&pAssemblyEmit);
-        RETURN_OK_IF_FAILED(hr);
-
-        CComPtr<IMetaDataEmit2> pEmit;
-        hr = metadata_interfaces->QueryInterface(IID_IMetaDataEmit, (LPVOID *)&pEmit);
+        hr = pInterfaces->QueryInterface(IID_IMetaDataImport, (LPVOID *)&pImport);
         RETURN_OK_IF_FAILED(hr);
 
         mdModule module;
         hr = pImport->GetModuleFromScope(&module);
         RETURN_OK_IF_FAILED(hr);
 
-        if (WSTRING(name) == "StackExchange.Redis"_W)
+        CComPtr<IMetaDataAssemblyEmit> pAssemblyEmit;
+        hr = pInterfaces->QueryInterface(IID_IMetaDataAssemblyEmit, (LPVOID *)&pAssemblyEmit);
+        RETURN_OK_IF_FAILED(hr);
+
+        CComPtr<IMetaDataEmit2> pEmit;
+        hr = pInterfaces->QueryInterface(IID_IMetaDataEmit, (LPVOID *)&pEmit);
+        RETURN_OK_IF_FAILED(hr);
+
+        const auto assemblyName = WSTRING(name);
+        if (assemblyName == "StackExchange.Redis"_W)
         {
             hr = MethodWrapperSample(moduleId, pImport, pAssemblyEmit, pEmit);
             RETURN_OK_IF_FAILED(hr);
+        }
+
+        if (assemblyName == "System.Private.CoreLib"_W)
+        {
+            pImport->FindTypeDefByName(L"System.Threading.Tasks.Task", NULL, &this->taskDef);
+            pImport->FindTypeDefByName(L"System.Threading.Tasks.Task`1", NULL, &this->taskGenericDef);
         }
 
         return S_OK;

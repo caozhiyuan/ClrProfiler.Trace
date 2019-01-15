@@ -14,6 +14,8 @@ namespace trace {
     private:
         std::atomic<int> refCount;
         ICorProfilerInfo8* corProfilerInfo;
+        mdTypeDef taskDef;
+        mdTypeDef taskGenericDef;
     public:
         CorProfiler();
         virtual ~CorProfiler();

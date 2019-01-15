@@ -10,7 +10,7 @@ namespace trace {
     constexpr char HexMap[] = { '0', '1', '2', '3', '4', '5', '6', '7',
                            '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
-    std::wstring HexStr(unsigned char *data, int len)
+    std::wstring HexStr(const unsigned char *data, int len)
     {
         std::wstring s(len * 2, ' ');
         for (int i = 0; i < len; ++i) {
@@ -23,7 +23,7 @@ namespace trace {
     struct MethodSignature {
     public:
         const unsigned char * data;
-        const int len = 0;
+        int len = 0;
 
         MethodSignature(const unsigned char * data, const int len) : data(data),len(len) {}
 
@@ -35,27 +35,30 @@ namespace trace {
             return CorCallingConvention(len == 0 ? 0 : data[0]);
         }
 
-        size_t NumberOfTypeArguments() const {
+        ULONG NumberOfTypeArguments() const {
             if (len > 1 &&
                 (CallingConvention() & IMAGE_CEE_CS_CALLCONV_GENERIC) != 0) {
-                return data[1];
+                auto temp = data + 1;
+                return CorSigUncompressData(temp);
             }
             return 0;
         }
 
-        size_t NumberOfArguments() const {
+        ULONG NumberOfArguments() const {
             if (len > 2 &&
                 (CallingConvention() & IMAGE_CEE_CS_CALLCONV_GENERIC) != 0) {
-                return data[2];
+                auto temp = data + 2;
+                return CorSigUncompressData(temp);
             }
             if (len > 1) {
-                return data[1];
+                auto temp = data + 1;
+                return CorSigUncompressData(temp);
             }
             return 0;
         }
 
         WSTRING str() const {
-            return HexStr(const_cast<unsigned char *>(data), len);
+            return HexStr(data, len);
         }
     };
 
