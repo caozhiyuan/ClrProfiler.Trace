@@ -30,6 +30,8 @@ std::vector<WSTRING> GetEnvironmentValues(const WSTRING &name,
 // GetEnvironmentValues calls GetEnvironmentValues with a semicolon delimiter.
 std::vector<WSTRING> GetEnvironmentValues(const WSTRING &name);
 
+//HexStr
+std::wstring HexStr(const unsigned char *data, int len);
 }  // namespace trace
 
 #endif  // CLR_PROFILER_UTIL_H_

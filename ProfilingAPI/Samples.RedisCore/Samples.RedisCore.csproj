@@ -5,6 +5,7 @@
     <!--<TargetFrameworks>net452;net461;netcoreapp2.0</TargetFrameworks>-->
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <Platforms>AnyCPU;x64;x86</Platforms>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64</RuntimeIdentifiers>
   </PropertyGroup>
 

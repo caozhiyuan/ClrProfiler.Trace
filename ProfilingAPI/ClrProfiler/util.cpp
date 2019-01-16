@@ -81,4 +81,17 @@ std::vector<WSTRING> GetEnvironmentValues(const WSTRING &name) {
   return GetEnvironmentValues(name, L';');
 }
 
+constexpr char HexMap[] = { '0', '1', '2', '3', '4', '5', '6', '7',
+               '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+std::wstring HexStr(const unsigned char *data, int len)
+{
+    std::wstring s(len * 2, ' ');
+    for (int i = 0; i < len; ++i) {
+        s[2 * i] = HexMap[(data[i] & 0xF0) >> 4];
+        s[2 * i + 1] = HexMap[data[i] & 0x0F];
+    }
+    return s;
+}
+
 }  // namespace trace

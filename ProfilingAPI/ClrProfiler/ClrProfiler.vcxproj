@@ -152,6 +152,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ClassFactory.cpp" />
+    <ClCompile Include="clr_helpers.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="CorProfiler.cpp" />
     <ClCompile Include="il_rewriter.cpp" />

@@ -434,6 +434,9 @@ namespace trace {
         RETURN_OK_IF_FAILED(hr);
 
         auto signature = MethodSignature(ppvSigBlob, pcbSigBlob);
+        hr = signature.Init();
+        RETURN_OK_IF_FAILED(hr);
+
         auto numberOfArguments = signature.NumberOfArguments();
         auto numberOfTypeArguments = signature.NumberOfTypeArguments();
         auto staticFlag = (pdwAttr & mdStatic) == mdStatic;
