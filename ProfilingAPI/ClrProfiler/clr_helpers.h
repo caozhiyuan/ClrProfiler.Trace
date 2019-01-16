@@ -507,7 +507,8 @@ namespace trace {
     enum MethodRetType
     {
         MethodRetType_Void = 1,
-        MethodRetType_NeedBox = 2
+        MethodRetType_NeedBox = 2,
+        MethodRetType_NotSupport = 3
     };
 
     struct MethodRet

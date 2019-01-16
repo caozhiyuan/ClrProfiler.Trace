@@ -71,6 +71,15 @@ namespace trace
         return S_OK;
     }
 
+    // PTR CustomMod* VOID
+    // PTR CustomMod* Type
+    // FNPTR MethodDefSig
+    // FNPTR MethodRefSig
+    // TYPEDBYREF
+    // we don't support , this can't be boxed
+
+    // CustomMod we don't support  it's native
+
     bool MethodArgument::NeedBox() const
     {
         PCCOR_SIGNATURE pbCur = pbBase + offset;
@@ -81,7 +90,7 @@ namespace trace
         if (*pbCur == ELEMENT_TYPE_TYPEDBYREF)
         {
             pbCur++;
-            return true;
+            return false;
         }
 
         if (*pbCur == ELEMENT_TYPE_BYREF)
@@ -130,7 +139,7 @@ namespace trace
         if (*pbCur == ELEMENT_TYPE_TYPEDBYREF)
         {
             pbCur++;
-            retType |= MethodRetType_NeedBox;
+            retType |= MethodRetType_NotSupport;
             return retType;
         }
 

@@ -26,10 +26,10 @@ namespace Samples.RedisCore
             return Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost";
         }
 
-        private string Test<T>(T i,int c,string b, out decimal d,ref int a)
+        private string Test<T>(T i,int c,string b, out decimal d,ref int a, int[,,] testField)
         {
             d = 1;
-            var obj = new object[] {i, 1, d, a};
+            var obj = new object[] {i, 1, d, a, testField };
             return obj.ToString();
         }
 
