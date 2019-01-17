@@ -434,7 +434,7 @@ namespace trace {
         RETURN_OK_IF_FAILED(hr);
 
         auto signature = MethodSignature(ppvSigBlob, pcbSigBlob);
-        hr = signature.Init();
+        hr = signature.TryParse();
         RETURN_OK_IF_FAILED(hr);
 
         auto numberOfArguments = signature.NumberOfArguments();

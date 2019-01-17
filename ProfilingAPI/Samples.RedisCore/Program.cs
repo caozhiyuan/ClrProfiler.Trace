@@ -29,7 +29,8 @@ namespace Samples.RedisCore
         private string Test<T>(T i,int c,string b, out decimal d,ref int a, int[,,] testField)
         {
             d = 1;
-            var obj = new object[] {i, 1, d, a, testField };
+            int? k = b == "1" ? default(int?) : 1;
+            var obj = new object[] {i, 1, d, a, testField, k};
             return obj.ToString();
         }
 
