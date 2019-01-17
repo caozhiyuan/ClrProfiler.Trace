@@ -17,8 +17,8 @@ namespace Samples.RedisCore
             {
                 Console.WriteLine(ex.Message);
             }
-            
-            RunStackExchange("StackExchange");
+
+            RunStackExchange("StackExchange").Wait();
         }
 
         private static string Host()
@@ -26,15 +26,7 @@ namespace Samples.RedisCore
             return Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost";
         }
 
-        private string Test<T>(T i,int c,string b, out decimal d,ref int a, int[,,] testField)
-        {
-            d = 1;
-            int? k = b == "1" ? default(int?) : 1;
-            var obj = new object[] {i, 1, d, a, testField, k};
-            return obj.ToString();
-        }
-
-        private static void RunStackExchange(string prefix)
+        private static async Task RunStackExchange(string prefix)
         {
             prefix += "StackExchange.Redis.";
 
@@ -44,13 +36,13 @@ namespace Samples.RedisCore
                 redis.Configure(Console.Out);
 
                 var db = redis.GetDatabase(1);
-                db.StringSet($"{prefix}INCR", "0");
+                var n = await db.StringSetAsync($"{prefix}INCR", "0");
 
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
                 for (int i = 0; i < 10000; i++)
                 {
-                    db.StringSet($"{prefix}INCR{i}", "0");
+                    await db.StringSetAsync($"{prefix}INCR{i}", "0");
                 }
                 sw.Stop();
                 Console.WriteLine(sw.ElapsedMilliseconds);

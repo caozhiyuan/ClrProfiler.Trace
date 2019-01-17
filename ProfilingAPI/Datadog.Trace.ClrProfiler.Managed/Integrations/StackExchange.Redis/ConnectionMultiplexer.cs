@@ -105,6 +105,9 @@ namespace Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis
                     new[] { messageType, processorType, stateType, serverType },
                     new[] { genericType });
 
+#if DEBUG
+            return await originalMethod(multiplexer, message, processor, state, server).ConfigureAwait(false);
+#else
             using (var scope = CreateScope(multiplexer, message))
             {
                 try
@@ -117,6 +120,7 @@ namespace Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis
                     throw;
                 }
             }
+#endif
         }
 
         private static Scope CreateScope(object multiplexer, object message)

@@ -15,7 +15,7 @@
 
 namespace trace {
 
-    CorProfiler::CorProfiler() : refCount(0), corProfilerInfo(nullptr), taskDef(0), taskGenericDef(0)
+    CorProfiler::CorProfiler() : refCount(0), corProfilerInfo(nullptr)
     {
     }
 
@@ -384,8 +384,8 @@ namespace trace {
             &typeRef);
         RETURN_OK_IF_FAILED(hr);
 
-        const LPCWSTR mdProbeName = L"ExecuteSyncImpl";
-        std::vector<BYTE> sigFunctionProbe = { 0x10,0x01,0x04,0x1E,0x00,0x1C,0x1C,0x1C,0x1C };          
+        const LPCWSTR mdProbeName = L"ExecuteAsyncImpl";
+        std::vector<BYTE> sigFunctionProbe = { 0x10,0x01,0x05,0x1C,0x1C,0x1C,0x1C,0x1C,0x1C };
         mdMemberRef pmr;
         hr = pEmit->DefineMemberRef(
             typeRef,
@@ -404,7 +404,7 @@ namespace trace {
             &typeToProb);
         RETURN_OK_IF_FAILED(hr);
 
-        LPCWSTR smdProbeName = L"ExecuteSyncImpl";
+        LPCWSTR smdProbeName = L"ExecuteAsyncImpl";
         mdMethodDef mdProb;
         std::vector<BYTE> sigFunctionProbe2;
         hr = pImport->FindMember(
@@ -547,18 +547,6 @@ namespace trace {
         RETURN_OK_IF_FAILED(hr);
 
         const auto assemblyName = WSTRING(name);
-        auto assemblies = { "StackExchange.Redis"_W, "System.Private.CoreLib"_W };
-        bool flag = false;
-        for (auto assembly : assemblies) {
-            if(assembly == assemblyName) {
-                flag = true;
-                break;
-            }
-        }
-
-        if(!flag) {
-            return S_OK;
-        }
 
         CComPtr<IUnknown> pInterfaces;
         hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
@@ -591,10 +579,6 @@ namespace trace {
             RETURN_OK_IF_FAILED(hr);
         }
 
-        if (assemblyName == "System.Private.CoreLib"_W) {
-            pImport->FindTypeDefByName(L"System.Threading.Tasks.Task", NULL, &this->taskDef);
-            pImport->FindTypeDefByName(L"System.Threading.Tasks.Task`1", NULL, &this->taskGenericDef);
-        }
         return S_OK;
     }
 
