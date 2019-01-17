@@ -434,3 +434,71 @@
     .try L_0381 to L_03bb finally handler L_03bb to L_03c9
     .try L_005a to L_03cc finally handler L_03cc to L_03d8
 }
+
+---------------------------------------------------------------------------------------------------------------------
+
+13 30
+04 00
+2b 00 00 00 
+03 00 00 11
+
+00 nop 
+19 ldc.i4.3 
+8d 0f000001
+25
+16
+03
+a2
+25
+17
+04
+8c 0100001b
+a2
+25
+18
+05
+8c 23000001
+a2
+0a
+06
+6f 1900000a
+28 1600000a
+00 nop 
+2a ret
+ 
+.method public hidebysig instance void Test(string a, valuetype [System.Runtime]System.Nullable`1<int32> b, int32 c) cil managed
+{
+    .maxstack 4
+    .locals init (
+        [0] object[] objArray)
+    L_0000: nop 
+    L_0001: ldc.i4.3 
+    L_0002: newarr [System.Runtime]System.Object
+    L_0007: dup 
+    L_0008: ldc.i4.0 
+    L_0009: ldarg.1 
+    L_000a: stelem.ref 
+    L_000b: dup 
+    L_000c: ldc.i4.1 
+    L_000d: ldarg.2 
+    L_000e: box [System.Runtime]System.Nullable`1<int32>
+    L_0013: stelem.ref 
+    L_0014: dup 
+    L_0015: ldc.i4.2 
+    L_0016: ldarg.3 
+    L_0017: box [System.Runtime]System.Int32
+    L_001c: stelem.ref 
+    L_001d: stloc.0 
+    L_001e: ldloc.0 
+    L_001f: callvirt instance string [System.Runtime]System.Object::ToString()
+    L_0024: call void [System.Console]System.Console::WriteLine(string)
+    L_0029: nop 
+    L_002a: ret 
+}
+
+
+public void Test(string a, int? b, int c)
+{
+    var arr = new object[] {a, b, c};
+    Console.WriteLine(arr.ToString());
+}

@@ -388,8 +388,8 @@ namespace trace
         return true;
     }
 
-    HRESULT MethodSignature::TryParse()
-    {
+    HRESULT MethodSignature::TryParse() {
+
         PCCOR_SIGNATURE pbCur = pbBase;
         PCCOR_SIGNATURE pbEnd = pbBase + len;
         unsigned char elem_type;
@@ -441,8 +441,8 @@ namespace trace
         return S_OK;
     }
 
-    MethodArgumentFlag MethodArgument::GetFlags() const
-    {
+    MethodArgumentFlag MethodArgument::GetFlags() const {
+
         PCCOR_SIGNATURE pbCur = pbBase + offset;
 
         if (*pbCur == ELEMENT_TYPE_VOID) {
@@ -489,5 +489,80 @@ namespace trace
             break;
         }
         return  flag;
+    }
+
+    AssemblyInfo GetAssemblyInfo(ICorProfilerInfo3* info,
+        const AssemblyID& assembly_id) {
+        WCHAR name[kNameMaxSize];
+        DWORD name_len = 0;
+        auto hr = info->GetAssemblyInfo(assembly_id, kNameMaxSize, &name_len, name,
+            nullptr, nullptr);
+        if (FAILED(hr) || name_len == 0) {
+            return {};
+        }
+        return { assembly_id, WSTRING(name) };
+    }
+
+    WSTRING GetAssemblyName(
+        const CComPtr<IMetaDataAssemblyImport>& assembly_import) {
+        mdAssembly current = mdAssemblyNil;
+        auto hr = assembly_import->GetAssemblyFromScope(&current);
+        if (FAILED(hr)) {
+            return ""_W;
+        }
+        WCHAR name[kNameMaxSize];
+        DWORD name_len = 0;
+        ASSEMBLYMETADATA assembly_metadata{};
+        DWORD assembly_flags = 0;
+        hr = assembly_import->GetAssemblyProps(current, nullptr, nullptr, nullptr,
+            name, kNameMaxSize, &name_len,
+            &assembly_metadata, &assembly_flags);
+        if (FAILED(hr) || name_len == 0) {
+            return ""_W;
+        }
+        return WSTRING(name);
+    }
+    
+    WSTRING GetAssemblyName(const CComPtr<IMetaDataAssemblyImport>& assembly_import,
+        const mdAssemblyRef& assembly_ref) {
+        WCHAR name[kNameMaxSize];
+        DWORD name_len = 0;
+        ASSEMBLYMETADATA assembly_metadata{};
+        DWORD assembly_flags = 0;
+        const auto hr = assembly_import->GetAssemblyRefProps(
+            assembly_ref, nullptr, nullptr, name, kNameMaxSize, &name_len,
+            &assembly_metadata, nullptr, nullptr, &assembly_flags);
+        if (FAILED(hr) || name_len == 0) {
+            return ""_W;
+        }
+        return WSTRING(name);
+    }
+
+    mdAssemblyRef FindAssemblyRef(
+        const CComPtr<IMetaDataAssemblyImport>& assembly_import,
+        const WSTRING& assembly_name) {
+        for (mdAssemblyRef assembly_ref : EnumAssemblyRefs(assembly_import)) {
+            if (GetAssemblyName(assembly_import, assembly_ref) == assembly_name) {
+                return assembly_ref;
+            }
+        }
+        return mdAssemblyRefNil;
+    }
+
+    ModuleInfo GetModuleInfo(ICorProfilerInfo3* info, const ModuleID& module_id) {
+        const DWORD module_path_size = 260;
+        WCHAR module_path[module_path_size]{};
+        DWORD module_path_len = 0;
+        LPCBYTE base_load_address;
+        AssemblyID assembly_id = 0;
+        DWORD module_flags = 0;
+        const HRESULT hr = info->GetModuleInfo2(
+            module_id, &base_load_address, module_path_size, &module_path_len,
+            module_path, &assembly_id, &module_flags);
+        if (FAILED(hr) || module_path_len == 0) {
+            return {};
+        }
+        return { module_id, WSTRING(module_path), GetAssemblyInfo(info, assembly_id),
+                module_flags };
     }
 }

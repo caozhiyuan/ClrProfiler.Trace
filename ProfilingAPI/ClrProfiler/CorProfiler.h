@@ -6,6 +6,8 @@
 #include <atomic>
 #include "cor.h"
 #include "corprof.h"
+#include "CComPtr.h"
+#include "clr_helpers.h"
 
 namespace trace {
 
@@ -148,6 +150,8 @@ namespace trace {
             return count;
         }
 
-        HRESULT MethodWrapperSample(ModuleID moduleId, IMetaDataImport2* pImport, IMetaDataAssemblyEmit* pAssemblyEmit, IMetaDataEmit2* pEmit) const;
+        HRESULT MethodWrapperSample(ModuleID moduleId, CComPtr<IMetaDataImport2>& pImport,
+            CComPtr<IMetaDataAssemblyEmit>& pAssemblyEmit,
+            CComPtr<IMetaDataEmit2>& pEmit) const;
     };
 }

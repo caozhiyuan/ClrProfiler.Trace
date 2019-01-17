@@ -26,6 +26,12 @@ namespace Samples.RedisCore
             return Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost";
         }
 
+        public void Test(string a, int? b, int c)
+        {
+            var arr = new object[] {a, b, c};
+            Console.WriteLine(arr.ToString());
+        }
+
         private static async Task RunStackExchange(string prefix)
         {
             prefix += "StackExchange.Redis.";

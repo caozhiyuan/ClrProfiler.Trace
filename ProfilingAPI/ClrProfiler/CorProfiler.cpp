@@ -104,215 +104,151 @@ namespace trace {
         return S_OK;
     }
 
-    HRESULT getConstraintTypes(IMetaDataImport2* pImport, const unsigned mdGenericParam, mdToken constraintTypes[])
+    HRESULT copyGenericParams(CComPtr<IMetaDataImport2>& pImport, CComPtr<IMetaDataEmit2>& pEmit, 
+        mdMethodDef mdProb, mdMethodDef mdWrapper)
     {
-        std::vector<mdToken> ptkConstraintTypes;
-        HCORENUM hEnum = HCORENUM();
-        ULONG gpcCount = 0ul;
-        const ULONG maxGpcCount = 8ul;
-
-        do
+        for (mdGenericParam kmdGenericParam : EnumGenericParams(pImport,mdProb)) 
         {
-            mdGenericParamConstraint mdGenericParamConstraints[maxGpcCount];
-            HRESULT hr = pImport->EnumGenericParamConstraints(&hEnum,
-                                                                      mdGenericParam,
-                                                                      mdGenericParamConstraints,
-                                                                      maxGpcCount,
-                                                                      &gpcCount);
+            WCHAR paramName[kNameMaxSize];
+            ULONG        pulParamSeq;
+            DWORD        pdwParamFlags;
+            mdToken      ptOwner;
+            DWORD        reserved;
+            ULONG        pchName;
+            auto hr = pImport->GetGenericParamProps(kmdGenericParam,
+                &pulParamSeq,
+                &pdwParamFlags,
+                &ptOwner,
+                &reserved,
+                paramName,
+                kNameMaxSize,
+                &pchName);
+
             IfFailRet(hr);
 
-            for (auto k = 0u; k < gpcCount; ++k)
+            std::vector<mdToken> ptkConstraintTypes;
+            for (mdGenericParamConstraint element : EnumGenericParamConstraints(pImport, kmdGenericParam)) 
             {
                 mdToken ptkConstraintType;
-                hr = pImport->GetGenericParamConstraintProps(mdGenericParamConstraints[k],
-                                                                     NULL,
-                                                                     &ptkConstraintType);
+                hr = pImport->GetGenericParamConstraintProps(element,
+                    NULL,
+                    &ptkConstraintType);
+
                 IfFailRet(hr);
                 ptkConstraintTypes.push_back(ptkConstraintType);
             }
-        } while (0 < gpcCount);
-        if (hEnum)
-        {
-            pImport->CloseEnum(hEnum);
-        }
-        constraintTypes = ptkConstraintTypes.data();
-        return S_OK;
-    }
 
-    HRESULT copyGenericParams(IMetaDataImport2* pImport, IMetaDataEmit2* pEmit, mdMethodDef mdProb, mdMethodDef mdWrapper)
-    {
-        HCORENUM hEnum = HCORENUM();
-        ULONG count = 0ul;
-        const ULONG maxCount = 16;
-        mdGenericParam mdGenericParams[maxCount];
-        do
-        {
-            HRESULT hr = pImport->EnumGenericParams(&hEnum, mdProb, mdGenericParams, maxCount, &count);
+            auto paramNameStr = WSTRING(paramName);
+            mdGenericParam pgp;
+            hr = pEmit->DefineGenericParam(mdWrapper,
+                pulParamSeq,
+                pdwParamFlags,
+                paramNameStr.data(),
+                0,
+                ptkConstraintTypes.data(),
+                &pgp);
+
             IfFailRet(hr);
-            for (auto j = 0u; j < count; ++j)
-            {
-                const auto kmdGenericParam = mdGenericParams[j];
-
-                const size_t knNameMaxSize = 1024;
-                WCHAR paramName[knNameMaxSize];
-                ULONG        pulParamSeq;
-                DWORD        pdwParamFlags;
-                mdToken      ptOwner;
-                DWORD       reserved;
-                ULONG        pchName;
-                hr = pImport->GetGenericParamProps(kmdGenericParam,
-                    &pulParamSeq,
-                    &pdwParamFlags,
-                    &ptOwner,
-                    &reserved,
-                    paramName,
-                    knNameMaxSize,
-                    &pchName);
-
-                IfFailRet(hr);
-
-                auto paramNameStr = WSTRING(paramName);
-
-                mdToken* constraintTypes = NULL;
-                hr = getConstraintTypes(pImport, kmdGenericParam, constraintTypes);
-                IfFailRet(hr);
-
-                mdGenericParam pgp;
-                hr = pEmit->DefineGenericParam(mdWrapper,
-                    pulParamSeq,
-                    pdwParamFlags,
-                    paramNameStr.data(),
-                    0,
-                    constraintTypes,
-                    &pgp);
-                
-                IfFailRet(hr);
-            }
-        } while (0 < count);
-        if (hEnum)
-        {
-            pImport->CloseEnum(hEnum);
         }
 
         return S_OK;
     }
 
-    HRESULT copyParams(IMetaDataImport2* pImport, IMetaDataEmit2* pEmit, mdMethodDef mdProb, mdMethodDef mdWrapper)
+    HRESULT copyParams(CComPtr<IMetaDataImport2>& pImport, CComPtr<IMetaDataEmit2>& pEmit, 
+        mdMethodDef mdProb, mdMethodDef mdWrapper)
     {
-        HCORENUM hEnum = HCORENUM();
-        ULONG count = 0ul;
-        const ULONG maxCount = 16;
-        mdParamDef mdParamDefs[maxCount];
-        do
+        for (mdParamDef kmdParamDef : EnumParams(pImport, mdProb)) 
         {
-            HRESULT hr = pImport->EnumParams(&hEnum, mdProb, mdParamDefs, maxCount, &count);
+            ULONG pulParamSeq;
+            WCHAR paramName[kNameMaxSize];
+            DWORD          pdwAttr;
+            DWORD          pdwCPlusTypeFlag;
+            UVCP_CONSTANT  ppValue;
+            ULONG          pcchValue;
+            auto hr = pImport->GetParamProps(kmdParamDef,
+                NULL,
+                &pulParamSeq,
+                paramName,
+                kNameMaxSize,
+                NULL,
+                &pdwAttr,
+                &pdwCPlusTypeFlag,
+                &ppValue,
+                &pcchValue);
+
             IfFailRet(hr);
+            auto paramNameStr = WSTRING(paramName);
 
-            for (auto j = 0u; j < count; ++j)
-            {
-                const auto kmdParamDef = mdParamDefs[j];
+            mdParamDef ppd;
+            hr = pEmit->DefineParam(mdWrapper,
+                pulParamSeq,
+                paramNameStr.data(),
+                pdwAttr,
+                pdwCPlusTypeFlag,
+                ppValue,
+                pcchValue,
+                &ppd);
 
-                const size_t knNameMaxSize = 1024;
-                ULONG pulParamSeq;
-                WCHAR paramName[knNameMaxSize];
-                DWORD       pdwAttr;
-                DWORD       pdwCPlusTypeFlag;
-                UVCP_CONSTANT ppValue;
-                ULONG       pcchValue;
-                hr = pImport->GetParamProps(kmdParamDef,
-                    NULL,
-                    &pulParamSeq,
-                    paramName,
-                    knNameMaxSize,
-                    NULL,
-                    &pdwAttr,
-                    &pdwCPlusTypeFlag,
-                    &ppValue,
-                    &pcchValue);
-
-                IfFailRet(hr);
-                auto paramNameStr = WSTRING(paramName);
-
-                mdParamDef ppd;
-                hr = pEmit->DefineParam(mdWrapper,
-                    pulParamSeq,
-                    paramNameStr.data(),
-                    pdwAttr,
-                    pdwCPlusTypeFlag,
-                    ppValue,
-                    pcchValue,
-                    &ppd);
-
-                IfFailRet(hr);
-            }                       
-        } while (0 < count);
-        if(hEnum)
-        {
-            pImport->CloseEnum(hEnum);
+            IfFailRet(hr);
         }
-
         return S_OK;
     }
 
-    mdToken getMethodToken(IMetaDataEmit2* pEmit, mdMemberRef pmr, ULONG numberOfTypeArguments)
+    mdToken getMethodToken(CComPtr<IMetaDataEmit2>& pEmit, mdMemberRef pmr, ULONG numberOfTypeArguments) 
     {
-        if(numberOfTypeArguments > 0)
-        {
-            BYTE * data = new BYTE[4];
-            const auto dataSize = CorSigCompressData(numberOfTypeArguments, data);
-            const ULONG raw_signature_len = numberOfTypeArguments * 2 + 1 + dataSize;
-            BYTE* raw_signature = new BYTE[raw_signature_len];
-
-            raw_signature[0] = (BYTE)IMAGE_CEE_CS_CALLCONV_GENERICINST;
-
-            memcpy(raw_signature + 1, data, dataSize);
-
-            ULONG offset = 1 + dataSize;
-            for (ULONG i = 0; i < numberOfTypeArguments; i++)
-            {
-                raw_signature[offset++] = (BYTE)ELEMENT_TYPE_MVAR;
-                raw_signature[offset++] = (BYTE)0x00;
-            }
-
-            mdMethodSpec kpmi;
-            auto hr = pEmit->DefineMethodSpec(pmr, raw_signature, raw_signature_len, &kpmi);
-            RETURN_OK_IF_FAILED(hr);
-            return kpmi;
-        }
-        else
-        {
+        if (numberOfTypeArguments == 0)
             return pmr;
+
+        BYTE *data = new BYTE[4];
+        const auto dataSize = CorSigCompressData(numberOfTypeArguments, data);
+        const ULONG signature_len = numberOfTypeArguments * 2 + 1 + dataSize;
+        BYTE* signature = new BYTE[signature_len];
+
+        signature[0] = (BYTE)IMAGE_CEE_CS_CALLCONV_GENERICINST;
+
+        memcpy(signature + 1, data, dataSize);
+
+        delete[] data;
+
+        ULONG offset = 1 + dataSize;
+        for (ULONG i = 0; i < numberOfTypeArguments; i++)
+        {
+            signature[offset++] = (BYTE)ELEMENT_TYPE_MVAR;
+            signature[offset++] = (BYTE)0x00;
         }
+
+        mdMethodSpec kpmi;
+        auto hr = pEmit->DefineMethodSpec(pmr, signature, signature_len, &kpmi);
+        RETURN_OK_IF_FAILED(hr);
+        return kpmi;
     }
 
-    void genLoadArgumentBytes(ULONG numberOfArguments, LPBYTE pwMethodBytes, ULONG& offset, bool staticFlag)
+    void genLoadArgumentBytes(ULONG numberOfArguments, LPBYTE pwMethodBytes, ULONG& offset, bool staticFlag) 
     {
         const unsigned k = staticFlag ? 0 : 1;
         const ULONG count = staticFlag ? numberOfArguments - 1 : numberOfArguments;
-        for (unsigned i = k; i <= count; i++)
-        {
-            if (i == 0)
+        for (unsigned i = k; i <= count; i++) {
+            if (i == 0) 
             {
                 pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
             }
-            else if (i == 1)
+            else if (i == 1) 
             {
                 pwMethodBytes[offset++] = (BYTE)CEE_LDARG_1;
             }
-            else if (i == 2)
+            else if (i == 2) 
             {
                 pwMethodBytes[offset++] = (BYTE)CEE_LDARG_2;
             }
-            else if (i == 3)
+            else if (i == 3) 
             {
                 pwMethodBytes[offset++] = (BYTE)CEE_LDARG_3;
             }
-            else if (i >= 4 && i <= 255)
-            {
+            else if (i >= 4 && i <= 255) {
                 pwMethodBytes[offset++] = (BYTE)CEE_LDARG_S;
                 pwMethodBytes[offset++] = (BYTE)i;
             }
-            else
+            else 
             {
                 *(UNALIGNED INT16*)&(pwMethodBytes[offset]) = CEE_LDARG;
                 offset += 2;
@@ -322,22 +258,20 @@ namespace trace {
         }
     }
 
-    unsigned getNumberOfArgumentsSize(ULONG numberOfArguments)
+    unsigned getNumberOfArgumentsSize(ULONG numberOfArguments, bool staticFlag)
     {
         ULONG codeSize = 0;
-        for (ULONG i = 1; i <= numberOfArguments; i++)
-        {
-            if (i < 4)
-            {
+        const unsigned k = staticFlag ? 0 : 1;
+        const ULONG count = staticFlag ? numberOfArguments - 1 : numberOfArguments;
+        for (unsigned i = k; i <= count; i++) {
+            if (i < 4) {
                 codeSize += 1;
             }
-            else  if (i >= 4 && i <= 255)
-            {
+            else  if (i >= 4 && i <= 255) {
                 //ldarg.s 5
                 codeSize += 2;
             }
-            else
-            { 
+            else { 
                 //ldarg 555
                 codeSize += 4;
             }
@@ -345,7 +279,44 @@ namespace trace {
         return codeSize;
     }
 
-    HRESULT CorProfiler::MethodWrapperSample(ModuleID moduleId, IMetaDataImport2* pImport, IMetaDataAssemblyEmit* pAssemblyEmit, IMetaDataEmit2* pEmit) const
+    LPBYTE GetWrapperMethodIL(IMethodMalloc* pIMethodMalloc, mdToken pmi,
+        DWORD pdwAttr, MethodSignature signature)
+    {
+        const auto numberOfArguments = signature.NumberOfArguments();
+        const auto numberOfTypeArguments = signature.NumberOfTypeArguments();
+        const auto staticFlag = (pdwAttr & mdStatic) == mdStatic;
+        //call mdToken ret
+        ULONG codeSizeNew = 1 + 4 + 1;
+        if(!staticFlag) {
+            //ldArg.0 
+            codeSizeNew += 1;
+        }
+        codeSizeNew += getNumberOfArgumentsSize(numberOfArguments, staticFlag);
+
+        LPBYTE pwMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(codeSizeNew + 1);
+        ULONG offset = 0;
+        pwMethodBytes[offset++] = (BYTE)(CorILMethod_TinyFormat | (codeSizeNew << 2));
+
+        if(!staticFlag)
+        {
+            pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
+        }
+
+        genLoadArgumentBytes(numberOfArguments, pwMethodBytes, offset, staticFlag);
+
+        pwMethodBytes[offset++] = (BYTE)CEE_CALL;
+
+        *(UNALIGNED INT32*)&(pwMethodBytes[offset]) = pmi;
+        offset += 4;
+
+        pwMethodBytes[offset++] = (BYTE)CEE_RET;
+
+        return pwMethodBytes;
+    }
+
+    HRESULT CorProfiler::MethodWrapperSample(ModuleID moduleId, CComPtr<IMetaDataImport2>& pImport, 
+        CComPtr<IMetaDataAssemblyEmit>& pAssemblyEmit,
+        CComPtr<IMetaDataEmit2>& pEmit) const
     {
         HRESULT hr = S_FALSE
         ;
@@ -439,7 +410,6 @@ namespace trace {
 
         auto numberOfArguments = signature.NumberOfArguments();
         auto numberOfTypeArguments = signature.NumberOfTypeArguments();
-        auto staticFlag = (pdwAttr & mdStatic) == mdStatic;
         if(numberOfArguments < 8 && numberOfTypeArguments < 8)
         {
             const WSTRING prefixStr = "Trace_"_W;
@@ -477,38 +447,13 @@ namespace trace {
             hr = corProfilerInfo->GetILFunctionBodyAllocator(moduleId, &pIMethodMalloc);
             RETURN_OK_IF_FAILED(hr);
 
-            LPBYTE pNewMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(pMethodSize);
+            auto pNewMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(pMethodSize);
             memcpy(pNewMethodBytes, pMethodBytes, pMethodSize);
             hr = corProfilerInfo->SetILFunctionBody(moduleId, mdWrapper, pNewMethodBytes);
             RETURN_OK_IF_FAILED(hr);
 
-            //call mdToken ret
-            ULONG codeSizeNew = 1 + 4 + 1;
-            if(!staticFlag)
-            {
-                //ldArg.0 
-                codeSizeNew += 1;
-            }
-            codeSizeNew += getNumberOfArgumentsSize(numberOfArguments);
-
-            LPBYTE pwMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(codeSizeNew + 1);
-            ULONG offset = 0;
-            pwMethodBytes[offset++] = (BYTE)(CorILMethod_TinyFormat | (codeSizeNew << 2));
-
-            if(!staticFlag)
-            {
-                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
-            }
-
-            genLoadArgumentBytes(numberOfArguments, pwMethodBytes, offset, staticFlag);
-
-            pwMethodBytes[offset++] = (BYTE)CEE_CALL;
-
-            mdToken pmi = getMethodToken(pEmit, pmr, numberOfTypeArguments);
-            *(UNALIGNED INT32*)&(pwMethodBytes[offset]) = pmi;
-            offset += 4;
-
-            pwMethodBytes[offset++] = (BYTE)CEE_RET;
+            auto pmi = getMethodToken(pEmit, pmr, numberOfTypeArguments);
+            auto pwMethodBytes = GetWrapperMethodIL(pIMethodMalloc, pmi, pdwAttr, signature);
 
             hr = corProfilerInfo->SetILFunctionBody(moduleId, mdProb, pwMethodBytes);
             RETURN_OK_IF_FAILED(hr);
@@ -518,67 +463,50 @@ namespace trace {
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE CorProfiler::ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus)
+    HRESULT STDMETHODCALLTYPE CorProfiler::ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) 
     {
-        const DWORD module_path_size = 260;
-        WCHAR module_path[module_path_size]{};
-        DWORD module_path_len = 0;
-        LPCBYTE base_load_address;
-        AssemblyID assembly_id = 0;
-        DWORD module_flags = 0;
-        HRESULT hr = corProfilerInfo->GetModuleInfo2(
-            moduleId, &base_load_address, module_path_size,
-            &module_path_len, module_path, &assembly_id, 
-            &module_flags);
-        RETURN_OK_IF_FAILED(hr);
-        if ((module_flags & COR_PRF_MODULE_WINDOWS_RUNTIME) != 0 || module_path_len == 0) {
+        auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
+        if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {
             return S_OK;
         }
 
-        const size_t kNameMaxSize = 1024;
-        WCHAR name[kNameMaxSize];
-        DWORD name_len = 0;
-        hr = corProfilerInfo->GetAssemblyInfo(assembly_id,
-            kNameMaxSize, 
-            &name_len,
-            name,
-            NULL,
-            NULL);
-        RETURN_OK_IF_FAILED(hr);
-
-        const auto assemblyName = WSTRING(name);
-
-        CComPtr<IUnknown> pInterfaces;
-        hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
+        CComPtr<IUnknown> metadata_interfaces;
+        auto hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
             IID_IMetaDataImport2,
-            &pInterfaces);
-        RETURN_OK_IF_FAILED(hr);
-        pInterfaces->AddRef();
-
-        CComPtr<IMetaDataImport2> pImport;
-        hr = pInterfaces->QueryInterface(IID_IMetaDataImport, (LPVOID *)&pImport);
-        RETURN_OK_IF_FAILED(hr);
-        pImport->AddRef();
-
-        mdModule module;
-        hr = pImport->GetModuleFromScope(&module);
+            metadata_interfaces.GetAddressOf());
         RETURN_OK_IF_FAILED(hr);
 
-        CComPtr<IMetaDataAssemblyEmit> pAssemblyEmit;
-        hr = pInterfaces->QueryInterface(IID_IMetaDataAssemblyEmit, (LPVOID *)&pAssemblyEmit);
-        RETURN_OK_IF_FAILED(hr);
-        pAssemblyEmit->AddRef();
+        auto metadata_import =
+            metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
+        auto metadata_emit =
+            metadata_interfaces.As<IMetaDataEmit2>(IID_IMetaDataEmit);
+        auto assembly_import = metadata_interfaces.As<IMetaDataAssemblyImport>(
+            IID_IMetaDataAssemblyImport);
+        auto assembly_emit =
+            metadata_interfaces.As<IMetaDataAssemblyEmit>(IID_IMetaDataAssemblyEmit);
 
-        CComPtr<IMetaDataEmit2> pEmit;
-        hr = pInterfaces->QueryInterface(IID_IMetaDataEmit, (LPVOID *)&pEmit);
-        RETURN_OK_IF_FAILED(hr);
-        pEmit->AddRef();
-
-        if (assemblyName == "StackExchange.Redis"_W) {
-            hr = MethodWrapperSample(moduleId, pImport, pAssemblyEmit, pEmit);
-            RETURN_OK_IF_FAILED(hr);
+        if (assembly_emit.IsNull() || assembly_import.IsNull() || metadata_import.IsNull()) {
+            return S_OK;
         }
 
+        mdModule module;
+        hr = metadata_import->GetModuleFromScope(&module);
+        RETURN_OK_IF_FAILED(hr);
+
+        if (module_info.assembly.name == "StackExchange.Redis"_W) {
+
+            hr = MethodWrapperSample(moduleId, metadata_import, assembly_emit, metadata_emit);
+
+            RETURN_OK_IF_FAILED(hr);
+
+            //System.Private.CoreLib mscorlib System.Runtime
+           /* const auto assemblyRefToken = FindAssemblyRef(assembly_import, L"System.Runtime");
+            if(assemblyRefToken!= mdAssemblyRefNil) {
+                mdToken int32Token;
+                hr = metadata_import->FindTypeRef(assemblyRefToken, L"System.Int32", &int32Token);
+                Info(hr == S_OK);
+            }*/
+        }
         return S_OK;
     }
 
