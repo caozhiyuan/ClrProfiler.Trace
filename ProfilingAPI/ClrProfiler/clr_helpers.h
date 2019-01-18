@@ -12,6 +12,12 @@ namespace trace {
 
     const size_t kNameMaxSize = 1024;
     const ULONG kEnumeratorMax = 256;
+    const auto kProfilerAssemblyName = L"Datadog.Trace.ClrProfiler.Managed";
+    const auto kTraceAgentTypeName = L"Datadog.Trace.ClrProfiler.TraceAgent";
+    const auto kGetInstanceMethodName = L"GetInstance";
+    const auto kBeforeMethodName = L"BeforeMethod";
+    const auto kEndMethodName = L"EndMethod";
+    const auto kEndMethodName = L"EndMethod";
 
     template <typename T>
     class EnumeratorIterator;
@@ -240,37 +246,36 @@ namespace trace {
         bool IsValid() const { return id != 0; }
     };
 
-    enum MethodArgumentFlag {
-        MethodArgumentFlag_None = 0,
-        MethodArgumentFlag_VOID = 1,
-        MethodArgumentFlag_BOX = 2
-    };
-
     struct MethodArgument {
-        INT64 offset;
-        INT64 length;
+        ULONG offset;
+        ULONG length;
         PCCOR_SIGNATURE pbBase;
-        MethodArgumentFlag GetFlags() const;
+        mdToken GetTypeTokForBox(CComPtr<IMetaDataImport2>& pImport,
+                           CComPtr<IMetaDataEmit2>& pEmit, 
+                           mdAssemblyRef corLibRef) const;
     };
 
     struct MethodSignature {
     private:
-        PCCOR_SIGNATURE pbBase;
-        unsigned len;     
         ULONG numberOfTypeArguments = 0;
         ULONG numberOfArguments = 0;     
         MethodArgument ret{};
         std::vector<MethodArgument> params;
     public:
+        PCCOR_SIGNATURE pbBase;
+        unsigned len;
         MethodSignature(): pbBase(nullptr), len(0){}
-        MethodSignature(PCCOR_SIGNATURE pb, const int cbBuffer) {
+        MethodSignature(PCCOR_SIGNATURE pb, unsigned cbBuffer) {
             pbBase = pb;
             len = cbBuffer;
         };
         ULONG NumberOfTypeArguments() const { return numberOfTypeArguments; }
         ULONG NumberOfArguments() const { return numberOfArguments; }
         WSTRING str() const { return HexStr(pbBase, len); }
-        bool IsVoidMethod() const  {  return ret.GetFlags() == MethodArgumentFlag_VOID; }
+        bool IsVoidMethod() const {
+            const auto pbCur = ret.pbBase + ret.offset;
+            return *pbCur == ELEMENT_TYPE_VOID;
+        }
         std::vector<MethodArgument> GetMethodArguments() const { return params; }
         HRESULT TryParse();
         bool operator ==(const MethodSignature& other) const {
@@ -304,11 +309,25 @@ namespace trace {
         const CComPtr<IMetaDataAssemblyImport>& assembly_import,
         const WSTRING& assembly_name);
 
+    mdAssemblyRef FindCorLibAssemblyRef(const CComPtr<IMetaDataAssemblyImport>& assembly_import);
+
     AssemblyInfo GetAssemblyInfo(ICorProfilerInfo3* info,
         const AssemblyID& assembly_id);
 
     ModuleInfo GetModuleInfo(ICorProfilerInfo3* info, const ModuleID& module_id);
 
+    TypeInfo GetTypeInfo(const CComPtr<IMetaDataImport2>& metadata_import,
+        const mdToken& token);
+
+    FunctionInfo GetFunctionInfo(const CComPtr<IMetaDataImport2>& metadata_import,
+        const mdToken& token);
+
+    HRESULT GetProfilerAssemblyRef(CComPtr<IUnknown>& metadata_interfaces, 
+        mdAssemblyRef* assemblyRef);
+
+    std::vector<BYTE> GetMethodSignature(CComPtr<IMetaDataImport2>& pImport,
+        LPCWSTR szTypeDef,
+        LPCWSTR szMethodDef);
 }
 
 #endif  // CLR_PROFILER_CLRHELPER_H_

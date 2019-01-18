@@ -55,6 +55,10 @@ namespace trace {
             this->corProfilerInfo->Release();
             this->corProfilerInfo = nullptr;
         }
+;
+        traceInstaceSig.clear();
+        traceBeforeSig.clear();
+        traceEndSig.clear();
 
         return S_OK;
     }
@@ -314,37 +318,20 @@ namespace trace {
         return pwMethodBytes;
     }
 
-    HRESULT CorProfiler::MethodWrapperSample(ModuleID moduleId, CComPtr<IMetaDataImport2>& pImport, 
-        CComPtr<IMetaDataAssemblyEmit>& pAssemblyEmit,
-        CComPtr<IMetaDataEmit2>& pEmit) const
+    HRESULT CorProfiler::MethodWrapperSample(ModuleID moduleId , CComPtr<IUnknown>& metadata_interfaces) const
     {
-        HRESULT hr = S_FALSE
-        ;
-        //1. .net framework gac or net core DOTNET_ADDITIONAL_DEPS=%PROGRAMFILES%\dotnet\x64\additionalDeps\Datadog.Trace.ClrProfiler.Managed
-        //2. just proj ref
-        BYTE rgbPublicKeyToken[] = { 0xde, 0xf8, 0x6d, 0x06, 0x1d, 0x0d, 0x2e, 0xeb };
-        WCHAR wszLocale[MAX_PATH];
-        wcscpy_s(wszLocale, L"neutral");
+        mdAssemblyRef assemblyRef;
+        HRESULT hr = GetProfilerAssemblyRef(metadata_interfaces, &assemblyRef);
+        RETURN_OK_IF_FAILED(hr);
 
-        ASSEMBLYMETADATA assemblyMetaData;
-        ZeroMemory(&assemblyMetaData, sizeof(assemblyMetaData));
-        assemblyMetaData.usMajorVersion = 0;
-        assemblyMetaData.usMinorVersion = 6;
-        assemblyMetaData.usBuildNumber = 0;
-        assemblyMetaData.usRevisionNumber = 0;
-        assemblyMetaData.szLocale = wszLocale;
-        assemblyMetaData.cbLocale = _countof(wszLocale);
+        auto pImport = metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
+        auto pEmit = metadata_interfaces.As<IMetaDataEmit2>(IID_IMetaDataEmit);
+        if (pEmit.IsNull() || pImport.IsNull()) {
+            return S_OK;
+        }
 
-        mdAssemblyRef assemblyRef = NULL;
-        hr = pAssemblyEmit->DefineAssemblyRef(
-            (void *)rgbPublicKeyToken,
-            sizeof(rgbPublicKeyToken),
-            L"Datadog.Trace.ClrProfiler.Managed",
-            &assemblyMetaData,
-            NULL,
-            NULL,                  
-            0,                 
-            &assemblyRef);
+        mdModule module;
+        hr = pImport->GetModuleFromScope(&module);
         RETURN_OK_IF_FAILED(hr);
 
         const LPCWSTR wszTypeToReference = L"Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis.ConnectionMultiplexer";
@@ -463,6 +450,29 @@ namespace trace {
         return S_OK;
     }
 
+    HRESULT CorProfiler::PrepareTraceSig(CComPtr<IUnknown>& metadata_interfaces)
+    {
+        auto pImport = metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
+        if (pImport.IsNull()) {
+            return S_OK;
+        }
+
+        mdModule module;
+        HRESULT hr = pImport->GetModuleFromScope(&module);
+        RETURN_OK_IF_FAILED(hr);
+
+        this->traceInstaceSig = GetMethodSignature(pImport, L"Datadog.Trace.ClrProfiler.TraceAgent", L"GetInstance");
+        this->traceBeforeSig = GetMethodSignature(pImport, L"Datadog.Trace.ClrProfiler.TraceAgent", L"BeforeMethod");
+        this->traceEndSig = GetMethodSignature(pImport, L"Datadog.Trace.ClrProfiler.MethodTrace", L"EndMethod");
+
+        if (this->traceInstaceSig.data() == NULL ||
+            this->traceBeforeSig.data() == NULL ||
+            this->traceEndSig.data() == NULL) {
+            return S_FALSE;
+        }
+        return hr;
+    }
+
     HRESULT STDMETHODCALLTYPE CorProfiler::ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) 
     {
         auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
@@ -476,37 +486,16 @@ namespace trace {
             metadata_interfaces.GetAddressOf());
         RETURN_OK_IF_FAILED(hr);
 
-        auto metadata_import =
-            metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
-        auto metadata_emit =
-            metadata_interfaces.As<IMetaDataEmit2>(IID_IMetaDataEmit);
-        auto assembly_import = metadata_interfaces.As<IMetaDataAssemblyImport>(
-            IID_IMetaDataAssemblyImport);
-        auto assembly_emit =
-            metadata_interfaces.As<IMetaDataAssemblyEmit>(IID_IMetaDataAssemblyEmit);
-
-        if (assembly_emit.IsNull() || assembly_import.IsNull() || metadata_import.IsNull()) {
-            return S_OK;
-        }
-
-        mdModule module;
-        hr = metadata_import->GetModuleFromScope(&module);
-        RETURN_OK_IF_FAILED(hr);
-
         if (module_info.assembly.name == "StackExchange.Redis"_W) {
-
-            hr = MethodWrapperSample(moduleId, metadata_import, assembly_emit, metadata_emit);
-
+            hr = MethodWrapperSample(moduleId, metadata_interfaces);
             RETURN_OK_IF_FAILED(hr);
-
-            //System.Private.CoreLib mscorlib System.Runtime
-           /* const auto assemblyRefToken = FindAssemblyRef(assembly_import, L"System.Runtime");
-            if(assemblyRefToken!= mdAssemblyRefNil) {
-                mdToken int32Token;
-                hr = metadata_import->FindTypeRef(assemblyRefToken, L"System.Int32", &int32Token);
-                Info(hr == S_OK);
-            }*/
         }
+
+        if(module_info.assembly.name == "Datadog.Trace.ClrProfiler.Managed"_W) {
+           hr = PrepareTraceSig(metadata_interfaces);
+            RETURN_OK_IF_FAILED(hr);
+        }
+
         return S_OK;
     }
 
@@ -552,6 +541,100 @@ namespace trace {
 
     HRESULT STDMETHODCALLTYPE CorProfiler::JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock)
     {
+        CComPtr<IUnknown> metadata_interfaces;
+        mdToken function_token = mdTokenNil;
+        HRESULT hr = this->corProfilerInfo->GetTokenAndMetaDataFromFunction(functionId, IID_IMetaDataImport2,
+            metadata_interfaces.GetAddressOf(),
+            &function_token);
+
+        RETURN_OK_IF_FAILED(hr);
+
+        ModuleID moduleId;
+        hr = corProfilerInfo->GetFunctionInfo(functionId, NULL, &moduleId, &function_token);
+        RETURN_OK_IF_FAILED(hr);
+
+        auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
+        if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {
+            return S_OK;
+        }
+
+        auto pImport = metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
+        auto pEmit = metadata_interfaces.As<IMetaDataEmit2>(IID_IMetaDataEmit);
+        if (pEmit.IsNull() || pImport.IsNull()) {
+            return S_OK;
+        }
+
+        mdModule module;
+        hr = pImport->GetModuleFromScope(&module);
+        RETURN_OK_IF_FAILED(hr);
+
+        auto functionInfo = GetFunctionInfo(pImport, function_token);
+        if (!functionInfo.IsValid()) {
+            return S_OK;
+        }
+
+        auto signature = functionInfo.signature;
+        hr = signature.TryParse();
+        RETURN_OK_IF_FAILED(hr);
+
+        if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
+            functionInfo.name == "ExecuteSyncImpl"_W) {
+
+            mdAssemblyRef assemblyRef;
+            hr = GetProfilerAssemblyRef(metadata_interfaces, &assemblyRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            mdTypeDef traceAgentTypeDef;
+            hr = pEmit->DefineTypeRefByName(
+                assemblyRef,
+                kTraceAgentTypeName,
+                &traceAgentTypeDef);
+            RETURN_OK_IF_FAILED(hr);
+
+            mdMemberRef getInstanceMemberRef;
+            hr = pEmit->DefineMemberRef(
+                traceAgentTypeDef,
+                kGetInstanceMethodName,
+                this->traceInstaceSig.data(),
+                (DWORD)this->traceInstaceSig.size(),
+                &getInstanceMemberRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            mdMemberRef beforeMemberRef;
+            hr = pEmit->DefineMemberRef(
+                traceAgentTypeDef,
+                kBeforeMethodName,
+                this->traceBeforeSig.data(),
+                (DWORD)this->traceBeforeSig.size(),
+                &beforeMemberRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            mdTypeDef methodTraceTypeDef;
+            hr = pEmit->DefineTypeRefByName(
+                assemblyRef,
+                kMethodTraceTypeName,
+                &methodTraceTypeDef);
+            RETURN_OK_IF_FAILED(hr);
+
+            mdMemberRef endMemberRef;
+            hr = pEmit->DefineMemberRef(
+                methodTraceTypeDef,
+                kEndMethodName,
+                this->traceBeforeSig.data(),
+                (DWORD)this->traceBeforeSig.size(),
+                &endMemberRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
+            IfFailRet(rewriter.Import());
+
+            //add try catch finally
+
+
+
+            IfFailRet(rewriter.Export());
+        }
+
         return  S_OK;
     }
 

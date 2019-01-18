@@ -14,12 +14,12 @@ namespace Datadog.Trace.ClrProfiler
             _wrapperService = new WrapperService();
         }
 
-        public static TraceAgent GetInstance()
+        public static object GetInstance()
         {
             return Instance;
         }
 
-        public MethodTrace BeforeMethod(string methodName, object invocationTarget, object[] methodArguments)
+        public object BeforeMethod(string methodName, object invocationTarget, object[] methodArguments)
         {
             try
             {
@@ -63,9 +63,9 @@ namespace Datadog.Trace.ClrProfiler
             this._endMethodDelegate = endMethodDelegate;
         }
 
-        public void EndMethod(object returnValue, Exception ex)
+        public void EndMethod(object returnValue, object ex)
         {
-            this._endMethodDelegate(returnValue, ex);
+            this._endMethodDelegate(returnValue, (Exception)ex);
         }
     }
 }

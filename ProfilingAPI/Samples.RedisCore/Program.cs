@@ -43,6 +43,10 @@ namespace Samples.RedisCore
 
                 var db = redis.GetDatabase(1);
                 var n = await db.StringSetAsync($"{prefix}INCR", "0");
+                Console.WriteLine(n);
+
+                n = db.StringSet($"{prefix}INCR", "0");
+                Console.WriteLine(n);
 
                 Stopwatch sw = new Stopwatch();
                 sw.Start();

@@ -63,6 +63,7 @@ Number ::= 29-bit-encoded-integer
 
 #include "clr_helpers.h"
 #include "logging.h"
+#include "macros.h"
 
 #undef IfFalseRet
 #define IfFalseRet(EXPR)                       \
@@ -409,10 +410,10 @@ namespace trace
         IfFalseRet(ParseRetType(pbCur, pbEnd));
 
         ret.pbBase = pbBase;
-        ret.length = pbCur - pbRet;
-        ret.offset = pbCur - pbBase - ret.length;
-        params = std::vector<MethodArgument>(param_count);
+        ret.length = (ULONG)(pbCur - pbRet);
+        ret.offset = (ULONG)(pbCur - pbBase - ret.length);
 
+        params = std::vector<MethodArgument>(param_count);
         auto fEncounteredSentinal = false;
         for (unsigned i = 0; i < param_count; i++) {
             if (pbCur >= pbEnd)
@@ -432,8 +433,8 @@ namespace trace
 
             MethodArgument argument{};
             argument.pbBase = pbBase;
-            argument.length = pbCur - pbParam;
-            argument.offset = pbCur - pbBase - argument.length;
+            argument.length = (ULONG)(pbCur - pbParam);
+            argument.offset = (ULONG)(pbCur - pbBase - argument.length);
 
             params.push_back(argument);
         }
@@ -441,54 +442,80 @@ namespace trace
         return S_OK;
     }
 
-    MethodArgumentFlag MethodArgument::GetFlags() const {
+    mdToken MethodArgument::GetTypeTokForBox(CComPtr<IMetaDataImport2>& pImport,
+        CComPtr<IMetaDataEmit2>& pEmit, mdAssemblyRef corLibRef) const {
 
+        mdToken token = mdTokenNil;
         PCCOR_SIGNATURE pbCur = pbBase + offset;
-
         if (*pbCur == ELEMENT_TYPE_VOID) {
             pbCur++;
-            return MethodArgumentFlag_VOID;
+            return token;
         }
 
         if (*pbCur == ELEMENT_TYPE_BYREF) {
             pbCur++;
         }
 
-        MethodArgumentFlag flag = MethodArgumentFlag_None;
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:
+            pImport->FindTypeRef(corLibRef, L"System.Boolean", &token);
+            break;
         case  ELEMENT_TYPE_CHAR:
+            pImport->FindTypeRef(corLibRef, L"System.Char", &token);
+            break;
         case  ELEMENT_TYPE_I1:
+            pImport->FindTypeRef(corLibRef, L"System.Byte", &token);
+            break;
         case  ELEMENT_TYPE_U1:
+            pImport->FindTypeRef(corLibRef, L"System.SByte", &token);
+            break;
         case  ELEMENT_TYPE_U2:
+            pImport->FindTypeRef(corLibRef, L"System.UInt16", &token);
+            break;
         case  ELEMENT_TYPE_I2:
+            pImport->FindTypeRef(corLibRef, L"System.Int16", &token);
+            break;
         case  ELEMENT_TYPE_I4:
+            pImport->FindTypeRef(corLibRef, L"System.Int32", &token);
+            break;
         case  ELEMENT_TYPE_U4:
+            pImport->FindTypeRef(corLibRef, L"System.UInt32", &token);
+            break;
         case  ELEMENT_TYPE_I8:
+            pImport->FindTypeRef(corLibRef, L"System.Int64", &token);
+            break;
         case  ELEMENT_TYPE_U8:
+            pImport->FindTypeRef(corLibRef, L"System.UInt64", &token);
+            break;
         case  ELEMENT_TYPE_R4:
+            pImport->FindTypeRef(corLibRef, L"System.Single", &token);
+            break;
         case  ELEMENT_TYPE_R8:
+            pImport->FindTypeRef(corLibRef, L"System.Double", &token);
+            break;
         case  ELEMENT_TYPE_I:
+            pImport->FindTypeRef(corLibRef, L"System.IntPtr", &token);
+            break;
         case  ELEMENT_TYPE_U:
-            flag = MethodArgumentFlag_BOX;
+            pImport->FindTypeRef(corLibRef, L"System.UIntPtr", &token);
             break;
         case  ELEMENT_TYPE_VALUETYPE:
-            flag = MethodArgumentFlag_BOX;
+            token = CorSigUncompressToken(pbCur);
             break;
         case  ELEMENT_TYPE_GENERICINST:
             pbCur++;
             if (*pbCur == ELEMENT_TYPE_VALUETYPE) {
-                flag = MethodArgumentFlag_BOX;
+                pEmit->GetTokenFromTypeSpec(pbBase + offset, length, &token);
             }
             break;
         case  ELEMENT_TYPE_MVAR:
         case  ELEMENT_TYPE_VAR:
-            flag = MethodArgumentFlag_BOX;
+            pEmit->GetTokenFromTypeSpec(pbBase + offset, length, &token);
             break;
         default:
             break;
         }
-        return  flag;
+        return token;
     }
 
     AssemblyInfo GetAssemblyInfo(ICorProfilerInfo3* info,
@@ -549,6 +576,17 @@ namespace trace
         return mdAssemblyRefNil;
     }
 
+    mdAssemblyRef FindCorLibAssemblyRef(
+        const CComPtr<IMetaDataAssemblyImport>& assembly_import) {
+        for (mdAssemblyRef assembly_ref : EnumAssemblyRefs(assembly_import)) {
+            auto name = GetAssemblyName(assembly_import, assembly_ref);
+            if (name == L"System.Runtime" || name == L"mscorlib" || name == L"System.Private.CoreLib") {
+                return assembly_ref;
+            }
+        }
+        return mdAssemblyRefNil;
+    }
+
     ModuleInfo GetModuleInfo(ICorProfilerInfo3* info, const ModuleID& module_id) {
         const DWORD module_path_size = 260;
         WCHAR module_path[module_path_size]{};
@@ -564,5 +602,198 @@ namespace trace
         }
         return { module_id, WSTRING(module_path), GetAssemblyInfo(info, assembly_id),
                 module_flags };
+    }
+
+    TypeInfo GetTypeInfo(const CComPtr<IMetaDataImport2>& metadata_import,
+        const mdToken& token) {
+        mdToken parent_token = mdTokenNil;
+        WCHAR type_name[kNameMaxSize]{};
+        DWORD type_name_len = 0;
+
+        HRESULT hr = E_FAIL;
+        const auto token_type = TypeFromToken(token);
+        switch (token_type) {
+        case mdtTypeDef:
+            hr = metadata_import->GetTypeDefProps(token, type_name, kNameMaxSize,
+                &type_name_len, nullptr, nullptr);
+            break;
+        case mdtTypeRef:
+            hr = metadata_import->GetTypeRefProps(token, &parent_token, type_name,
+                kNameMaxSize, &type_name_len);
+            break;
+        case mdtTypeSpec: {
+            PCCOR_SIGNATURE signature{};
+            ULONG signature_length{};
+
+            hr = metadata_import->GetTypeSpecFromToken(token, &signature,
+                &signature_length);
+
+            if (FAILED(hr) || signature_length < 3) {
+                return {};
+            }
+
+            if (signature[0] & ELEMENT_TYPE_GENERICINST) {
+                mdToken type_token;
+                CorSigUncompressToken(&signature[2], &type_token);
+                return GetTypeInfo(metadata_import, type_token);
+            }
+        } break;
+        case mdtModuleRef:
+            metadata_import->GetModuleRefProps(token, type_name, kNameMaxSize,
+                &type_name_len);
+            break;
+        case mdtMemberRef:
+            return GetFunctionInfo(metadata_import, token).type;
+            break;
+        case mdtMethodDef:
+            return GetFunctionInfo(metadata_import, token).type;
+            break;
+        }
+        if (FAILED(hr) || type_name_len == 0) {
+            return {};
+        }
+
+        return { token, WSTRING(type_name) };
+    }
+
+    FunctionInfo GetFunctionInfo(const CComPtr<IMetaDataImport2>& metadata_import,
+        const mdToken& token) {
+
+        mdToken parent_token = mdTokenNil;
+        WCHAR function_name[kNameMaxSize]{};
+        DWORD function_name_len = 0;
+
+        PCCOR_SIGNATURE raw_signature;
+        ULONG raw_signature_len;
+
+        HRESULT hr = E_FAIL;
+        const auto token_type = TypeFromToken(token);
+        switch (token_type) {
+        case mdtMemberRef:
+            hr = metadata_import->GetMemberRefProps(
+                token, &parent_token, function_name, kNameMaxSize, &function_name_len,
+                &raw_signature, &raw_signature_len);
+            break;
+        case mdtMethodDef:
+            hr = metadata_import->GetMemberProps(
+                token, &parent_token, function_name, kNameMaxSize, &function_name_len,
+                nullptr, &raw_signature, &raw_signature_len, nullptr, nullptr,
+                nullptr, nullptr, nullptr);
+            break;
+        case mdtMethodSpec: {
+            hr = metadata_import->GetMethodSpecProps(
+                token, &parent_token, &raw_signature, &raw_signature_len);
+            if (FAILED(hr)) {
+                return {};
+            }
+            auto generic_info = GetFunctionInfo(metadata_import, parent_token);
+            std::memcpy(function_name, generic_info.name.c_str(),
+                sizeof(WCHAR) * (generic_info.name.length() + 1));
+            function_name_len = (DWORD)(generic_info.name.length() + 1);
+            Info("[trace::mdtMethodSpec] function_name: {}", function_name);
+        } break;
+        default:
+            Warn("[trace::GetFunctionInfo] unknown token type: {}", token_type);
+        }
+        if (FAILED(hr) || function_name_len == 0) {
+            return {};
+        }
+
+        // parent_token could be: TypeDef, TypeRef, TypeSpec, ModuleRef, MethodDef
+        const auto type_info = GetTypeInfo(metadata_import, parent_token);
+
+        return { token, WSTRING(function_name), type_info,
+                MethodSignature(raw_signature,raw_signature_len) };
+    }
+
+    //1. .net framework gac or net core DOTNET_ADDITIONAL_DEPS=%PROGRAMFILES%\dotnet\x64\additionalDeps\Datadog.Trace.ClrProfiler.Managed
+    //2. just proj ref
+    HRESULT GetProfilerAssemblyRef(CComPtr<IUnknown>& metadata_interfaces, mdAssemblyRef* assemblyRef) {
+
+        auto pAssemblyImport = metadata_interfaces.As<IMetaDataAssemblyImport>(
+            IID_IMetaDataAssemblyImport);
+        auto pAssemblyEmit =
+            metadata_interfaces.As<IMetaDataAssemblyEmit>(IID_IMetaDataAssemblyEmit);
+
+        if (pAssemblyImport.IsNull() || pAssemblyEmit.IsNull()) {
+            return S_FALSE;
+        }
+
+        mdAssembly assembly;
+        HRESULT hr = pAssemblyImport->GetAssemblyFromScope(&assembly);
+        RETURN_OK_IF_FAILED(hr);
+
+        auto token = FindAssemblyRef(pAssemblyImport, kProfilerAssemblyName);
+        if (token != mdAssemblyRefNil) {
+            assemblyRef = &token;
+            return S_OK;
+        }
+
+        BYTE rgbPublicKeyToken[] = { 0xde, 0xf8, 0x6d, 0x06, 0x1d, 0x0d, 0x2e, 0xeb };
+        WCHAR wszLocale[MAX_PATH];
+        wcscpy_s(wszLocale, L"neutral");
+
+        ASSEMBLYMETADATA assemblyMetaData;
+        ZeroMemory(&assemblyMetaData, sizeof(assemblyMetaData));
+        assemblyMetaData.usMajorVersion = 0;
+        assemblyMetaData.usMinorVersion = 6;
+        assemblyMetaData.usBuildNumber = 0;
+        assemblyMetaData.usRevisionNumber = 0;
+        assemblyMetaData.szLocale = wszLocale;
+        assemblyMetaData.cbLocale = _countof(wszLocale);
+
+        hr = pAssemblyEmit->DefineAssemblyRef(
+            (void *)rgbPublicKeyToken,
+            sizeof(rgbPublicKeyToken),
+            kProfilerAssemblyName,
+            &assemblyMetaData,
+            NULL,
+            NULL,
+            0,
+            assemblyRef);
+        RETURN_OK_IF_FAILED(hr);
+
+        return  hr;
+    }
+
+    std::vector<BYTE> GetMethodSignature(CComPtr<IMetaDataImport2>& pImport,
+        LPCWSTR szTypeDef,
+        LPCWSTR szMethodDef) 
+    {
+        std::vector<BYTE> signature_data;
+        mdTypeDef typeDef = mdTokenNil;
+        HRESULT hr = pImport->FindTypeDefByName(szTypeDef, NULL, &typeDef);
+        if (hr != S_OK) {
+            return signature_data;
+        }
+
+        mdToken methodDef = mdTokenNil;
+        hr = pImport->FindMember(typeDef, szMethodDef, NULL, 0, &methodDef);
+        if (hr != S_OK) {
+            return signature_data;
+        }
+
+        DWORD       pdwAttr;
+        PCCOR_SIGNATURE raw_signature;
+        ULONG       raw_signature_len;
+        ULONG       pulCodeRVA;
+        DWORD       pdwImplFlags;
+        hr = pImport->GetMethodProps(
+            methodDef,
+            NULL,
+            NULL,
+            0,
+            NULL,
+            &pdwAttr,
+            &raw_signature,
+            &raw_signature_len,
+            &pulCodeRVA,
+            &pdwImplFlags);
+
+        signature_data = std::vector<BYTE>(raw_signature_len);
+        for (ULONG i = 0; i < raw_signature_len; i++) {
+            signature_data[i] = raw_signature[i];
+        }
+        return signature_data;
     }
 }

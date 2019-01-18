@@ -16,6 +16,9 @@ namespace trace {
     private:
         std::atomic<int> refCount;
         ICorProfilerInfo8* corProfilerInfo;
+        std::vector<BYTE> traceInstaceSig;
+        std::vector<BYTE> traceBeforeSig;
+        std::vector<BYTE> traceEndSig;
     public:
         CorProfiler();
         virtual ~CorProfiler();
@@ -150,8 +153,7 @@ namespace trace {
             return count;
         }
 
-        HRESULT MethodWrapperSample(ModuleID moduleId, CComPtr<IMetaDataImport2>& pImport,
-            CComPtr<IMetaDataAssemblyEmit>& pAssemblyEmit,
-            CComPtr<IMetaDataEmit2>& pEmit) const;
+        HRESULT MethodWrapperSample(ModuleID moduleId, CComPtr<IUnknown>& metadata_interfaces) const;
+        HRESULT PrepareTraceSig(CComPtr<IUnknown>& metadata_interfaces);
     };
 }
