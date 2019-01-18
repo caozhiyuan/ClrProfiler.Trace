@@ -17,7 +17,7 @@ namespace trace {
     const auto kGetInstanceMethodName = L"GetInstance";
     const auto kBeforeMethodName = L"BeforeMethod";
     const auto kEndMethodName = L"EndMethod";
-    const auto kEndMethodName = L"EndMethod";
+    const auto kMethodTraceTypeName = L"Datadog.Trace.ClrProfiler.MethodTrace";
 
     template <typename T>
     class EnumeratorIterator;
