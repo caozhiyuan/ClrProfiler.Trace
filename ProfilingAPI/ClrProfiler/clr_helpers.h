@@ -6,7 +6,7 @@
 #include "string.h"
 #include "util.h"
 #include "CComPtr.h"
-#include "CorProfiler.h"
+#include <corprof.h>
 
 namespace trace {
 
