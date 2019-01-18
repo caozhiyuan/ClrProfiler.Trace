@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Datadog.Trace.ClrProfiler;
 using StackExchange.Redis;
 
 namespace Samples.RedisCore
@@ -18,6 +19,10 @@ namespace Samples.RedisCore
                 Console.WriteLine(ex.Message);
             }
 
+            Program program = new Program();
+            var c = program.Test("111", 1, 1);
+            Console.WriteLine(c.ToString());
+
             RunStackExchange("StackExchange").Wait();
         }
 
@@ -26,10 +31,42 @@ namespace Samples.RedisCore
             return Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost";
         }
 
-        public void Test(string a, int? b, int c)
+        //20 03 1d080e 15 11 4501 08 08
+        private int[] Test2(string a, int? b, int c)
         {
             var arr = new object[] {a, b, c};
             Console.WriteLine(arr.ToString());
+            var test = new int[] {1};
+            object ret = test;
+            return (int[]) ret;
+        }
+
+        public string Test(string a, int? b, int c)
+        {
+            object ret = null;
+            Exception ex = null;
+            MethodTrace methodTrace = null;
+            try
+            {
+                methodTrace= TraceAgent.GetInstance().BeforeMethod("Test", this, new object[] { a, b, c });
+
+                ret = "1";
+                goto T;
+            }
+            catch (Exception e)
+            {
+                ex = e;
+                throw;
+            }
+            finally
+            {
+                if (methodTrace != null)
+                {
+                    methodTrace.EndMethod(ret, ex);
+                }
+            }
+            T:
+            return (string)ret;
         }
 
         private static async Task RunStackExchange(string prefix)

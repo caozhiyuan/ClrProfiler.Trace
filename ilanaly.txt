@@ -1,3 +1,82 @@
+1b 30 
+07 00 
+51 00 00 00 
+01 00 00 11 
+14 
+0a
+14
+0b
+14
+0c
+28 1a00000a
+72 93000070
+02
+19
+8d 0f000001
+25
+16
+03
+a2
+25
+17048c0100001ba22518058c24000001a26f1b00000a0c729d0000700ade0f0bfe1a082c080806076f1c00000adc0674260000012a000000011c000000000600353b00031000000102000600383e000c00000000
+
+.method public hidebysig instance string Test(string a, valuetype [System.Runtime]System.Nullable`1<int32> b, int32 c) cil managed
+{
+    .maxstack 7
+    .locals init (
+        [0] object obj2,
+        [1] class [System.Runtime]System.Exception exception,
+        [2] class [Datadog.Trace.ClrProfiler.Managed]Datadog.Trace.ClrProfiler.MethodTrace trace)
+    L_0000: ldnull 
+    L_0001: stloc.0 
+    L_0002: ldnull 
+    L_0003: stloc.1 
+    L_0004: ldnull 
+    L_0005: stloc.2 
+    L_0006: call class [Datadog.Trace.ClrProfiler.Managed]Datadog.Trace.ClrProfiler.TraceAgent [Datadog.Trace.ClrProfiler.Managed]Datadog.Trace.ClrProfiler.TraceAgent::GetInstance()
+    L_000b: ldstr "Test"
+    L_0010: ldarg.0 
+    L_0011: ldc.i4.3 
+    L_0012: newarr [System.Runtime]System.Object
+    L_0017: dup 
+    L_0018: ldc.i4.0 
+    L_0019: ldarg.1 
+    L_001a: stelem.ref 
+    L_001b: dup 
+    L_001c: ldc.i4.1 
+    L_001d: ldarg.2 
+    L_001e: box [System.Runtime]System.Nullable`1<int32>
+    L_0023: stelem.ref 
+    L_0024: dup 
+    L_0025: ldc.i4.2 
+    L_0026: ldarg.3 
+    L_0027: box [System.Runtime]System.Int32
+    L_002c: stelem.ref 
+    L_002d: callvirt instance class [Datadog.Trace.ClrProfiler.Managed]Datadog.Trace.ClrProfiler.MethodTrace [Datadog.Trace.ClrProfiler.Managed]Datadog.Trace.ClrProfiler.TraceAgent::BeforeMethod(string, object, object[])
+    L_0032: stloc.2 
+    L_0033: ldstr "1"
+    L_0038: stloc.0 
+    L_0039: leave.s L_004a
+    L_003b: stloc.1 
+    L_003c: rethrow 
+    L_003e: ldloc.2 
+    L_003f: brfalse.s L_0049
+    L_0041: ldloc.2 
+    L_0042: ldloc.0 
+    L_0043: ldloc.1 
+    L_0044: callvirt instance void [Datadog.Trace.ClrProfiler.Managed]Datadog.Trace.ClrProfiler.MethodTrace::EndMethod(object, object)
+    L_0049: endfinally 
+    L_004a: ldloc.0 
+    L_004b: castclass [System.Runtime]System.String
+    L_0050: ret 
+    .try L_0006 to L_003b catch [System.Runtime]System.Exception handler L_003b to L_003e
+    .try L_0006 to L_003e finally handler L_003e to L_004a
+}
+
+ 
+-------------------------------------------------------------------------------------------------------------------------------
+
+
 .method assembly hidebysig instance !!T ExecuteSyncImpl<T>(class StackExchange.Redis.Message message, class StackExchange.Redis.ResultProcessor`1<!!T> processor, class StackExchange.Redis.ServerEndPoint server) cil managed
 //BYTE testSignature[] = {
 //    IMAGE_CEE_CS_CALLCONV_HASTHIS | IMAGE_CEE_CS_CALLCONV_GENERIC,
@@ -435,70 +514,4 @@
     .try L_005a to L_03cc finally handler L_03cc to L_03d8
 }
 
----------------------------------------------------------------------------------------------------------------------
-
-13 30
-04 00
-2b 00 00 00 
-03 00 00 11
-
-00 nop 
-19 ldc.i4.3 
-8d 0f000001
-25
-16
-03
-a2
-25
-17
-04
-8c 0100001b
-a2
-25
-18
-05
-8c 23000001
-a2
-0a
-06
-6f 1900000a
-28 1600000a
-00 nop 
-2a ret
- 
-.method public hidebysig instance void Test(string a, valuetype [System.Runtime]System.Nullable`1<int32> b, int32 c) cil managed
-{
-    .maxstack 4
-    .locals init (
-        [0] object[] objArray)
-    L_0000: nop 
-    L_0001: ldc.i4.3 
-    L_0002: newarr [System.Runtime]System.Object
-    L_0007: dup 
-    L_0008: ldc.i4.0 
-    L_0009: ldarg.1 
-    L_000a: stelem.ref 
-    L_000b: dup 
-    L_000c: ldc.i4.1 
-    L_000d: ldarg.2 
-    L_000e: box [System.Runtime]System.Nullable`1<int32>
-    L_0013: stelem.ref 
-    L_0014: dup 
-    L_0015: ldc.i4.2 
-    L_0016: ldarg.3 
-    L_0017: box [System.Runtime]System.Int32
-    L_001c: stelem.ref 
-    L_001d: stloc.0 
-    L_001e: ldloc.0 
-    L_001f: callvirt instance string [System.Runtime]System.Object::ToString()
-    L_0024: call void [System.Console]System.Console::WriteLine(string)
-    L_0029: nop 
-    L_002a: ret 
-}
-
-
-public void Test(string a, int? b, int c)
-{
-    var arr = new object[] {a, b, c};
-    Console.WriteLine(arr.ToString());
-}
+--------------------------------------------------------------------------------------------------------------------

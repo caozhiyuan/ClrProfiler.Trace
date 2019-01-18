@@ -250,9 +250,10 @@ namespace trace {
         ULONG offset;
         ULONG length;
         PCCOR_SIGNATURE pbBase;
-        mdToken GetTypeTokForBox(CComPtr<IMetaDataImport2>& pImport,
-                           CComPtr<IMetaDataEmit2>& pEmit, 
-                           mdAssemblyRef corLibRef) const;
+        mdToken GetTypeTok(CComPtr<IMetaDataImport2>& pImport,
+            CComPtr<IMetaDataEmit2>& pEmit,
+            mdAssemblyRef corLibRef) const;
+        bool IsBoxedType() const;
     };
 
     struct MethodSignature {
@@ -324,10 +325,6 @@ namespace trace {
 
     HRESULT GetProfilerAssemblyRef(CComPtr<IUnknown>& metadata_interfaces, 
         mdAssemblyRef* assemblyRef);
-
-    std::vector<BYTE> GetMethodSignature(CComPtr<IMetaDataImport2>& pImport,
-        LPCWSTR szTypeDef,
-        LPCWSTR szMethodDef);
 }
 
 #endif  // CLR_PROFILER_CLRHELPER_H_

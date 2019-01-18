@@ -442,15 +442,52 @@ namespace trace
         return S_OK;
     }
 
-    mdToken MethodArgument::GetTypeTokForBox(CComPtr<IMetaDataImport2>& pImport,
+    bool MethodArgument::IsBoxedType() const {
+       
+        bool flag = false;
+        PCCOR_SIGNATURE pbCur = pbBase + offset;
+
+        if (*pbCur == ELEMENT_TYPE_BYREF) {
+            pbCur++;
+        }
+
+        switch (*pbCur) {
+        case  ELEMENT_TYPE_BOOLEAN:
+        case  ELEMENT_TYPE_CHAR:
+        case  ELEMENT_TYPE_I1:
+        case  ELEMENT_TYPE_U1:
+        case  ELEMENT_TYPE_U2:
+        case  ELEMENT_TYPE_I2:
+        case  ELEMENT_TYPE_I4:
+        case  ELEMENT_TYPE_U4:
+        case  ELEMENT_TYPE_I8:
+        case  ELEMENT_TYPE_U8:
+        case  ELEMENT_TYPE_R4:
+        case  ELEMENT_TYPE_R8:
+        case  ELEMENT_TYPE_I:
+        case  ELEMENT_TYPE_U:
+        case  ELEMENT_TYPE_VALUETYPE:
+        case  ELEMENT_TYPE_MVAR:
+        case  ELEMENT_TYPE_VAR:
+            flag = true;
+            break;
+        case  ELEMENT_TYPE_GENERICINST:
+            pbCur++;
+            if (*pbCur == ELEMENT_TYPE_VALUETYPE) {
+                flag = true;
+            }
+            break;
+        default:
+            break;
+        }
+        return flag;
+    }
+
+    mdToken MethodArgument::GetTypeTok(CComPtr<IMetaDataImport2>& pImport,
         CComPtr<IMetaDataEmit2>& pEmit, mdAssemblyRef corLibRef) const {
 
         mdToken token = mdTokenNil;
         PCCOR_SIGNATURE pbCur = pbBase + offset;
-        if (*pbCur == ELEMENT_TYPE_VOID) {
-            pbCur++;
-            return token;
-        }
 
         if (*pbCur == ELEMENT_TYPE_BYREF) {
             pbCur++;
@@ -499,18 +536,25 @@ namespace trace
         case  ELEMENT_TYPE_U:
             pImport->FindTypeRef(corLibRef, L"System.UIntPtr", &token);
             break;
+        case  ELEMENT_TYPE_STRING:
+            pImport->FindTypeRef(corLibRef, L"System.String", &token);
+            break;
+        case  ELEMENT_TYPE_OBJECT:
+            pImport->FindTypeRef(corLibRef, L"System.Object", &token);
+            break;
+        case  ELEMENT_TYPE_CLASS:
+            pbCur++;
+            token = CorSigUncompressToken(pbCur);
         case  ELEMENT_TYPE_VALUETYPE:
+            pbCur++;
             token = CorSigUncompressToken(pbCur);
             break;
         case  ELEMENT_TYPE_GENERICINST:
-            pbCur++;
-            if (*pbCur == ELEMENT_TYPE_VALUETYPE) {
-                pEmit->GetTokenFromTypeSpec(pbBase + offset, length, &token);
-            }
-            break;
+        case  ELEMENT_TYPE_SZARRAY:
+        case  ELEMENT_TYPE_ARRAY:
         case  ELEMENT_TYPE_MVAR:
         case  ELEMENT_TYPE_VAR:
-            pEmit->GetTokenFromTypeSpec(pbBase + offset, length, &token);
+            pEmit->GetTokenFromTypeSpec(pbCur, length - static_cast<ULONG>(pbCur - pbBase), &token);
             break;
         default:
             break;
@@ -754,46 +798,5 @@ namespace trace
         RETURN_OK_IF_FAILED(hr);
 
         return  hr;
-    }
-
-    std::vector<BYTE> GetMethodSignature(CComPtr<IMetaDataImport2>& pImport,
-        LPCWSTR szTypeDef,
-        LPCWSTR szMethodDef) 
-    {
-        std::vector<BYTE> signature_data;
-        mdTypeDef typeDef = mdTokenNil;
-        HRESULT hr = pImport->FindTypeDefByName(szTypeDef, NULL, &typeDef);
-        if (hr != S_OK) {
-            return signature_data;
-        }
-
-        mdToken methodDef = mdTokenNil;
-        hr = pImport->FindMember(typeDef, szMethodDef, NULL, 0, &methodDef);
-        if (hr != S_OK) {
-            return signature_data;
-        }
-
-        DWORD       pdwAttr;
-        PCCOR_SIGNATURE raw_signature;
-        ULONG       raw_signature_len;
-        ULONG       pulCodeRVA;
-        DWORD       pdwImplFlags;
-        hr = pImport->GetMethodProps(
-            methodDef,
-            NULL,
-            NULL,
-            0,
-            NULL,
-            &pdwAttr,
-            &raw_signature,
-            &raw_signature_len,
-            &pulCodeRVA,
-            &pdwImplFlags);
-
-        signature_data = std::vector<BYTE>(raw_signature_len);
-        for (ULONG i = 0; i < raw_signature_len; i++) {
-            signature_data[i] = raw_signature[i];
-        }
-        return signature_data;
     }
 }

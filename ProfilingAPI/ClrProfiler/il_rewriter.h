@@ -84,6 +84,20 @@ class ILRewriter {
 
   ~ILRewriter();
 
+  mdToken GetLocalVarSig() const { return  m_tkLocalVarSig;}
+  void SetLocalVarSig(mdToken localVarSig) { m_tkLocalVarSig = localVarSig; }
+  void AddEHClause(EHClause pEH) {
+
+      m_nEH += 1;
+      const auto kpEH = new EHClause[m_nEH];
+      for (unsigned i = 0; i < m_nEH - 1; i++) {
+          kpEH[i] = m_pEH[i];
+      }
+      kpEH[m_nEH - 1] = pEH;
+      delete[] m_pEH;
+      m_pEH = kpEH;
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   //
   // I M P O R T
