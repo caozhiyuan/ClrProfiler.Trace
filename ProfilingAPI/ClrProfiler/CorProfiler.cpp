@@ -314,138 +314,6 @@ namespace trace {
         return pwMethodBytes;
     }
 
-    HRESULT CorProfiler::MethodWrapperSample(ModuleID moduleId , CComPtr<IUnknown>& metadata_interfaces) const
-    {
-        mdAssemblyRef assemblyRef;
-        HRESULT hr = GetProfilerAssemblyRef(metadata_interfaces, &assemblyRef);
-        RETURN_OK_IF_FAILED(hr);
-
-        auto pImport = metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
-        auto pEmit = metadata_interfaces.As<IMetaDataEmit2>(IID_IMetaDataEmit);
-        if (pEmit.IsNull() || pImport.IsNull()) {
-            return S_OK;
-        }
-
-        mdModule module;
-        hr = pImport->GetModuleFromScope(&module);
-        RETURN_OK_IF_FAILED(hr);
-
-        const LPCWSTR wszTypeToReference = L"Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis.ConnectionMultiplexer";
-        mdTypeRef typeRef = mdTokenNil;
-        hr = pEmit->DefineTypeRefByName(
-            assemblyRef,
-            wszTypeToReference,
-            &typeRef);
-        RETURN_OK_IF_FAILED(hr);
-
-        const LPCWSTR mdProbeName = L"ExecuteAsyncImpl";
-        std::vector<BYTE> sigFunctionProbe = { 0x10,0x01,0x05,0x1C,0x1C,0x1C,0x1C,0x1C,0x1C };
-        mdMemberRef pmr;
-        hr = pEmit->DefineMemberRef(
-            typeRef,
-            mdProbeName,
-            sigFunctionProbe.data(),
-            (DWORD)sigFunctionProbe.size(),
-            &pmr);
-            
-        RETURN_OK_IF_FAILED(hr);
-
-        const LPCWSTR typeNameToProb = L"StackExchange.Redis.ConnectionMultiplexer";
-        mdTypeDef typeToProb;
-        hr = pImport->FindTypeDefByName(
-            typeNameToProb,
-            mdTokenNil,
-            &typeToProb);
-        RETURN_OK_IF_FAILED(hr);
-
-        LPCWSTR smdProbeName = L"ExecuteAsyncImpl";
-        mdMethodDef mdProb;
-        std::vector<BYTE> sigFunctionProbe2;
-        hr = pImport->FindMember(
-            typeToProb,
-            smdProbeName,
-            sigFunctionProbe2.data(),
-            (DWORD)sigFunctionProbe2.size(),
-            &mdProb);
-        RETURN_OK_IF_FAILED(hr);
-
-        DWORD       pdwAttr;
-        PCCOR_SIGNATURE ppvSigBlob;
-        ULONG       pcbSigBlob;
-        ULONG       pulCodeRVA;
-        DWORD       pdwImplFlags;
-        hr = pImport->GetMethodProps(
-            mdProb,
-            NULL,
-            NULL,
-            0,
-            NULL,
-            &pdwAttr,
-            &ppvSigBlob,
-            &pcbSigBlob,
-            &pulCodeRVA,
-            &pdwImplFlags);
-        RETURN_OK_IF_FAILED(hr);
-
-        auto signature = MethodSignature(ppvSigBlob, pcbSigBlob);
-        hr = signature.TryParse();
-        RETURN_OK_IF_FAILED(hr);
-
-        auto numberOfArguments = signature.NumberOfArguments();
-        auto numberOfTypeArguments = signature.NumberOfTypeArguments();
-        if(numberOfArguments < 8 && numberOfTypeArguments < 8)
-        {
-            const WSTRING prefixStr = "Trace_"_W;
-            WSTRING mdProbeWrapperName = prefixStr + WSTRING(smdProbeName);
-            mdMethodDef mdWrapper;
-            hr = pEmit->DefineMethod(
-                typeToProb,
-                mdProbeWrapperName.data(),
-                pdwAttr,
-                ppvSigBlob,
-                pcbSigBlob,
-                pulCodeRVA,
-                pdwImplFlags,
-                &mdWrapper);
-            RETURN_OK_IF_FAILED(hr);
-
-            if (numberOfTypeArguments > 0)
-            {
-                hr = copyGenericParams(pImport, pEmit, mdProb, mdWrapper);
-                RETURN_OK_IF_FAILED(hr);
-            }
-
-            if (numberOfArguments > 0)
-            {
-                hr = copyParams(pImport, pEmit, mdProb, mdWrapper);
-                RETURN_OK_IF_FAILED(hr);
-            }
-
-            LPCBYTE pMethodBytes;
-            ULONG pMethodSize;
-            hr = corProfilerInfo->GetILFunctionBody(moduleId, mdProb, &pMethodBytes, &pMethodSize);
-            RETURN_OK_IF_FAILED(hr);
-
-            IMethodMalloc* pIMethodMalloc;
-            hr = corProfilerInfo->GetILFunctionBodyAllocator(moduleId, &pIMethodMalloc);
-            RETURN_OK_IF_FAILED(hr);
-
-            auto pNewMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(pMethodSize);
-            memcpy(pNewMethodBytes, pMethodBytes, pMethodSize);
-            hr = corProfilerInfo->SetILFunctionBody(moduleId, mdWrapper, pNewMethodBytes);
-            RETURN_OK_IF_FAILED(hr);
-
-            auto pmi = getMethodToken(pEmit, pmr, numberOfTypeArguments);
-            auto pwMethodBytes = GetWrapperMethodIL(pIMethodMalloc, pmi, pdwAttr, signature);
-
-            hr = corProfilerInfo->SetILFunctionBody(moduleId, mdProb, pwMethodBytes);
-            RETURN_OK_IF_FAILED(hr);
-
-            pIMethodMalloc->Release();
-        }
-        return S_OK;
-    }
-
     HRESULT STDMETHODCALLTYPE CorProfiler::ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) 
     {
         auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
@@ -453,15 +321,140 @@ namespace trace {
             return S_OK;
         }
 
-        CComPtr<IUnknown> metadata_interfaces;
-        auto hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
-            IID_IMetaDataImport2,
-            metadata_interfaces.GetAddressOf());
-        RETURN_OK_IF_FAILED(hr);
-
         if (module_info.assembly.name == "StackExchange.Redis"_W) {
-            hr = MethodWrapperSample(moduleId, metadata_interfaces);
+
+            CComPtr<IUnknown> metadata_interfaces;
+            auto hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
+                IID_IMetaDataImport2,
+                metadata_interfaces.GetAddressOf());
             RETURN_OK_IF_FAILED(hr);
+
+            mdAssemblyRef assemblyRef;
+            hr = GetProfilerAssemblyRef(metadata_interfaces, &assemblyRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            auto pImport = metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
+            auto pEmit = metadata_interfaces.As<IMetaDataEmit2>(IID_IMetaDataEmit);
+            if (pEmit.IsNull() || pImport.IsNull()) {
+                return S_OK;
+            }
+
+            mdModule module;
+            hr = pImport->GetModuleFromScope(&module);
+            RETURN_OK_IF_FAILED(hr);
+
+            const LPCWSTR wszTypeToReference = L"Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis.ConnectionMultiplexer";
+            mdTypeRef typeRef = mdTokenNil;
+            hr = pEmit->DefineTypeRefByName(
+                assemblyRef,
+                wszTypeToReference,
+                &typeRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            const LPCWSTR mdProbeName = L"ExecuteAsyncImpl";
+            std::vector<BYTE> sigFunctionProbe = { 0x10,0x01,0x05,0x1C,0x1C,0x1C,0x1C,0x1C,0x1C };
+            mdMemberRef pmr;
+            hr = pEmit->DefineMemberRef(
+                typeRef,
+                mdProbeName,
+                sigFunctionProbe.data(),
+                (DWORD)sigFunctionProbe.size(),
+                &pmr);
+
+            RETURN_OK_IF_FAILED(hr);
+
+            const LPCWSTR typeNameToProb = L"StackExchange.Redis.ConnectionMultiplexer";
+            mdTypeDef typeToProb;
+            hr = pImport->FindTypeDefByName(
+                typeNameToProb,
+                mdTokenNil,
+                &typeToProb);
+            RETURN_OK_IF_FAILED(hr);
+
+            mdMethodDef mdProb;
+            std::vector<BYTE> sigFunctionProbe2;
+            hr = pImport->FindMember(
+                typeToProb,
+                mdProbeName,
+                sigFunctionProbe2.data(),
+                (DWORD)sigFunctionProbe2.size(),
+                &mdProb);
+            RETURN_OK_IF_FAILED(hr);
+
+            DWORD       pdwAttr;
+            PCCOR_SIGNATURE ppvSigBlob;
+            ULONG       pcbSigBlob;
+            ULONG       pulCodeRVA;
+            DWORD       pdwImplFlags;
+            hr = pImport->GetMethodProps(
+                mdProb,
+                NULL,
+                NULL,
+                0,
+                NULL,
+                &pdwAttr,
+                &ppvSigBlob,
+                &pcbSigBlob,
+                &pulCodeRVA,
+                &pdwImplFlags);
+            RETURN_OK_IF_FAILED(hr);
+
+            auto signature = MethodSignature(ppvSigBlob, pcbSigBlob);
+            hr = signature.TryParse();
+            RETURN_OK_IF_FAILED(hr);
+
+            auto numberOfArguments = signature.NumberOfArguments();
+            auto numberOfTypeArguments = signature.NumberOfTypeArguments();
+            if (numberOfArguments < 8 && numberOfTypeArguments < 8)
+            {
+                const WSTRING prefixStr = "Trace_"_W;
+                WSTRING mdProbeWrapperName = prefixStr + WSTRING(mdProbeName);
+                mdMethodDef mdWrapper;
+                hr = pEmit->DefineMethod(
+                    typeToProb,
+                    mdProbeWrapperName.data(),
+                    pdwAttr,
+                    ppvSigBlob,
+                    pcbSigBlob,
+                    pulCodeRVA,
+                    pdwImplFlags,
+                    &mdWrapper);
+                RETURN_OK_IF_FAILED(hr);
+
+                if (numberOfTypeArguments > 0)
+                {
+                    hr = copyGenericParams(pImport, pEmit, mdProb, mdWrapper);
+                    RETURN_OK_IF_FAILED(hr);
+                }
+
+                if (numberOfArguments > 0)
+                {
+                    hr = copyParams(pImport, pEmit, mdProb, mdWrapper);
+                    RETURN_OK_IF_FAILED(hr);
+                }
+
+                LPCBYTE pMethodBytes;
+                ULONG pMethodSize;
+                hr = corProfilerInfo->GetILFunctionBody(moduleId, mdProb, &pMethodBytes, &pMethodSize);
+                RETURN_OK_IF_FAILED(hr);
+
+                IMethodMalloc* pIMethodMalloc;
+                hr = corProfilerInfo->GetILFunctionBodyAllocator(moduleId, &pIMethodMalloc);
+                RETURN_OK_IF_FAILED(hr);
+
+                auto pNewMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(pMethodSize);
+                memcpy(pNewMethodBytes, pMethodBytes, pMethodSize);
+                hr = corProfilerInfo->SetILFunctionBody(moduleId, mdWrapper, pNewMethodBytes);
+                RETURN_OK_IF_FAILED(hr);
+
+                auto pmi = getMethodToken(pEmit, pmr, numberOfTypeArguments);
+                auto pwMethodBytes = GetWrapperMethodIL(pIMethodMalloc, pmi, pdwAttr, signature);
+
+                hr = corProfilerInfo->SetILFunctionBody(moduleId, mdProb, pwMethodBytes);
+                RETURN_OK_IF_FAILED(hr);
+
+                pIMethodMalloc->Release();
+            }
         }
 
         return S_OK;
@@ -536,16 +529,6 @@ namespace trace {
             return S_OK;
         }
 
-        if (functionInfo.type.name == "Samples.RedisCore.Program"_W &&
-            functionInfo.name == "Test"_W) {
-            LPCBYTE pMethodBytes;
-            ULONG pMethodSize;
-            hr = corProfilerInfo->GetILFunctionBody(moduleId, function_token, &pMethodBytes, &pMethodSize);
-            RETURN_OK_IF_FAILED(hr);
-
-            Info(HexStr(pMethodBytes, pMethodSize));
-        }
-
         if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
             functionInfo.name == "ExecuteSyncImpl"_W) {
             
@@ -554,48 +537,47 @@ namespace trace {
                 return S_OK;
             }
 
-            auto signature = functionInfo.signature;
-            hr = signature.TryParse();
+            hr = functionInfo.signature.TryParse();
             RETURN_OK_IF_FAILED(hr);
 
             mdAssemblyRef assemblyRef;
             hr = GetProfilerAssemblyRef(metadata_interfaces, &assemblyRef);
             RETURN_OK_IF_FAILED(hr);
 
-            mdTypeDef traceAgentTypeDef;
+            mdTypeRef traceAgentTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 assemblyRef,
                 kTraceAgentTypeName,
-                &traceAgentTypeDef);
+                &traceAgentTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
             BYTE *data = new BYTE[4];
-            auto size = CorSigCompressToken(traceAgentTypeDef, &data[0]);
+            auto size = CorSigCompressToken(traceAgentTypeRef, &data[0]);
 
             ULONG sigLength = 2 + size;
-            COR_SIGNATURE * traceInstanceSig = new COR_SIGNATURE[sigLength];
+            auto traceInstanceSig = new COR_SIGNATURE[sigLength];
             traceInstanceSig[0] = IMAGE_CEE_CS_CALLCONV_DEFAULT;
             traceInstanceSig[1] = 0x00;
             memcpy(&traceInstanceSig[2], data, size);
 
             mdMemberRef getInstanceMemberRef;
             hr = pEmit->DefineMemberRef(
-                traceAgentTypeDef,
+                traceAgentTypeRef,
                 kGetInstanceMethodName,
                 traceInstanceSig,
                 sigLength,
                 &getInstanceMemberRef);
             RETURN_OK_IF_FAILED(hr);
 
-            mdTypeDef methodTraceTypeDef;
+            mdTypeRef methodTraceTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 assemblyRef,
                 kMethodTraceTypeName,
-                &methodTraceTypeDef);
+                &methodTraceTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
-            size = CorSigCompressToken(methodTraceTypeDef, &data[0]);
-            sigLength = 6 + size;
+            auto methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &data[0]);
+            sigLength = 6 + methodTraceTypeRefSize;
             COR_SIGNATURE* traceBeforeSig = new COR_SIGNATURE[sigLength];
             traceBeforeSig[0] = IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS | IMAGE_CEE_CS_CALLCONV_LOCAL_SIG;
             traceBeforeSig[1] = 0x03;
@@ -606,11 +588,9 @@ namespace trace {
             traceBeforeSig[offset++] = ELEMENT_TYPE_SZARRAY;
             traceBeforeSig[offset++] = ELEMENT_TYPE_OBJECT;
 
-            delete[] data;
-
             mdMemberRef beforeMemberRef;
             hr = pEmit->DefineMemberRef(
-                traceAgentTypeDef,
+                traceAgentTypeRef,
                 kBeforeMethodName,
                 traceBeforeSig,
                 sigLength,
@@ -627,25 +607,196 @@ namespace trace {
             };
             mdMemberRef endMemberRef;
             hr = pEmit->DefineMemberRef(
-                methodTraceTypeDef,
+                methodTraceTypeRef,
                 kEndMethodName,
                 traceEndSig,
                 sizeof(traceEndSig),
                 &endMemberRef);
             RETURN_OK_IF_FAILED(hr);
 
-            ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
-            IfFailRet(rewriter.Import());
+            auto pAssemblyImport = metadata_interfaces.As<IMetaDataAssemblyImport>(
+                IID_IMetaDataAssemblyImport);
 
-            mdToken localSigToken = rewriter.GetLocalVarSig();
+            if (pAssemblyImport.IsNull()) {
+                return S_OK;
+            }
+
+            mdAssemblyRef corLibAssemblyRef = FindCorLibAssemblyRef(pAssemblyImport);
+            if (corLibAssemblyRef == mdAssemblyRefNil) {
+                return S_OK;
+            }
+
+            mdTypeRef exTypeRef;
+            hr = pEmit->DefineTypeRefByName(
+                corLibAssemblyRef,
+                L"System.Exception",
+                &exTypeRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
+            RETURN_OK_IF_FAILED(rewriter.Import());
 
             //add local sig
+            PCCOR_SIGNATURE rgbOrigSig = NULL;
+            ULONG cbOrigSig = 0;
+            if (rewriter.m_tkLocalVarSig != mdTokenNil)
+            {
+                RETURN_OK_IF_FAILED(pImport->GetSigFromToken(rewriter.m_tkLocalVarSig, &rgbOrigSig, &cbOrigSig));
+            }
 
+            BYTE* tempdata = new BYTE[4];
+            auto exTypeRefSize = CorSigCompressToken(exTypeRef, &tempdata[0]);
+            methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &tempdata[0]);
+            ULONG cbNewSize = cbOrigSig + 1 + 1 + methodTraceTypeRefSize + 1 + exTypeRefSize;
+            ULONG cOrigLocals;
+            ULONG cNewLocalsLen;
+            ULONG cbOrigLocals;
 
-            //add try catch finally
+            if (cbOrigSig == 0) {
+                cbNewSize += 2;
+                rewriter.cNewLocals = 3;
+                cNewLocalsLen = CorSigCompressData(rewriter.cNewLocals, &tempdata[0]);
+            }
+            else {
+                cbOrigLocals = CorSigUncompressData(rgbOrigSig + 1, &cOrigLocals);
+                rewriter.cNewLocals = cOrigLocals + 3;
+                cNewLocalsLen = CorSigCompressData(rewriter.cNewLocals, &tempdata[0]);
+                cbNewSize += cNewLocalsLen - cbOrigLocals;
+            }
 
+            const auto rgbNewSig = new COR_SIGNATURE[cbNewSize];
+            *rgbNewSig = IMAGE_CEE_CS_CALLCONV_LOCAL_SIG;
 
-            IfFailRet(rewriter.Export());
+            ULONG rgbNewSigOffset = 1;
+            memcpy(rgbNewSig + rgbNewSigOffset, tempdata, cNewLocalsLen);
+            rgbNewSigOffset += cNewLocalsLen;
+
+            if (cbOrigSig > 0) {
+                const auto cbOrigCopyLen = cbOrigSig - 1 - cbOrigLocals;
+                memcpy(rgbNewSig + rgbNewSigOffset, rgbOrigSig + 1 + cbOrigLocals, cbOrigCopyLen);
+                rgbNewSigOffset += cbOrigCopyLen;
+            }
+
+            rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_OBJECT;
+            rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_CLASS;
+            exTypeRefSize = CorSigCompressToken(exTypeRef, &tempdata[0]);
+            memcpy(rgbNewSig + rgbNewSigOffset, tempdata, exTypeRefSize);
+            rgbNewSigOffset += exTypeRefSize;
+            rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_CLASS;
+            methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &tempdata[0]);
+            memcpy(rgbNewSig + rgbNewSigOffset, tempdata, methodTraceTypeRefSize);
+            rgbNewSigOffset += methodTraceTypeRefSize;
+
+            RETURN_OK_IF_FAILED(pEmit->GetTokenFromSig(&rgbNewSig[0], cbNewSize, &(rewriter.m_tkLocalVarSig)));
+
+            //add call beforemethod il  issue typeloadexption need to be solved
+            auto pilr = &rewriter;
+            ILInstr * pFirstOriginalInstr = pilr->GetILList()->m_pNext;
+            ILInstr * pNewInstr = nullptr;
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_LDNULL;
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            pNewInstr = pilr->NewILInstr();
+            rewriter.CalcLdLocalInstr(pNewInstr, rewriter.cNewLocals - 3);
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_LDNULL;
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            pNewInstr = pilr->NewILInstr();
+            rewriter.CalcLdLocalInstr(pNewInstr, rewriter.cNewLocals - 2);
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_LDNULL;
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            pNewInstr = pilr->NewILInstr();
+            rewriter.CalcLdLocalInstr(pNewInstr, rewriter.cNewLocals - 1);
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_CALL;
+            pNewInstr->m_Arg32 = getInstanceMemberRef;
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            mdString textToken;
+            hr = pEmit->DefineUserString(functionInfo.name.data(), (ULONG)functionInfo.name.size(), &textToken);
+            RETURN_OK_IF_FAILED(hr);
+
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_LDSTR;
+            pNewInstr->m_Arg32 = textToken;
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_LDARG_0;
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            auto argNum = functionInfo.signature.NumberOfArguments();
+
+            pNewInstr = pilr->NewILInstr();
+            rewriter.CalcLdcI4Instr(pNewInstr, argNum);
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            mdTypeRef objectTypeRef;
+            hr = pEmit->DefineTypeRefByName(
+                corLibAssemblyRef,
+                L"System.Object",
+                &objectTypeRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_NEWARR;
+            pNewInstr->m_Arg32 = objectTypeRef;
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            auto arguments = functionInfo.signature.GetMethodArguments();
+            for (unsigned i = 0; i < argNum; i++) {
+              
+                pNewInstr = pilr->NewILInstr();
+                pNewInstr->m_opcode = CEE_DUP;
+                pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+                pNewInstr = pilr->NewILInstr();
+                rewriter.CalcLdcI4Instr(pNewInstr, i);
+                pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+                pNewInstr = pilr->NewILInstr();
+                rewriter.CalcLdArgInstr(pNewInstr, i + 1);
+                pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+                if(arguments[i].IsBoxedType()) {
+                    pNewInstr = pilr->NewILInstr();
+                    pNewInstr->m_opcode = CEE_BOX;
+                    pNewInstr->m_Arg32 = arguments[i].GetTypeTok(pImport, pEmit, corLibAssemblyRef);
+                    pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+                }
+
+                pNewInstr = pilr->NewILInstr();
+                pNewInstr->m_opcode = CEE_STELEM_REF;
+                pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+            }
+
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_CALLVIRT;
+            pNewInstr->m_Arg32 = beforeMemberRef;
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            pNewInstr = pilr->NewILInstr();
+            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 1);
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            hr = rewriter.Export();
+            RETURN_OK_IF_FAILED(hr);
+
+            LPCBYTE pMethodBytes;
+            ULONG pMethodSize;
+            hr = corProfilerInfo->GetILFunctionBody(moduleId, function_token, &pMethodBytes, &pMethodSize);
+            RETURN_OK_IF_FAILED(hr);
+            Info(HexStr(pMethodBytes, pMethodSize));
         }
 
         return  S_OK;

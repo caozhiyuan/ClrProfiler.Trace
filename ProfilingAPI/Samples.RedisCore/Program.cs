@@ -19,26 +19,12 @@ namespace Samples.RedisCore
                 Console.WriteLine(ex.Message);
             }
 
-            Program program = new Program();
-            var c = program.Test("111", 1, 1);
-            Console.WriteLine(c.ToString());
-
             RunStackExchange("StackExchange").Wait();
         }
 
         private static string Host()
         {
             return Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost";
-        }
-
-        //20 03 1d080e 15 11 4501 08 08
-        private int[] Test2(string a, int? b, int c)
-        {
-            var arr = new object[] {a, b, c};
-            Console.WriteLine(arr.ToString());
-            var test = new int[] {1};
-            object ret = test;
-            return (int[]) ret;
         }
 
         public string Test(string a, int? b, int c)

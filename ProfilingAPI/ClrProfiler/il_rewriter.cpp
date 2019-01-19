@@ -2,11 +2,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full
 // license information.
 
+#include "il_rewriter.h"
 #include <cassert>
 #include <corhlpr.cpp>
-
-#include "il_rewriter.h"
-#include "logging.h"
+#include <iostream>
 
 #undef IfFailRet
 #define IfFailRet(EXPR)  \
@@ -614,3 +613,98 @@ void ILRewriter::DeallocateILMemory(LPBYTE pBody) {
 
   delete[] pBody;
 }
+
+void ILRewriter::CalcLdLocalInstr(ILInstr* ilInstr, unsigned index) {
+
+    if (index == 0) {
+        ilInstr->m_opcode = CEE_LDLOC_0;
+    }
+    else if (index == 1) {
+        ilInstr->m_opcode = CEE_LDLOC_1;
+    }
+    else if (index == 2) {
+        ilInstr->m_opcode = CEE_LDLOC_2;
+    }
+    else if (index == 3) {
+        ilInstr->m_opcode = CEE_LDLOC_3;
+    }
+    else if (index >= 4 && index <= 255) {
+        ilInstr->m_opcode = CEE_LDLOC_S;
+        ilInstr->m_Arg8 = index;
+    }
+    else {
+        ilInstr->m_opcode = CEE_LDLOC;
+        ilInstr->m_Arg16 = index;
+    }
+};
+
+void ILRewriter::CalcLdcI4Instr(ILInstr* ilInstr, unsigned index) {
+
+    if (index == 0) {
+        ilInstr->m_opcode = CEE_LDC_I4_0;
+    }
+    else if (index == 1) {
+        ilInstr->m_opcode = CEE_LDC_I4_1;
+    }
+    else if (index == 2) {
+        ilInstr->m_opcode = CEE_LDC_I4_2;
+    }
+    else if (index == 3) {
+        ilInstr->m_opcode = CEE_LDC_I4_3;
+    }
+    else if (index >= 4 && index <= 255) {
+        ilInstr->m_opcode = CEE_LDC_I4_S;
+        ilInstr->m_Arg8 = index;
+    }
+    else {
+        ilInstr->m_opcode = CEE_LDC_I4;
+        ilInstr->m_Arg16 = index;
+    }
+};
+
+void ILRewriter::CalcStLocalInstr(ILInstr* ilInstr, unsigned index) {
+    if (index == 0) {
+        ilInstr->m_opcode = CEE_STLOC;
+    }
+    else if (index == 1) {
+        ilInstr->m_opcode = CEE_STLOC_1;
+    }
+    else if (index == 2) {
+        ilInstr->m_opcode = CEE_STLOC_2;
+    }
+    else if (index == 3) {
+        ilInstr->m_opcode = CEE_STLOC_3;
+    }
+    else if (index >= 4 && index <= 255) {
+        ilInstr->m_opcode = CEE_STLOC_S;
+        ilInstr->m_Arg8 = index;
+    }
+    else {
+        ilInstr->m_opcode = CEE_STLOC;
+        ilInstr->m_Arg16 = index;
+    }
+}
+
+void ILRewriter::CalcLdArgInstr(ILInstr* ilInstr, unsigned index) {
+
+    if (index == 0) {
+        ilInstr->m_opcode = CEE_LDARG_0;
+    }
+    else if (index == 1) {
+        ilInstr->m_opcode = CEE_LDARG_1;
+    }
+    else if (index == 2) {
+        ilInstr->m_opcode = CEE_LDARG_2;
+    }
+    else if (index == 3) {
+        ilInstr->m_opcode = CEE_LDARG_3;
+    }
+    else if (index >= 4 && index <= 255) {
+        ilInstr->m_opcode = CEE_LDARG_S;
+        ilInstr->m_Arg8 = index;
+    }
+    else {
+        ilInstr->m_opcode = CEE_LDARG;
+        ilInstr->m_Arg16 = index;
+    }
+};

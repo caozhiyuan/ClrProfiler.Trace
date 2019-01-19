@@ -4,9 +4,11 @@
 // Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full
 // license information.
-
+#include <cassert>
 #include <corhlpr.h>
 #include <corprof.h>
+#include "CComPtr.h"
+#include "logging.h"
 
 typedef enum {
 #define OPDEF(c, s, pop, push, args, type, l, s1, s2, ctrl) c,
@@ -54,15 +56,12 @@ class ILRewriter {
   ModuleID m_moduleId;
   mdToken m_tkMethod;
 
-  mdToken m_tkLocalVarSig;
   unsigned m_maxStack;
   unsigned m_flags;
   bool m_fGenerateTinyHeader;
 
   ILInstr m_IL;  // Double linked list of all il instructions
 
-  unsigned m_nEH;
-  EHClause* m_pEH;
 
   // Helper table for importing.  Sparse array that maps BYTE offset of
   // beginning of an instruction to that instruction's ILInstr*.  BYTE offsets
@@ -84,19 +83,11 @@ class ILRewriter {
 
   ~ILRewriter();
 
-  mdToken GetLocalVarSig() const { return  m_tkLocalVarSig;}
-  void SetLocalVarSig(mdToken localVarSig) { m_tkLocalVarSig = localVarSig; }
-  void AddEHClause(EHClause pEH) {
+  mdToken m_tkLocalVarSig;
+  ULONG cNewLocals = 3;
 
-      m_nEH += 1;
-      const auto kpEH = new EHClause[m_nEH];
-      for (unsigned i = 0; i < m_nEH - 1; i++) {
-          kpEH[i] = m_pEH[i];
-      }
-      kpEH[m_nEH - 1] = pEH;
-      delete[] m_pEH;
-      m_pEH = kpEH;
-  }
+  unsigned m_nEH;
+  EHClause* m_pEH;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   //
@@ -135,6 +126,14 @@ class ILRewriter {
   LPBYTE AllocateILMemory(unsigned size);
 
   void DeallocateILMemory(LPBYTE pBody);
+
+  static void CalcLdLocalInstr(ILInstr* ilInstr, unsigned index);
+
+  static void CalcLdcI4Instr(ILInstr* ilInstr, unsigned index);
+
+  static void CalcLdArgInstr(ILInstr* ilInstr, unsigned index);
+
+  static void CalcStLocalInstr(ILInstr* ilInstr, unsigned index);
 };
 
 #endif  // CLR_PROFILER_IL_REWRITER_H_

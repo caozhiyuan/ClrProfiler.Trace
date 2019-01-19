@@ -258,13 +258,13 @@ namespace trace {
 
     struct MethodSignature {
     private:
+        PCCOR_SIGNATURE pbBase;
+        unsigned len;
         ULONG numberOfTypeArguments = 0;
         ULONG numberOfArguments = 0;     
         MethodArgument ret{};
         std::vector<MethodArgument> params;
     public:
-        PCCOR_SIGNATURE pbBase;
-        unsigned len;
         MethodSignature(): pbBase(nullptr), len(0){}
         MethodSignature(PCCOR_SIGNATURE pb, unsigned cbBuffer) {
             pbBase = pb;
@@ -291,7 +291,7 @@ namespace trace {
         const mdToken id;
         const WSTRING name;
         const TypeInfo type;
-        const MethodSignature signature;
+        MethodSignature signature;
 
         FunctionInfo() : id(0), name(""_W), type({}), signature() {}
         FunctionInfo(mdToken id, WSTRING name, TypeInfo type,

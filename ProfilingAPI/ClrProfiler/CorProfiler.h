@@ -8,6 +8,7 @@
 #include "corprof.h"
 #include "CComPtr.h"
 #include "clr_helpers.h"
+#include "il_rewriter.h"
 
 namespace trace {
 
@@ -149,7 +150,5 @@ namespace trace {
 
             return count;
         }
-
-        HRESULT MethodWrapperSample(ModuleID moduleId, CComPtr<IUnknown>& metadata_interfaces) const;
     };
 }

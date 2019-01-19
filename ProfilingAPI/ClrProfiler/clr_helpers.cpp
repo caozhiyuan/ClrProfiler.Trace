@@ -413,7 +413,6 @@ namespace trace
         ret.length = (ULONG)(pbCur - pbRet);
         ret.offset = (ULONG)(pbCur - pbBase - ret.length);
 
-        params = std::vector<MethodArgument>(param_count);
         auto fEncounteredSentinal = false;
         for (unsigned i = 0; i < param_count; i++) {
             if (pbCur >= pbEnd)
@@ -445,7 +444,7 @@ namespace trace
     bool MethodArgument::IsBoxedType() const {
        
         bool flag = false;
-        PCCOR_SIGNATURE pbCur = pbBase + offset;
+        PCCOR_SIGNATURE pbCur = &pbBase[offset];
 
         if (*pbCur == ELEMENT_TYPE_BYREF) {
             pbCur++;
@@ -487,7 +486,7 @@ namespace trace
         CComPtr<IMetaDataEmit2>& pEmit, mdAssemblyRef corLibRef) const {
 
         mdToken token = mdTokenNil;
-        PCCOR_SIGNATURE pbCur = pbBase + offset;
+        PCCOR_SIGNATURE pbCur = &pbBase[offset];
 
         if (*pbCur == ELEMENT_TYPE_BYREF) {
             pbCur++;

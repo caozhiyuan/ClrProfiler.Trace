@@ -11,6 +11,9 @@
     <Description>Automatic instrumentation library used by .NET Tracer for Datadog APM. Requires separate native library that implements the CLR Profiling API.</Description>
     <Authors>lucas.pimentel.datadog</Authors>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\Datadog.Trace.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
