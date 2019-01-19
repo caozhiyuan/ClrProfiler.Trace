@@ -6,6 +6,7 @@
 #include <cassert>
 #include <corhlpr.cpp>
 #include <iostream>
+#include <vector>
 
 #undef IfFailRet
 #define IfFailRet(EXPR)  \
@@ -614,97 +615,90 @@ void ILRewriter::DeallocateILMemory(LPBYTE pBody) {
   delete[] pBody;
 }
 
-void ILRewriter::CalcLdLocalInstr(ILInstr* ilInstr, unsigned index) {
+void ILRewriter::CalcLdLocalInstr(ILInstr* pNewInstr, unsigned index) {
 
-    if (index == 0) {
-        ilInstr->m_opcode = CEE_LDLOC_0;
+    static const std::vector<OPCODE> opcodes = {
+              CEE_LDLOC_0,
+              CEE_LDLOC_1,
+              CEE_LDLOC_2,
+              CEE_LDLOC_3,
+    };
+
+    if (index >= 0 && index <= 3) {
+        pNewInstr->m_opcode = opcodes[index];
     }
-    else if (index == 1) {
-        ilInstr->m_opcode = CEE_LDLOC_1;
-    }
-    else if (index == 2) {
-        ilInstr->m_opcode = CEE_LDLOC_2;
-    }
-    else if (index == 3) {
-        ilInstr->m_opcode = CEE_LDLOC_3;
-    }
-    else if (index >= 4 && index <= 255) {
-        ilInstr->m_opcode = CEE_LDLOC_S;
-        ilInstr->m_Arg8 = index;
+    else if (index <= 255) {
+        pNewInstr->m_opcode = CEE_LDLOC_S;
+        pNewInstr->m_Arg8 = static_cast<UINT8>(index);
     }
     else {
-        ilInstr->m_opcode = CEE_LDLOC;
-        ilInstr->m_Arg16 = index;
+        pNewInstr->m_opcode = CEE_LDLOC;
+        pNewInstr->m_Arg16 = index;
+    }
+
+};
+
+void ILRewriter::CalcLdcI4Instr(ILInstr* pNewInstr, const INT32 value) {
+
+    static const std::vector<OPCODE> opcodes = {
+     CEE_LDC_I4_0, CEE_LDC_I4_1, CEE_LDC_I4_2, CEE_LDC_I4_3, CEE_LDC_I4_4,
+     CEE_LDC_I4_5, CEE_LDC_I4_6, CEE_LDC_I4_7, CEE_LDC_I4_8,
+    };
+
+    if (value >= 0 && value <= 8) {
+        pNewInstr->m_opcode = opcodes[value];
+    }
+    else if (-128 <= value && value <= 127) {
+        pNewInstr->m_opcode = CEE_LDC_I4_S;
+        pNewInstr->m_Arg8 = static_cast<INT8>(value);
+    }
+    else {
+        pNewInstr->m_opcode = CEE_LDC_I4;
+        pNewInstr->m_Arg32 = value;
     }
 };
 
-void ILRewriter::CalcLdcI4Instr(ILInstr* ilInstr, unsigned index) {
+void ILRewriter::CalcStLocalInstr(ILInstr* pNewInstr, unsigned index) {
 
-    if (index == 0) {
-        ilInstr->m_opcode = CEE_LDC_I4_0;
+    static const std::vector<OPCODE> opcodes = {
+            CEE_STLOC_0,
+            CEE_STLOC_1,
+            CEE_STLOC_2,
+            CEE_STLOC_3,
+    };
+
+    if (index >= 0 && index <= 3) {
+        pNewInstr->m_opcode = opcodes[index];
     }
-    else if (index == 1) {
-        ilInstr->m_opcode = CEE_LDC_I4_1;
-    }
-    else if (index == 2) {
-        ilInstr->m_opcode = CEE_LDC_I4_2;
-    }
-    else if (index == 3) {
-        ilInstr->m_opcode = CEE_LDC_I4_3;
-    }
-    else if (index >= 4 && index <= 255) {
-        ilInstr->m_opcode = CEE_LDC_I4_S;
-        ilInstr->m_Arg8 = index;
+    else if (index <= 255) {
+        pNewInstr->m_opcode = CEE_STLOC_S;
+        pNewInstr->m_Arg8 = static_cast<UINT8>(index);
     }
     else {
-        ilInstr->m_opcode = CEE_LDC_I4;
-        ilInstr->m_Arg16 = index;
-    }
-};
-
-void ILRewriter::CalcStLocalInstr(ILInstr* ilInstr, unsigned index) {
-    if (index == 0) {
-        ilInstr->m_opcode = CEE_STLOC;
-    }
-    else if (index == 1) {
-        ilInstr->m_opcode = CEE_STLOC_1;
-    }
-    else if (index == 2) {
-        ilInstr->m_opcode = CEE_STLOC_2;
-    }
-    else if (index == 3) {
-        ilInstr->m_opcode = CEE_STLOC_3;
-    }
-    else if (index >= 4 && index <= 255) {
-        ilInstr->m_opcode = CEE_STLOC_S;
-        ilInstr->m_Arg8 = index;
-    }
-    else {
-        ilInstr->m_opcode = CEE_STLOC;
-        ilInstr->m_Arg16 = index;
+        pNewInstr->m_opcode = CEE_STLOC;
+        pNewInstr->m_Arg16 = index;
     }
 }
 
-void ILRewriter::CalcLdArgInstr(ILInstr* ilInstr, unsigned index) {
+void ILRewriter::CalcLdArgInstr(ILInstr* pNewInstr, unsigned index) {
 
-    if (index == 0) {
-        ilInstr->m_opcode = CEE_LDARG_0;
+    static const std::vector<OPCODE> opcodes = {
+         CEE_LDARG_0,
+         CEE_LDARG_1,
+         CEE_LDARG_2,
+         CEE_LDARG_3,
+    };
+
+    if (index >= 0 && index <= 3) {
+        pNewInstr->m_opcode = opcodes[index];
     }
-    else if (index == 1) {
-        ilInstr->m_opcode = CEE_LDARG_1;
-    }
-    else if (index == 2) {
-        ilInstr->m_opcode = CEE_LDARG_2;
-    }
-    else if (index == 3) {
-        ilInstr->m_opcode = CEE_LDARG_3;
-    }
-    else if (index >= 4 && index <= 255) {
-        ilInstr->m_opcode = CEE_LDARG_S;
-        ilInstr->m_Arg8 = index;
+    else if (index <= 255) {
+        pNewInstr->m_opcode = CEE_LDARG_S;
+        pNewInstr->m_Arg8 = static_cast<UINT8>(index);
     }
     else {
-        ilInstr->m_opcode = CEE_LDARG;
-        ilInstr->m_Arg16 = index;
+        pNewInstr->m_opcode = CEE_LDARG;
+        pNewInstr->m_Arg16 = index;
     }
+
 };

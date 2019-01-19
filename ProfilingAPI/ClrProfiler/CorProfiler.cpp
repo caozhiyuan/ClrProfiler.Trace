@@ -105,8 +105,10 @@ namespace trace {
     }
 
     HRESULT copyGenericParams(CComPtr<IMetaDataImport2>& pImport, CComPtr<IMetaDataEmit2>& pEmit, 
-        mdMethodDef mdProb, mdMethodDef mdWrapper)
+        mdMethodDef mdProb, mdMethodDef mdWrapper, 
+        int* ptOwnerTypes)
     {
+        int i = 0;
         for (mdGenericParam kmdGenericParam : EnumGenericParams(pImport,mdProb)) 
         {
             WCHAR paramName[kNameMaxSize];
@@ -125,6 +127,13 @@ namespace trace {
                 &pchName);
 
             IfFailRet(hr);
+
+           if(TypeFromToken(ptOwner) == mdtMethodDef){
+               ptOwnerTypes[i++] = 0;
+           }
+           else{
+               ptOwnerTypes[i++] = 1;
+           }
 
             std::vector<mdToken> ptkConstraintTypes;
             for (mdGenericParamConstraint element : EnumGenericParamConstraints(pImport, kmdGenericParam)) 
@@ -150,7 +159,6 @@ namespace trace {
 
             IfFailRet(hr);
         }
-
         return S_OK;
     }
 
@@ -194,32 +202,38 @@ namespace trace {
         return S_OK;
     }
 
-    mdToken getMethodToken(CComPtr<IMetaDataEmit2>& pEmit, mdMemberRef pmr, ULONG numberOfTypeArguments) 
+    mdToken getMethodToken(CComPtr<IMetaDataEmit2>& pEmit, mdMemberRef pmr, 
+        ULONG numberOfTypeArguments, 
+        int* genericParamOwnerTypes)
     {
         if (numberOfTypeArguments == 0)
             return pmr;
 
-        BYTE *data = new BYTE[4];
-        const auto dataSize = CorSigCompressData(numberOfTypeArguments, data);
+        UNALIGNED INT32 temp = 0;
+        const auto dataSize = CorSigCompressData(numberOfTypeArguments, &temp);
         const ULONG signature_len = numberOfTypeArguments * 2 + 1 + dataSize;
         BYTE* signature = new BYTE[signature_len];
 
         signature[0] = (BYTE)IMAGE_CEE_CS_CALLCONV_GENERICINST;
 
-        memcpy(signature + 1, data, dataSize);
-
-        delete[] data;
+        memcpy(signature + 1, &temp, dataSize);
 
         ULONG offset = 1 + dataSize;
-        for (ULONG i = 0; i < numberOfTypeArguments; i++)
-        {
-            signature[offset++] = (BYTE)ELEMENT_TYPE_MVAR;
-            signature[offset++] = (BYTE)0x00;
+        for (ULONG i = 0; i < numberOfTypeArguments; i++) {
+            if(genericParamOwnerTypes[i] == 0) {
+                signature[offset++] = (BYTE)ELEMENT_TYPE_MVAR;
+            }
+            else {
+                signature[offset++] = (BYTE)ELEMENT_TYPE_VAR;
+            }
+            const auto size = CorSigCompressData(i, &temp);
+            memcpy(signature + offset, &temp, size);
+            offset += size;
         }
 
-        mdMethodSpec kpmi;
-        auto hr = pEmit->DefineMethodSpec(pmr, signature, signature_len, &kpmi);
-        RETURN_OK_IF_FAILED(hr);
+        mdMethodSpec kpmi = mdMethodSpecNil;
+        pEmit->DefineMethodSpec(pmr, signature, signature_len, &kpmi);
+
         return kpmi;
     }
 
@@ -318,6 +332,10 @@ namespace trace {
     {
         auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
         if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {
+            return S_OK;
+        }
+
+        if (module_info.assembly.name == "StackExchange.Redis"_W) {
             return S_OK;
         }
 
@@ -421,9 +439,10 @@ namespace trace {
                     &mdWrapper);
                 RETURN_OK_IF_FAILED(hr);
 
+                int* genericParamOwnerTypes = new int[numberOfTypeArguments];
                 if (numberOfTypeArguments > 0)
                 {
-                    hr = copyGenericParams(pImport, pEmit, mdProb, mdWrapper);
+                    hr = copyGenericParams(pImport, pEmit, mdProb, mdWrapper, genericParamOwnerTypes);
                     RETURN_OK_IF_FAILED(hr);
                 }
 
@@ -447,7 +466,10 @@ namespace trace {
                 hr = corProfilerInfo->SetILFunctionBody(moduleId, mdWrapper, pNewMethodBytes);
                 RETURN_OK_IF_FAILED(hr);
 
-                auto pmi = getMethodToken(pEmit, pmr, numberOfTypeArguments);
+                auto pmi = getMethodToken(pEmit, pmr, numberOfTypeArguments, genericParamOwnerTypes);
+                if(pmi == mdMethodSpecNil) {
+                    RETURN_OK_IF_FAILED(S_FALSE);
+                }
                 auto pwMethodBytes = GetWrapperMethodIL(pIMethodMalloc, pmi, pdwAttr, signature);
 
                 hr = corProfilerInfo->SetILFunctionBody(moduleId, mdProb, pwMethodBytes);
@@ -502,16 +524,15 @@ namespace trace {
 
     HRESULT STDMETHODCALLTYPE CorProfiler::JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock)
     {
-        CComPtr<IUnknown> metadata_interfaces;
         mdToken function_token = mdTokenNil;
-        auto hr = this->corProfilerInfo->GetTokenAndMetaDataFromFunction(functionId,
-            IID_IMetaDataImport2,
-            metadata_interfaces.GetAddressOf(),
-            &function_token);
+        ModuleID moduleId;
+        auto hr = corProfilerInfo->GetFunctionInfo(functionId, NULL, &moduleId, &function_token);
         RETURN_OK_IF_FAILED(hr);
 
-        ModuleID moduleId;
-        hr = corProfilerInfo->GetFunctionInfo(functionId, NULL, &moduleId, &function_token);
+        CComPtr<IUnknown> metadata_interfaces;
+        hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
+            IID_IMetaDataImport2,
+            metadata_interfaces.GetAddressOf());
         RETURN_OK_IF_FAILED(hr);
 
         auto pImport = metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
@@ -551,14 +572,14 @@ namespace trace {
                 &traceAgentTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
-            BYTE *data = new BYTE[4];
-            auto size = CorSigCompressToken(traceAgentTypeRef, &data[0]);
+            UNALIGNED INT32 temp = 0;
+            auto size = CorSigCompressToken(traceAgentTypeRef, &temp);
 
             ULONG sigLength = 2 + size;
             auto traceInstanceSig = new COR_SIGNATURE[sigLength];
             traceInstanceSig[0] = IMAGE_CEE_CS_CALLCONV_DEFAULT;
             traceInstanceSig[1] = 0x00;
-            memcpy(&traceInstanceSig[2], data, size);
+            memcpy(&traceInstanceSig[2], &temp, size);
 
             mdMemberRef getInstanceMemberRef;
             hr = pEmit->DefineMemberRef(
@@ -576,12 +597,12 @@ namespace trace {
                 &methodTraceTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
-            auto methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &data[0]);
+            auto methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
             sigLength = 6 + methodTraceTypeRefSize;
             COR_SIGNATURE* traceBeforeSig = new COR_SIGNATURE[sigLength];
             traceBeforeSig[0] = IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS | IMAGE_CEE_CS_CALLCONV_LOCAL_SIG;
             traceBeforeSig[1] = 0x03;
-            memcpy(&traceBeforeSig[2], data, size);
+            memcpy(&traceBeforeSig[2], &temp, size);
             unsigned offset = 2 + size;
             traceBeforeSig[offset++] = ELEMENT_TYPE_STRING;
             traceBeforeSig[offset++] = ELEMENT_TYPE_OBJECT;
@@ -644,9 +665,8 @@ namespace trace {
                 RETURN_OK_IF_FAILED(pImport->GetSigFromToken(rewriter.m_tkLocalVarSig, &rgbOrigSig, &cbOrigSig));
             }
 
-            BYTE* tempdata = new BYTE[4];
-            auto exTypeRefSize = CorSigCompressToken(exTypeRef, &tempdata[0]);
-            methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &tempdata[0]);
+            auto exTypeRefSize = CorSigCompressToken(exTypeRef, &temp);
+            methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
             ULONG cbNewSize = cbOrigSig + 1 + 1 + methodTraceTypeRefSize + 1 + exTypeRefSize;
             ULONG cOrigLocals;
             ULONG cNewLocalsLen;
@@ -655,12 +675,12 @@ namespace trace {
             if (cbOrigSig == 0) {
                 cbNewSize += 2;
                 rewriter.cNewLocals = 3;
-                cNewLocalsLen = CorSigCompressData(rewriter.cNewLocals, &tempdata[0]);
+                cNewLocalsLen = CorSigCompressData(rewriter.cNewLocals, &temp);
             }
             else {
                 cbOrigLocals = CorSigUncompressData(rgbOrigSig + 1, &cOrigLocals);
                 rewriter.cNewLocals = cOrigLocals + 3;
-                cNewLocalsLen = CorSigCompressData(rewriter.cNewLocals, &tempdata[0]);
+                cNewLocalsLen = CorSigCompressData(rewriter.cNewLocals, &temp);
                 cbNewSize += cNewLocalsLen - cbOrigLocals;
             }
 
@@ -668,7 +688,7 @@ namespace trace {
             *rgbNewSig = IMAGE_CEE_CS_CALLCONV_LOCAL_SIG;
 
             ULONG rgbNewSigOffset = 1;
-            memcpy(rgbNewSig + rgbNewSigOffset, tempdata, cNewLocalsLen);
+            memcpy(rgbNewSig + rgbNewSigOffset, &temp, cNewLocalsLen);
             rgbNewSigOffset += cNewLocalsLen;
 
             if (cbOrigSig > 0) {
@@ -679,17 +699,17 @@ namespace trace {
 
             rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_OBJECT;
             rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_CLASS;
-            exTypeRefSize = CorSigCompressToken(exTypeRef, &tempdata[0]);
-            memcpy(rgbNewSig + rgbNewSigOffset, tempdata, exTypeRefSize);
+            exTypeRefSize = CorSigCompressToken(exTypeRef, &temp);
+            memcpy(rgbNewSig + rgbNewSigOffset, &temp, exTypeRefSize);
             rgbNewSigOffset += exTypeRefSize;
             rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_CLASS;
-            methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &tempdata[0]);
-            memcpy(rgbNewSig + rgbNewSigOffset, tempdata, methodTraceTypeRefSize);
+            methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
+            memcpy(rgbNewSig + rgbNewSigOffset, &temp, methodTraceTypeRefSize);
             rgbNewSigOffset += methodTraceTypeRefSize;
 
             RETURN_OK_IF_FAILED(pEmit->GetTokenFromSig(&rgbNewSig[0], cbNewSize, &(rewriter.m_tkLocalVarSig)));
 
-            //add call beforemethod il  issue typeloadexption need to be solved
+            //add call beforemethod il 
             auto pilr = &rewriter;
             ILInstr * pFirstOriginalInstr = pilr->GetILList()->m_pNext;
             ILInstr * pNewInstr = nullptr;
@@ -698,7 +718,7 @@ namespace trace {
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             pNewInstr = pilr->NewILInstr();
-            rewriter.CalcLdLocalInstr(pNewInstr, rewriter.cNewLocals - 3);
+            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 3);
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             pNewInstr = pilr->NewILInstr();
@@ -706,7 +726,7 @@ namespace trace {
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             pNewInstr = pilr->NewILInstr();
-            rewriter.CalcLdLocalInstr(pNewInstr, rewriter.cNewLocals - 2);
+            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 2);
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             pNewInstr = pilr->NewILInstr();
@@ -714,7 +734,7 @@ namespace trace {
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             pNewInstr = pilr->NewILInstr();
-            rewriter.CalcLdLocalInstr(pNewInstr, rewriter.cNewLocals - 1);
+            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 1);
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             pNewInstr = pilr->NewILInstr();
@@ -723,7 +743,8 @@ namespace trace {
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             mdString textToken;
-            hr = pEmit->DefineUserString(functionInfo.name.data(), (ULONG)functionInfo.name.size(), &textToken);
+            auto methodName = functionInfo.name.data();
+            hr = pEmit->DefineUserString(methodName, (ULONG)wcslen(methodName), &textToken);
             RETURN_OK_IF_FAILED(hr);
 
             pNewInstr = pilr->NewILInstr();
@@ -787,6 +808,10 @@ namespace trace {
 
             pNewInstr = pilr->NewILInstr();
             rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 1);
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_NOP;
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             hr = rewriter.Export();

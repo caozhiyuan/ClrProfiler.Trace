@@ -129,7 +129,7 @@ class ILRewriter {
 
   static void CalcLdLocalInstr(ILInstr* ilInstr, unsigned index);
 
-  static void CalcLdcI4Instr(ILInstr* ilInstr, unsigned index);
+  static void CalcLdcI4Instr(ILInstr* ilInstr, const INT32 index);
 
   static void CalcLdArgInstr(ILInstr* ilInstr, unsigned index);
 
