@@ -340,6 +340,7 @@ namespace trace {
         }
 
         if (module_info.assembly.name == "StackExchange.Redis"_W) {
+            //1. we try wapper a method and trace it. this is a sample
 
             CComPtr<IUnknown> metadata_interfaces;
             auto hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
