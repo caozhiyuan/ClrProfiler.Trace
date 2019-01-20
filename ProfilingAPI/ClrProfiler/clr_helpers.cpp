@@ -65,10 +65,10 @@ Number ::= 29-bit-encoded-integer
 #include "logging.h"
 #include "macros.h"
 
-#undef IfFalseRet
-#define IfFalseRet(EXPR)                       \
+#undef IfFalseRetFAIL
+#define IfFalseRetFAIL(EXPR)                       \
   do {                                        \
-    if ((EXPR) == false) return S_FALSE; \
+    if ((EXPR) == false) return E_FAIL; \
   } while (0)
 
 namespace trace
@@ -394,20 +394,20 @@ namespace trace
         PCCOR_SIGNATURE pbCur = pbBase;
         PCCOR_SIGNATURE pbEnd = pbBase + len;
         unsigned char elem_type;
-        IfFalseRet(ParseByte(pbCur, pbEnd, &elem_type));
+        IfFalseRetFAIL(ParseByte(pbCur, pbEnd, &elem_type));
         if (elem_type & IMAGE_CEE_CS_CALLCONV_GENERIC) {
             unsigned gen_param_count;
-            IfFalseRet(ParseNumber(pbCur, pbEnd, &gen_param_count));
+            IfFalseRetFAIL(ParseNumber(pbCur, pbEnd, &gen_param_count));
             numberOfTypeArguments = gen_param_count;
         }
 
         unsigned param_count;
-        IfFalseRet(ParseNumber(pbCur, pbEnd, &param_count));
+        IfFalseRetFAIL(ParseNumber(pbCur, pbEnd, &param_count));
         numberOfArguments = param_count;
 
         const PCCOR_SIGNATURE pbRet = pbCur;
 
-        IfFalseRet(ParseRetType(pbCur, pbEnd));
+        IfFalseRetFAIL(ParseRetType(pbCur, pbEnd));
 
         ret.pbBase = pbBase;
         ret.length = (ULONG)(pbCur - pbRet);
@@ -416,11 +416,11 @@ namespace trace
         auto fEncounteredSentinal = false;
         for (unsigned i = 0; i < param_count; i++) {
             if (pbCur >= pbEnd)
-                return S_FALSE;
+                return E_FAIL;
 
             if (*pbCur == ELEMENT_TYPE_SENTINEL) {
                 if (fEncounteredSentinal)
-                    return S_FALSE;
+                    return E_FAIL;
 
                 fEncounteredSentinal = true;
                 pbCur++;
@@ -428,7 +428,7 @@ namespace trace
 
             const PCCOR_SIGNATURE pbParam = pbCur;
 
-            IfFalseRet(ParseParam(pbCur, pbEnd));
+            IfFalseRetFAIL(ParseParam(pbCur, pbEnd));
 
             MethodArgument argument{};
             argument.pbBase = pbBase;
@@ -759,12 +759,12 @@ namespace trace
             metadata_interfaces.As<IMetaDataAssemblyEmit>(IID_IMetaDataAssemblyEmit);
 
         if (pAssemblyImport.IsNull() || pAssemblyEmit.IsNull()) {
-            return S_FALSE;
+            return E_FAIL;
         }
 
         mdAssembly assembly;
         HRESULT hr = pAssemblyImport->GetAssemblyFromScope(&assembly);
-        RETURN_OK_IF_FAILED(hr);
+        IfFailRet(hr);
 
         auto token = FindAssemblyRef(pAssemblyImport, kProfilerAssemblyName);
         if (token != mdAssemblyRefNil) {
@@ -794,7 +794,7 @@ namespace trace
             NULL,
             0,
             &assemblyRef);
-        RETURN_OK_IF_FAILED(hr);
+        IfFailRet(hr);
 
         return  hr;
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Datadog.Trace.ClrProfiler;
 using StackExchange.Redis;
@@ -31,6 +32,19 @@ namespace Samples.RedisCore
                 await db.StringSetAsync($"{prefix}INCR", "0");
 
                 db.StringSet($"{prefix}INCR", "0");
+
+                var c = db.StringGet($"{prefix}INCR");
+
+                Console.WriteLine(c);
+
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                for (int i = 0; i < 10000; i++)
+                {
+                    db.StringSet($"{prefix}INCR{i}", "0");
+                }
+                sw.Stop();
+                Console.WriteLine(sw.ElapsedMilliseconds);
             }
 
             Console.ReadLine();

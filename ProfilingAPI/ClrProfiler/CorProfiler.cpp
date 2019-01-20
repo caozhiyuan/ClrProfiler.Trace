@@ -466,7 +466,7 @@ namespace trace {
 
                 auto pmi = getMethodToken(pEmit, pmr, numberOfTypeArguments, genericParamOwnerTypes);
                 if(pmi == mdMethodSpecNil) {
-                    RETURN_OK_IF_FAILED(S_FALSE);
+                    RETURN_OK_IF_FAILED(E_FAIL);
                 }
                 auto pwMethodBytes = GetWrapperMethodIL(pIMethodMalloc, pmi, pdwAttr, signature);
 
@@ -529,12 +529,22 @@ namespace trace {
         HRESULT hr;
         PCCOR_SIGNATURE rgbOrigSig = NULL;
         ULONG cbOrigSig = 0;
+        UNALIGNED INT32 temp = 0;
         if (reWriter.m_tkLocalVarSig != mdTokenNil)
         {
             IfFailRet(pImport->GetSigFromToken(reWriter.m_tkLocalVarSig, &rgbOrigSig, &cbOrigSig));
+
+            //Check Is ReWrite or not
+            const auto len = CorSigCompressToken(methodTraceTypeRef, &temp);
+            if(cbOrigSig - len > 0){
+                if(rgbOrigSig[cbOrigSig - len -1]== ELEMENT_TYPE_CLASS){
+                    if (memcmp(&rgbOrigSig[cbOrigSig - len], &temp, len) == 0) {
+                        return E_FAIL;
+                    }
+                }
+            }
         }
 
-        UNALIGNED INT32 temp = 0;
         auto exTypeRefSize = CorSigCompressToken(exTypeRef, &temp);
         auto methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
         ULONG cbNewSize = cbOrigSig + 1 + 1 + methodTraceTypeRefSize + 1 + exTypeRefSize;
@@ -578,7 +588,7 @@ namespace trace {
         rgbNewSigOffset += methodTraceTypeRefSize;
 
         IfFailRet(pEmit->GetTokenFromSig(&rgbNewSig[0], cbNewSize, &reWriter.m_tkLocalVarSig));
-    
+
         return S_OK;
     }
 
@@ -588,6 +598,17 @@ namespace trace {
         ModuleID moduleId;
         auto hr = corProfilerInfo->GetFunctionInfo(functionId, NULL, &moduleId, &function_token);
         RETURN_OK_IF_FAILED(hr);
+
+        bool isiLRewrote = false;
+        {
+            std::lock_guard<std::mutex> guard(iLRewriteMapLock);
+            if (iLRewriteMap.count(function_token) > 0) {
+                isiLRewrote = true;
+            }
+        }
+        if(isiLRewrote){
+            return S_OK;
+        }
 
         CComPtr<IUnknown> metadata_interfaces;
         hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
@@ -867,6 +888,11 @@ namespace trace {
 
             hr = rewriter.Export();
             RETURN_OK_IF_FAILED(hr);
+
+            {
+                std::lock_guard<std::mutex> guard(iLRewriteMapLock);
+                iLRewriteMap[function_token] = true;
+            }
         }
 
         return  S_OK;

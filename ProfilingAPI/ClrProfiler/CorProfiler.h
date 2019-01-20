@@ -3,10 +3,11 @@
 
 #pragma once
 
+#include <mutex>
 #include <atomic>
+#include <unordered_map>
 #include "cor.h"
 #include "corprof.h"
-#include "CComPtr.h"
 #include "clr_helpers.h"
 #include "il_rewriter.h"
 
@@ -17,6 +18,8 @@ namespace trace {
     private:
         std::atomic<int> refCount;
         ICorProfilerInfo8* corProfilerInfo;
+        std::mutex iLRewriteMapLock;
+        std::unordered_map<mdMethodDef, bool> iLRewriteMap{};
     public:
         CorProfiler();
         virtual ~CorProfiler();
