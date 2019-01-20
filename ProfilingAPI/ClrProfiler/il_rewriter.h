@@ -126,14 +126,6 @@ class ILRewriter {
   LPBYTE AllocateILMemory(unsigned size);
 
   void DeallocateILMemory(LPBYTE pBody);
-
-  static void CalcLdLocalInstr(ILInstr* ilInstr, unsigned index);
-
-  static void CalcLdcI4Instr(ILInstr* ilInstr, const INT32 index);
-
-  static void CalcLdArgInstr(ILInstr* ilInstr, unsigned index);
-
-  static void CalcStLocalInstr(ILInstr* ilInstr, unsigned index);
 };
 
 #endif  // CLR_PROFILER_IL_REWRITER_H_

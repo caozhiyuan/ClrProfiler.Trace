@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Datadog.Trace.ClrProfiler;
 using StackExchange.Redis;
 
 namespace Samples.RedisCore
@@ -27,33 +28,22 @@ namespace Samples.RedisCore
             return "1";
         }
 
-        //public string Test(string a, int? b, int c)
-        //{
-        //    object ret = null;
-        //    Exception ex = null;
-        //    MethodTrace methodTrace = null;
-        //    try
-        //    {
-        //        methodTrace = (MethodTrace)((TraceAgent)TraceAgent.GetInstance()).BeforeMethod("Test", this, new object[] { a, b, c });
-
-        //        ret = "1";
-        //        goto T;
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        ex = e;
-        //        throw;
-        //    }
-        //    finally
-        //    {
-        //        if (methodTrace != null)
-        //        {
-        //            methodTrace.EndMethod(ret, ex);
-        //        }
-        //    }
-        //T:
-        //    return (string)ret;
-        //}
+        public string Test3(string a, int? b, int c)
+        {
+            try
+            {
+                Console.WriteLine("try");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                Console.WriteLine("finally");
+            }
+            return "1";
+        }
 
         private static async Task RunStackExchange(string prefix)
         {

@@ -143,6 +143,7 @@
     <ClInclude Include="clr_helpers.h" />
     <ClInclude Include="CorProfiler.h" />
     <ClInclude Include="il_rewriter.h" />
+    <ClInclude Include="il_rewriter_wrapper.h" />
     <ClInclude Include="logging.h" />
     <ClInclude Include="macros.h" />
     <ClInclude Include="miniutf.hpp" />
@@ -156,6 +157,7 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="CorProfiler.cpp" />
     <ClCompile Include="il_rewriter.cpp" />
+    <ClCompile Include="il_rewriter_wrapper.cpp" />
     <ClCompile Include="logging.cpp" />
     <ClCompile Include="miniutf.cpp" />
     <ClCompile Include="string.cpp" />

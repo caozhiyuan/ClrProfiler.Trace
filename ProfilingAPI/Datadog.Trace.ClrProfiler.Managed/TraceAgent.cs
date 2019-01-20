@@ -19,12 +19,12 @@ namespace Datadog.Trace.ClrProfiler
             return Instance;
         }
 
-        public object BeforeMethod(string methodName, object invocationTarget, object[] methodArguments)
+        public object BeforeMethod(string typeName, string methodName, object invocationTarget, object[] methodArguments)
         {
             try
             {
                 var args = methodArguments;
-                var endMethodDelegate = this._wrapperService.BeforeWrappedMethod(methodName, invocationTarget, args);
+                var endMethodDelegate = this._wrapperService.BeforeWrappedMethod(typeName, methodName, invocationTarget, args);
                 return ((endMethodDelegate != null) ? new MethodTrace(endMethodDelegate) : null);
             }
             catch (Exception ex)
@@ -36,7 +36,7 @@ namespace Datadog.Trace.ClrProfiler
 
     public class WrapperService
     {
-        public EndMethodDelegate BeforeWrappedMethod(string methodName, object invocationTarget, object[] methodArguments)
+        public EndMethodDelegate BeforeWrappedMethod(string typeName, string methodName, object invocationTarget, object[] methodArguments)
         {
             Console.WriteLine("in");
             if (methodArguments != null)

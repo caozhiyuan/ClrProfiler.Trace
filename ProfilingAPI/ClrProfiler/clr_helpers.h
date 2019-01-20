@@ -273,9 +273,10 @@ namespace trace {
         ULONG NumberOfArguments() const { return numberOfArguments; }
         WSTRING str() const { return HexStr(pbBase, len); }
         bool IsVoidMethod() const {
-            const auto pbCur = ret.pbBase + ret.offset;
+            const auto pbCur = &ret.pbBase[ret.offset];
             return *pbCur == ELEMENT_TYPE_VOID;
         }
+        MethodArgument GetRet() const { return  ret; }
         std::vector<MethodArgument> GetMethodArguments() const { return params; }
         HRESULT TryParse();
         bool operator ==(const MethodSignature& other) const {

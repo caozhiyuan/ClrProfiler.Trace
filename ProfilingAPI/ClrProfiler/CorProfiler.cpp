@@ -12,6 +12,7 @@
 #include <vector>
 #include <iostream>
 #include <cassert>
+#include "il_rewriter_wrapper.h"
 
 namespace trace {
 
@@ -519,6 +520,68 @@ namespace trace {
         return S_OK;
     }
 
+    HRESULT AddVarToLocal(CComPtr<IMetaDataImport2>& pImport, 
+        CComPtr<IMetaDataEmit2>& pEmit,
+        ILRewriter& reWriter, 
+        mdTypeRef exTypeRef,
+        mdTypeRef methodTraceTypeRef)
+    {
+        HRESULT hr;
+        PCCOR_SIGNATURE rgbOrigSig = NULL;
+        ULONG cbOrigSig = 0;
+        if (reWriter.m_tkLocalVarSig != mdTokenNil)
+        {
+            IfFailRet(pImport->GetSigFromToken(reWriter.m_tkLocalVarSig, &rgbOrigSig, &cbOrigSig));
+        }
+
+        UNALIGNED INT32 temp = 0;
+        auto exTypeRefSize = CorSigCompressToken(exTypeRef, &temp);
+        auto methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
+        ULONG cbNewSize = cbOrigSig + 1 + 1 + methodTraceTypeRefSize + 1 + exTypeRefSize;
+        ULONG cOrigLocals;
+        ULONG cNewLocalsLen;
+        ULONG cbOrigLocals = 0;
+
+        if (cbOrigSig == 0) {
+            cbNewSize += 2;
+            reWriter.cNewLocals = 3;
+            cNewLocalsLen = CorSigCompressData(reWriter.cNewLocals, &temp);
+        }
+        else {
+            cbOrigLocals = CorSigUncompressData(rgbOrigSig + 1, &cOrigLocals);
+            reWriter.cNewLocals = cOrigLocals + 3;
+            cNewLocalsLen = CorSigCompressData(reWriter.cNewLocals, &temp);
+            cbNewSize += cNewLocalsLen - cbOrigLocals;
+        }
+
+        const auto rgbNewSig = new COR_SIGNATURE[cbNewSize];
+        *rgbNewSig = IMAGE_CEE_CS_CALLCONV_LOCAL_SIG;
+
+        ULONG rgbNewSigOffset = 1;
+        memcpy(rgbNewSig + rgbNewSigOffset, &temp, cNewLocalsLen);
+        rgbNewSigOffset += cNewLocalsLen;
+
+        if (cbOrigSig > 0) {
+            const auto cbOrigCopyLen = cbOrigSig - 1 - cbOrigLocals;
+            memcpy(rgbNewSig + rgbNewSigOffset, rgbOrigSig + 1 + cbOrigLocals, cbOrigCopyLen);
+            rgbNewSigOffset += cbOrigCopyLen;
+        }
+
+        rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_OBJECT;
+        rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_CLASS;
+        exTypeRefSize = CorSigCompressToken(exTypeRef, &temp);
+        memcpy(rgbNewSig + rgbNewSigOffset, &temp, exTypeRefSize);
+        rgbNewSigOffset += exTypeRefSize;
+        rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_CLASS;
+        methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
+        memcpy(rgbNewSig + rgbNewSigOffset, &temp, methodTraceTypeRefSize);
+        rgbNewSigOffset += methodTraceTypeRefSize;
+
+        IfFailRet(pEmit->GetTokenFromSig(&rgbNewSig[0], cbNewSize, &reWriter.m_tkLocalVarSig));
+    
+        return S_OK;
+    }
+
     HRESULT STDMETHODCALLTYPE CorProfiler::JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock)
     {
         mdToken function_token = mdTokenNil;
@@ -569,19 +632,19 @@ namespace trace {
                 &traceAgentTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
-            UNALIGNED INT32 temp = 0;
-            ULONG sigLength = 3;
-            auto traceInstanceSig = new COR_SIGNATURE[sigLength];
-            traceInstanceSig[0] = IMAGE_CEE_CS_CALLCONV_DEFAULT;
-            traceInstanceSig[1] = 0x00;
-            traceInstanceSig[2] = ELEMENT_TYPE_OBJECT;
+            COR_SIGNATURE traceInstanceSig[] =
+            {
+                IMAGE_CEE_CS_CALLCONV_DEFAULT,
+                0x00,
+                ELEMENT_TYPE_OBJECT
+            };
 
             mdMemberRef getInstanceMemberRef;
             hr = pEmit->DefineMemberRef(
                 traceAgentTypeRef,
                 kGetInstanceMethodName,
                 traceInstanceSig,
-                sigLength,
+                sizeof(traceInstanceSig),
                 &getInstanceMemberRef);
             RETURN_OK_IF_FAILED(hr);
 
@@ -592,23 +655,24 @@ namespace trace {
                 &methodTraceTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
-            sigLength = 7;
-            COR_SIGNATURE* traceBeforeSig = new COR_SIGNATURE[sigLength];
-            traceBeforeSig[0] = IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS;
-            traceBeforeSig[1] = 0x03;
-            unsigned offset = 2;
-            traceBeforeSig[offset++] = ELEMENT_TYPE_OBJECT;
-            traceBeforeSig[offset++] = ELEMENT_TYPE_STRING;
-            traceBeforeSig[offset++] = ELEMENT_TYPE_OBJECT;
-            traceBeforeSig[offset++] = ELEMENT_TYPE_SZARRAY;
-            traceBeforeSig[offset++] = ELEMENT_TYPE_OBJECT;
+            COR_SIGNATURE traceBeforeSig[] = 
+            {
+                IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS ,
+                0x04 ,
+                ELEMENT_TYPE_OBJECT,
+                ELEMENT_TYPE_STRING ,
+                ELEMENT_TYPE_STRING,
+                ELEMENT_TYPE_OBJECT,
+                ELEMENT_TYPE_SZARRAY,
+                ELEMENT_TYPE_OBJECT
+            };
 
             mdMemberRef beforeMemberRef;
             hr = pEmit->DefineMemberRef(
                 traceAgentTypeRef,
                 kBeforeMethodName,
                 traceBeforeSig,
-                sigLength,
+                sizeof(traceBeforeSig),
                 &beforeMemberRef);
             RETURN_OK_IF_FAILED(hr);
 
@@ -652,115 +716,11 @@ namespace trace {
             RETURN_OK_IF_FAILED(rewriter.Import());
 
             //add local sig
-            PCCOR_SIGNATURE rgbOrigSig = NULL;
-            ULONG cbOrigSig = 0;
-            if (rewriter.m_tkLocalVarSig != mdTokenNil)
-            {
-                RETURN_OK_IF_FAILED(pImport->GetSigFromToken(rewriter.m_tkLocalVarSig, &rgbOrigSig, &cbOrigSig));
-            }
-
-            auto exTypeRefSize = CorSigCompressToken(exTypeRef, &temp);
-            auto methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
-            ULONG cbNewSize = cbOrigSig + 1 + 1 + methodTraceTypeRefSize + 1 + exTypeRefSize;
-            ULONG cOrigLocals;
-            ULONG cNewLocalsLen;
-            ULONG cbOrigLocals;
-
-            if (cbOrigSig == 0) {
-                cbNewSize += 2;
-                rewriter.cNewLocals = 3;
-                cNewLocalsLen = CorSigCompressData(rewriter.cNewLocals, &temp);
-            }
-            else {
-                cbOrigLocals = CorSigUncompressData(rgbOrigSig + 1, &cOrigLocals);
-                rewriter.cNewLocals = cOrigLocals + 3;
-                cNewLocalsLen = CorSigCompressData(rewriter.cNewLocals, &temp);
-                cbNewSize += cNewLocalsLen - cbOrigLocals;
-            }
-
-            const auto rgbNewSig = new COR_SIGNATURE[cbNewSize];
-            *rgbNewSig = IMAGE_CEE_CS_CALLCONV_LOCAL_SIG;
-
-            ULONG rgbNewSigOffset = 1;
-            memcpy(rgbNewSig + rgbNewSigOffset, &temp, cNewLocalsLen);
-            rgbNewSigOffset += cNewLocalsLen;
-
-            if (cbOrigSig > 0) {
-                const auto cbOrigCopyLen = cbOrigSig - 1 - cbOrigLocals;
-                memcpy(rgbNewSig + rgbNewSigOffset, rgbOrigSig + 1 + cbOrigLocals, cbOrigCopyLen);
-                rgbNewSigOffset += cbOrigCopyLen;
-            }
-
-            rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_OBJECT;
-            rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_CLASS;
-            exTypeRefSize = CorSigCompressToken(exTypeRef, &temp);
-            memcpy(rgbNewSig + rgbNewSigOffset, &temp, exTypeRefSize);
-            rgbNewSigOffset += exTypeRefSize;
-            rgbNewSig[rgbNewSigOffset++] = ELEMENT_TYPE_CLASS;
-            methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
-            memcpy(rgbNewSig + rgbNewSigOffset, &temp, methodTraceTypeRefSize);
-            rgbNewSigOffset += methodTraceTypeRefSize;
-
-            RETURN_OK_IF_FAILED(pEmit->GetTokenFromSig(&rgbNewSig[0], cbNewSize, &(rewriter.m_tkLocalVarSig)));
-
-            //add call beforemethod il 
-            auto pilr = &rewriter;
-            ILInstr * pFirstOriginalInstr = pilr->GetILList()->m_pNext;
-            ILInstr * pNewInstr = nullptr;
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_LDNULL;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            pNewInstr = pilr->NewILInstr();
-            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 3);
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_LDNULL;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            pNewInstr = pilr->NewILInstr();
-            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 2);
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_LDNULL;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            pNewInstr = pilr->NewILInstr();
-            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 1);
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_CALL;
-            pNewInstr->m_Arg32 = getInstanceMemberRef;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_CASTCLASS;
-            pNewInstr->m_Arg32 = traceAgentTypeRef;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            mdString textToken;
-            auto methodName = functionInfo.name.data();
-            hr = pEmit->DefineUserString(methodName, (ULONG)wcslen(methodName), &textToken);
+            hr = AddVarToLocal(pImport, pEmit, rewriter, exTypeRef, methodTraceTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_LDSTR;
-            pNewInstr->m_Arg32 = textToken;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_LDARG_0;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-            auto argNum = functionInfo.signature.NumberOfArguments();
-
-            pNewInstr = pilr->NewILInstr();
-            rewriter.CalcLdcI4Instr(pNewInstr, argNum);
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
+            auto pReWriter = &rewriter;
+            //add call beforemethod il 
             mdTypeRef objectTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 corLibAssemblyRef,
@@ -768,59 +728,139 @@ namespace trace {
                 &objectTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_NEWARR;
-            pNewInstr->m_Arg32 = objectTypeRef;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+            mdString typeNameTextToken;
+            auto typeName = functionInfo.type.name.data();
+            hr = pEmit->DefineUserString(typeName, (ULONG)wcslen(typeName), &typeNameTextToken);
+            RETURN_OK_IF_FAILED(hr);
 
+            mdString methodNameTextToken;
+            auto methodName = functionInfo.name.data();
+            hr = pEmit->DefineUserString(methodName, (ULONG)wcslen(methodName), &methodNameTextToken);
+            RETURN_OK_IF_FAILED(hr);
+            ILRewriterWrapper reWriterWrapper(pReWriter);
+            ILInstr * pFirstOriginalInstr = pReWriter->GetILList()->m_pNext;
+            reWriterWrapper.SetILPosition(pFirstOriginalInstr);
+            reWriterWrapper.LoadNull();
+            reWriterWrapper.StLocal(rewriter.cNewLocals - 3);
+            reWriterWrapper.LoadNull();
+            reWriterWrapper.StLocal(rewriter.cNewLocals - 2);
+            reWriterWrapper.LoadNull();
+            reWriterWrapper.StLocal(rewriter.cNewLocals - 1);
+            ILInstr* pTryStartInstr = reWriterWrapper.CallMember0(getInstanceMemberRef, false);
+            reWriterWrapper.Cast(traceAgentTypeRef);
+            reWriterWrapper.LoadStr(typeNameTextToken);
+            reWriterWrapper.LoadStr(methodNameTextToken);
+            reWriterWrapper.LoadArgument(0);
+            auto argNum = functionInfo.signature.NumberOfArguments();
+            reWriterWrapper.CreateArray(objectTypeRef, argNum);
             auto arguments = functionInfo.signature.GetMethodArguments();
             for (unsigned i = 0; i < argNum; i++) {
               
-                pNewInstr = pilr->NewILInstr();
-                pNewInstr->m_opcode = CEE_DUP;
-                pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-                pNewInstr = pilr->NewILInstr();
-                rewriter.CalcLdcI4Instr(pNewInstr, i);
-                pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
-                pNewInstr = pilr->NewILInstr();
-                rewriter.CalcLdArgInstr(pNewInstr, i + 1);
-                pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
-
+                reWriterWrapper.BeginLoadValueIntoArray(i);
+                reWriterWrapper.LoadArgument(i + 1);
                 if(arguments[i].IsBoxedType()) {
-
                     auto tok = arguments[i].GetTypeTok(pEmit, corLibAssemblyRef);
                     if (tok == mdTokenNil) {
                         return S_OK;
                     }
-
-                    pNewInstr = pilr->NewILInstr();
-                    pNewInstr->m_opcode = CEE_BOX;
-                    pNewInstr->m_Arg32 = tok;
-                    pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+                    reWriterWrapper.Box(tok);
                 }
+                reWriterWrapper.EndLoadValueIntoArray();
+            }
+            reWriterWrapper.CallMember(beforeMemberRef, true);
+            reWriterWrapper.Cast(methodTraceTypeRef);
+            reWriterWrapper.StLocal(rewriter.cNewLocals - 1);
 
-                pNewInstr = pilr->NewILInstr();
-                pNewInstr->m_opcode = CEE_STELEM_REF;
-                pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+            ILInstr* pRetInstr = pReWriter->NewILInstr();
+            pRetInstr->m_opcode = CEE_RET;
+            pReWriter->InsertAfter(pReWriter->GetILList()->m_pPrev, pRetInstr);
+
+            bool isVoidMethod = functionInfo.signature.IsVoidMethod();
+            auto ret = functionInfo.signature.GetRet();
+            bool retIsBoxedType = false;
+            mdToken retTypeTok;
+            if (!isVoidMethod) {
+                retTypeTok = ret.GetTypeTok(pEmit, corLibAssemblyRef);
+                if (ret.IsBoxedType()) {
+                    retIsBoxedType = true;
+                }
+            }
+            reWriterWrapper.SetILPosition(pRetInstr);
+            reWriterWrapper.StLocal(rewriter.cNewLocals - 2);
+            ILInstr* pRethrowInstr = reWriterWrapper.Rethrow();
+            reWriterWrapper.LoadLocal(rewriter.cNewLocals - 3);
+
+            ILInstr* pNewInstr = pReWriter->NewILInstr();
+            pNewInstr->m_opcode = CEE_BRFALSE_S;
+            pReWriter->InsertBefore(pRetInstr, pNewInstr);
+
+            reWriterWrapper.LoadLocal(rewriter.cNewLocals - 1);
+            reWriterWrapper.LoadLocal(rewriter.cNewLocals - 3);
+            reWriterWrapper.LoadLocal(rewriter.cNewLocals - 2);
+            reWriterWrapper.CallMember(endMemberRef, true);
+
+            ILInstr* pEndFinallyInstr = reWriterWrapper.EndFinally();
+            pNewInstr->m_pTarget = pEndFinallyInstr;
+
+            if (!isVoidMethod) {
+                reWriterWrapper.LoadLocal(rewriter.cNewLocals - 3);
+                if (retIsBoxedType) {
+                    reWriterWrapper.UnboxAny(retTypeTok);
+                }else{
+                    reWriterWrapper.Cast(retTypeTok);
+                }
             }
 
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_CALLVIRT;
-            pNewInstr->m_Arg32 = beforeMemberRef;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+            for (ILInstr * pInstr = pReWriter->GetILList()->m_pNext;
+                pInstr != pReWriter->GetILList();
+                pInstr = pInstr->m_pNext) {
+                switch (pInstr->m_opcode)
+                {
+                case CEE_RET:
+                {
+                    if (pInstr != pRetInstr) {
+                        if (!isVoidMethod) {
+                            reWriterWrapper.SetILPosition(pInstr);
+                            if (retIsBoxedType) {
+                                reWriterWrapper.Box(retTypeTok);
+                            }
+                            reWriterWrapper.StLocal(rewriter.cNewLocals - 3);
+                        }
+                        pInstr->m_opcode = CEE_LEAVE_S;
+                        pInstr->m_pTarget = pEndFinallyInstr->m_pNext;
+                    }
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
 
-            pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_CASTCLASS;
-            pNewInstr->m_Arg32 = methodTraceTypeRef;
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+            EHClause exClause{};
+            exClause.m_Flags = COR_ILEXCEPTION_CLAUSE_NONE;
+            exClause.m_pTryBegin = pTryStartInstr;
+            exClause.m_pTryEnd = pRethrowInstr->m_pPrev;
+            exClause.m_pHandlerBegin = pRethrowInstr->m_pPrev;
+            exClause.m_pHandlerEnd = pRethrowInstr;
+            exClause.m_ClassToken = exTypeRef;
 
-            pNewInstr = pilr->NewILInstr();
-            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 1);
-            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+            EHClause finallyClause{};
+            finallyClause.m_Flags = COR_ILEXCEPTION_CLAUSE_FINALLY;
+            finallyClause.m_pTryBegin = pTryStartInstr;
+            finallyClause.m_pTryEnd = pRethrowInstr->m_pNext;
+            finallyClause.m_pHandlerBegin = pRethrowInstr->m_pNext;
+            finallyClause.m_pHandlerEnd = pEndFinallyInstr;
 
-            //
+            auto m_pEHNew = new EHClause[rewriter.m_nEH + 2];
+            for (unsigned i = 0; i < rewriter.m_nEH; i++) {
+                m_pEHNew[i] = rewriter.m_pEH[i];
+            }
+
+            rewriter.m_nEH += 2;
+            m_pEHNew[rewriter.m_nEH - 2] = exClause;
+            m_pEHNew[rewriter.m_nEH - 1] = finallyClause;
+            rewriter.m_pEH = m_pEHNew;
+
             hr = rewriter.Export();
             RETURN_OK_IF_FAILED(hr);
 
