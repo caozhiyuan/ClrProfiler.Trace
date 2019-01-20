@@ -1,13 +1,35 @@
-
+CoreCLR Profiler ILReWrite
 ==========================================
 
-This sample shows il rewrite (open dev.cmd to develop)
+This sample shows il rewrite two ways (open dev.cmd to develop)
 
-1. we try wapper a method and trace it.
-2. we add try catch finally in to method and trace it
+1. wapper a method and trace it.
+2. we add try catch finally in to method
 
+Prerequisites
+-------------
 
-some help links:
+* CoreCLR Repository (build from source) Dependencies
+* Visual Studio 2017
+
+Building
+-------------------------
+
+### Build
+
+Build ClrProfiler.dll
+
+### Setup
+
+```batch
+SET CORECLR_PROFILER={cf0d821e-299b-5307-a3d8-b283c03916dd}
+SET CORECLR_ENABLE_PROFILING=1
+SET CORECLR_PROFILER_PATH=C:\filePath\to\ClrProfiler.dll
+corerun YourProgram.dll
+```
+
+Help Links:
+-------------
 
 https://www.ecma-international.org/publications/files/ECMA-ST/ECMA-335.pdf
 
@@ -17,4 +39,4 @@ https://github.com/Microsoft/clr-samples
 
 https://github.com/brian-reichle/MethodCheck
 
-https://github.com/caozhiyuan/clr-samples/blob/master/ilanaly.txt
+https://www.codeproject.com/articles/42655/%2fArticles%2f42655%2fNET-file-format-Signatures-under-the-hood-Part-2#LocalVarSig1.1
