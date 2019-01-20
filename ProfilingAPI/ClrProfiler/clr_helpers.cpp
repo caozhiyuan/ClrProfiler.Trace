@@ -482,11 +482,12 @@ namespace trace
         return flag;
     }
 
-    mdToken MethodArgument::GetTypeTok(CComPtr<IMetaDataImport2>& pImport,
-        CComPtr<IMetaDataEmit2>& pEmit, mdAssemblyRef corLibRef) const {
+    mdToken MethodArgument::GetTypeTok(CComPtr<IMetaDataEmit2>& pEmit, 
+        mdAssemblyRef corLibRef) const {
 
         mdToken token = mdTokenNil;
         PCCOR_SIGNATURE pbCur = &pbBase[offset];
+        const PCCOR_SIGNATURE pTemp = pbCur;
 
         if (*pbCur == ELEMENT_TYPE_BYREF) {
             pbCur++;
@@ -494,52 +495,52 @@ namespace trace
 
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:
-            pImport->FindTypeRef(corLibRef, L"System.Boolean", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.Boolean", &token);
             break;
         case  ELEMENT_TYPE_CHAR:
-            pImport->FindTypeRef(corLibRef, L"System.Char", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.Char", &token);
             break;
         case  ELEMENT_TYPE_I1:
-            pImport->FindTypeRef(corLibRef, L"System.Byte", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.Byte", &token);
             break;
         case  ELEMENT_TYPE_U1:
-            pImport->FindTypeRef(corLibRef, L"System.SByte", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.SByte", &token);
             break;
         case  ELEMENT_TYPE_U2:
-            pImport->FindTypeRef(corLibRef, L"System.UInt16", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.UInt16", &token);
             break;
         case  ELEMENT_TYPE_I2:
-            pImport->FindTypeRef(corLibRef, L"System.Int16", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.Int16", &token);
             break;
         case  ELEMENT_TYPE_I4:
-            pImport->FindTypeRef(corLibRef, L"System.Int32", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.Int32", &token);
             break;
         case  ELEMENT_TYPE_U4:
-            pImport->FindTypeRef(corLibRef, L"System.UInt32", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.UInt32", &token);
             break;
         case  ELEMENT_TYPE_I8:
-            pImport->FindTypeRef(corLibRef, L"System.Int64", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.Int64", &token);
             break;
         case  ELEMENT_TYPE_U8:
-            pImport->FindTypeRef(corLibRef, L"System.UInt64", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.UInt64", &token);
             break;
         case  ELEMENT_TYPE_R4:
-            pImport->FindTypeRef(corLibRef, L"System.Single", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.Single", &token);
             break;
         case  ELEMENT_TYPE_R8:
-            pImport->FindTypeRef(corLibRef, L"System.Double", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.Double", &token);
             break;
         case  ELEMENT_TYPE_I:
-            pImport->FindTypeRef(corLibRef, L"System.IntPtr", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.IntPtr", &token);
             break;
         case  ELEMENT_TYPE_U:
-            pImport->FindTypeRef(corLibRef, L"System.UIntPtr", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.UIntPtr", &token);
             break;
         case  ELEMENT_TYPE_STRING:
-            pImport->FindTypeRef(corLibRef, L"System.String", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.String", &token);
             break;
         case  ELEMENT_TYPE_OBJECT:
-            pImport->FindTypeRef(corLibRef, L"System.Object", &token);
+            pEmit->DefineTypeRefByName(corLibRef, L"System.Object", &token);
             break;
         case  ELEMENT_TYPE_CLASS:
             pbCur++;
@@ -553,7 +554,7 @@ namespace trace
         case  ELEMENT_TYPE_ARRAY:
         case  ELEMENT_TYPE_MVAR:
         case  ELEMENT_TYPE_VAR:
-            pEmit->GetTokenFromTypeSpec(pbCur, length - static_cast<ULONG>(pbCur - pbBase), &token);
+            pEmit->GetTokenFromTypeSpec(pbCur, length - static_cast<ULONG>(pbCur - pTemp), &token);
             break;
         default:
             break;
@@ -670,7 +671,7 @@ namespace trace
 
             hr = metadata_import->GetTypeSpecFromToken(token, &signature,
                 &signature_length);
-
+            
             if (FAILED(hr) || signature_length < 3) {
                 return {};
             }
@@ -751,7 +752,7 @@ namespace trace
 
     //1. .net framework gac or net core DOTNET_ADDITIONAL_DEPS=%PROGRAMFILES%\dotnet\x64\additionalDeps\Datadog.Trace.ClrProfiler.Managed
     //2. just proj ref
-    HRESULT GetProfilerAssemblyRef(CComPtr<IUnknown>& metadata_interfaces, mdAssemblyRef* assemblyRef) {
+    HRESULT GetProfilerAssemblyRef(CComPtr<IUnknown>& metadata_interfaces, mdAssemblyRef& assemblyRef) {
 
         auto pAssemblyImport = metadata_interfaces.As<IMetaDataAssemblyImport>(
             IID_IMetaDataAssemblyImport);
@@ -768,7 +769,7 @@ namespace trace
 
         auto token = FindAssemblyRef(pAssemblyImport, kProfilerAssemblyName);
         if (token != mdAssemblyRefNil) {
-            assemblyRef = &token;
+            assemblyRef = token;
             return S_OK;
         }
 
@@ -793,7 +794,7 @@ namespace trace
             NULL,
             NULL,
             0,
-            assemblyRef);
+            &assemblyRef);
         RETURN_OK_IF_FAILED(hr);
 
         return  hr;

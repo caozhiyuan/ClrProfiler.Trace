@@ -336,10 +336,6 @@ namespace trace {
         }
 
         if (module_info.assembly.name == "StackExchange.Redis"_W) {
-            return S_OK;
-        }
-
-        if (module_info.assembly.name == "StackExchange.Redis"_W) {
             //1. we try wapper a method and trace it. this is a sample
 
             CComPtr<IUnknown> metadata_interfaces;
@@ -349,7 +345,7 @@ namespace trace {
             RETURN_OK_IF_FAILED(hr);
 
             mdAssemblyRef assemblyRef;
-            hr = GetProfilerAssemblyRef(metadata_interfaces, &assemblyRef);
+            hr = GetProfilerAssemblyRef(metadata_interfaces, assemblyRef);
             RETURN_OK_IF_FAILED(hr);
 
             auto pImport = metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
@@ -551,8 +547,8 @@ namespace trace {
             return S_OK;
         }
 
-        if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
-            functionInfo.name == "ExecuteSyncImpl"_W) {
+        if (functionInfo.type.name == "Samples.RedisCore.Program"_W &&
+            functionInfo.name == "Test2"_W) {
             
             auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
             if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {
@@ -563,7 +559,7 @@ namespace trace {
             RETURN_OK_IF_FAILED(hr);
 
             mdAssemblyRef assemblyRef;
-            hr = GetProfilerAssemblyRef(metadata_interfaces, &assemblyRef);
+            hr = GetProfilerAssemblyRef(metadata_interfaces, assemblyRef);
             RETURN_OK_IF_FAILED(hr);
 
             mdTypeRef traceAgentTypeRef;
@@ -574,13 +570,11 @@ namespace trace {
             RETURN_OK_IF_FAILED(hr);
 
             UNALIGNED INT32 temp = 0;
-            auto size = CorSigCompressToken(traceAgentTypeRef, &temp);
-
-            ULONG sigLength = 2 + size;
+            ULONG sigLength = 3;
             auto traceInstanceSig = new COR_SIGNATURE[sigLength];
             traceInstanceSig[0] = IMAGE_CEE_CS_CALLCONV_DEFAULT;
             traceInstanceSig[1] = 0x00;
-            memcpy(&traceInstanceSig[2], &temp, size);
+            traceInstanceSig[2] = ELEMENT_TYPE_OBJECT;
 
             mdMemberRef getInstanceMemberRef;
             hr = pEmit->DefineMemberRef(
@@ -598,13 +592,12 @@ namespace trace {
                 &methodTraceTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
-            auto methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
-            sigLength = 6 + methodTraceTypeRefSize;
+            sigLength = 7;
             COR_SIGNATURE* traceBeforeSig = new COR_SIGNATURE[sigLength];
-            traceBeforeSig[0] = IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS | IMAGE_CEE_CS_CALLCONV_LOCAL_SIG;
+            traceBeforeSig[0] = IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS;
             traceBeforeSig[1] = 0x03;
-            memcpy(&traceBeforeSig[2], &temp, size);
-            unsigned offset = 2 + size;
+            unsigned offset = 2;
+            traceBeforeSig[offset++] = ELEMENT_TYPE_OBJECT;
             traceBeforeSig[offset++] = ELEMENT_TYPE_STRING;
             traceBeforeSig[offset++] = ELEMENT_TYPE_OBJECT;
             traceBeforeSig[offset++] = ELEMENT_TYPE_SZARRAY;
@@ -667,7 +660,7 @@ namespace trace {
             }
 
             auto exTypeRefSize = CorSigCompressToken(exTypeRef, &temp);
-            methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
+            auto methodTraceTypeRefSize = CorSigCompressToken(methodTraceTypeRef, &temp);
             ULONG cbNewSize = cbOrigSig + 1 + 1 + methodTraceTypeRefSize + 1 + exTypeRefSize;
             ULONG cOrigLocals;
             ULONG cNewLocalsLen;
@@ -743,6 +736,11 @@ namespace trace {
             pNewInstr->m_Arg32 = getInstanceMemberRef;
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
+            pNewInstr = pilr->NewILInstr();
+            pNewInstr->m_opcode = CEE_CASTCLASS;
+            pNewInstr->m_Arg32 = traceAgentTypeRef;
+            pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
+
             mdString textToken;
             auto methodName = functionInfo.name.data();
             hr = pEmit->DefineUserString(methodName, (ULONG)wcslen(methodName), &textToken);
@@ -791,9 +789,15 @@ namespace trace {
                 pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
                 if(arguments[i].IsBoxedType()) {
+
+                    auto tok = arguments[i].GetTypeTok(pEmit, corLibAssemblyRef);
+                    if (tok == mdTokenNil) {
+                        return S_OK;
+                    }
+
                     pNewInstr = pilr->NewILInstr();
                     pNewInstr->m_opcode = CEE_BOX;
-                    pNewInstr->m_Arg32 = arguments[i].GetTypeTok(pImport, pEmit, corLibAssemblyRef);
+                    pNewInstr->m_Arg32 = tok;
                     pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
                 }
 
@@ -808,13 +812,15 @@ namespace trace {
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             pNewInstr = pilr->NewILInstr();
-            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 1);
+            pNewInstr->m_opcode = CEE_CASTCLASS;
+            pNewInstr->m_Arg32 = methodTraceTypeRef;
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
             pNewInstr = pilr->NewILInstr();
-            pNewInstr->m_opcode = CEE_NOP;
+            rewriter.CalcStLocalInstr(pNewInstr, rewriter.cNewLocals - 1);
             pilr->InsertBefore(pFirstOriginalInstr, pNewInstr);
 
+            //
             hr = rewriter.Export();
             RETURN_OK_IF_FAILED(hr);
 

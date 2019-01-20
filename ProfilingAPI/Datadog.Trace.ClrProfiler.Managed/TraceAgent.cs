@@ -14,12 +14,12 @@ namespace Datadog.Trace.ClrProfiler
             _wrapperService = new WrapperService();
         }
 
-        public static TraceAgent GetInstance()
+        public static object GetInstance()
         {
             return Instance;
         }
 
-        public MethodTrace BeforeMethod(string methodName, object invocationTarget, object[] methodArguments)
+        public object BeforeMethod(string methodName, object invocationTarget, object[] methodArguments)
         {
             try
             {

@@ -250,8 +250,7 @@ namespace trace {
         ULONG offset;
         ULONG length;
         PCCOR_SIGNATURE pbBase;
-        mdToken GetTypeTok(CComPtr<IMetaDataImport2>& pImport,
-            CComPtr<IMetaDataEmit2>& pEmit,
+        mdToken GetTypeTok(CComPtr<IMetaDataEmit2>& pEmit,
             mdAssemblyRef corLibRef) const;
         bool IsBoxedType() const;
     };
@@ -310,8 +309,6 @@ namespace trace {
         const CComPtr<IMetaDataAssemblyImport>& assembly_import,
         const WSTRING& assembly_name);
 
-    mdAssemblyRef FindCorLibAssemblyRef(const CComPtr<IMetaDataAssemblyImport>& assembly_import);
-
     AssemblyInfo GetAssemblyInfo(ICorProfilerInfo3* info,
         const AssemblyID& assembly_id);
 
@@ -320,11 +317,13 @@ namespace trace {
     TypeInfo GetTypeInfo(const CComPtr<IMetaDataImport2>& metadata_import,
         const mdToken& token);
 
+    mdAssemblyRef FindCorLibAssemblyRef(const CComPtr<IMetaDataAssemblyImport>& assembly_import);
+
     FunctionInfo GetFunctionInfo(const CComPtr<IMetaDataImport2>& metadata_import,
         const mdToken& token);
 
     HRESULT GetProfilerAssemblyRef(CComPtr<IUnknown>& metadata_interfaces, 
-        mdAssemblyRef* assemblyRef);
+        mdAssemblyRef& assemblyRef);
 }
 
 #endif  // CLR_PROFILER_CLRHELPER_H_
