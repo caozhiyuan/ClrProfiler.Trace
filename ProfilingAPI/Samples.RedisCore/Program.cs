@@ -28,11 +28,9 @@ namespace Samples.RedisCore
                 redis.Configure(Console.Out);
 
                 var db = redis.GetDatabase(1);
-                var n = await db.StringSetAsync($"{prefix}INCR", "0");
-                Console.WriteLine(n);
+                await db.StringSetAsync($"{prefix}INCR", "0");
 
-                n = db.StringSet($"{prefix}INCR", "0");
-                Console.WriteLine(n);
+                db.StringSet($"{prefix}INCR", "0");
             }
 
             Console.ReadLine();

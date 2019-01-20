@@ -38,9 +38,10 @@ namespace Datadog.Trace.ClrProfiler
     {
         public EndMethodDelegate BeforeWrappedMethod(string typeName, string methodName, object invocationTarget, object[] methodArguments)
         {
-            Console.WriteLine("in");
+            Console.WriteLine($"typeName;{typeName} methodName:{methodName}");
             if (methodArguments != null)
             {
+                Console.WriteLine("methodArguments:");
                 foreach (var methodArgument in methodArguments)
                 {
                     Console.WriteLine(methodArgument);
@@ -49,8 +50,8 @@ namespace Datadog.Trace.ClrProfiler
 
             return delegate(object returnValue, Exception ex)
             {
-                Console.WriteLine("out");
-                Console.WriteLine(returnValue);
+                Console.WriteLine($"returnValue:{returnValue}");
+                Console.WriteLine($"ex:{ex}");
             };
         }
     }

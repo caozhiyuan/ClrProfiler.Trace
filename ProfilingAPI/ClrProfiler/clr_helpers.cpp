@@ -734,10 +734,9 @@ namespace trace
             std::memcpy(function_name, generic_info.name.c_str(),
                 sizeof(WCHAR) * (generic_info.name.length() + 1));
             function_name_len = (DWORD)(generic_info.name.length() + 1);
-            Info("[trace::mdtMethodSpec] function_name: {}", function_name);
         } break;
         default:
-            Warn("[trace::GetFunctionInfo] unknown token type: {}", token_type);
+            break;
         }
         if (FAILED(hr) || function_name_len == 0) {
             return {};

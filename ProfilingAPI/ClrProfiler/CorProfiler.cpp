@@ -719,8 +719,8 @@ namespace trace {
             hr = AddVarToLocal(pImport, pEmit, rewriter, exTypeRef, methodTraceTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
+            //add try catch finally
             auto pReWriter = &rewriter;
-            //add call beforemethod il 
             mdTypeRef objectTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 corLibAssemblyRef,
@@ -733,6 +733,10 @@ namespace trace {
             hr = pEmit->DefineUserString(typeName, (ULONG)wcslen(typeName), &typeNameTextToken);
             RETURN_OK_IF_FAILED(hr);
 
+            auto indexRet = rewriter.cNewLocals - 3;
+            auto indexEx = rewriter.cNewLocals - 2;
+            auto indexMethodTrace = rewriter.cNewLocals - 1;
+
             mdString methodNameTextToken;
             auto methodName = functionInfo.name.data();
             hr = pEmit->DefineUserString(methodName, (ULONG)wcslen(methodName), &methodNameTextToken);
@@ -741,11 +745,11 @@ namespace trace {
             ILInstr * pFirstOriginalInstr = pReWriter->GetILList()->m_pNext;
             reWriterWrapper.SetILPosition(pFirstOriginalInstr);
             reWriterWrapper.LoadNull();
-            reWriterWrapper.StLocal(rewriter.cNewLocals - 3);
+            reWriterWrapper.StLocal(indexMethodTrace);
             reWriterWrapper.LoadNull();
-            reWriterWrapper.StLocal(rewriter.cNewLocals - 2);
+            reWriterWrapper.StLocal(indexEx);
             reWriterWrapper.LoadNull();
-            reWriterWrapper.StLocal(rewriter.cNewLocals - 1);
+            reWriterWrapper.StLocal(indexRet);
             ILInstr* pTryStartInstr = reWriterWrapper.CallMember0(getInstanceMemberRef, false);
             reWriterWrapper.Cast(traceAgentTypeRef);
             reWriterWrapper.LoadStr(typeNameTextToken);
@@ -786,24 +790,24 @@ namespace trace {
                 }
             }
             reWriterWrapper.SetILPosition(pRetInstr);
-            reWriterWrapper.StLocal(rewriter.cNewLocals - 2);
+            reWriterWrapper.StLocal(indexEx);
             ILInstr* pRethrowInstr = reWriterWrapper.Rethrow();
-            reWriterWrapper.LoadLocal(rewriter.cNewLocals - 3);
 
+            reWriterWrapper.LoadLocal(indexRet);
             ILInstr* pNewInstr = pReWriter->NewILInstr();
             pNewInstr->m_opcode = CEE_BRFALSE_S;
             pReWriter->InsertBefore(pRetInstr, pNewInstr);
 
-            reWriterWrapper.LoadLocal(rewriter.cNewLocals - 1);
-            reWriterWrapper.LoadLocal(rewriter.cNewLocals - 3);
-            reWriterWrapper.LoadLocal(rewriter.cNewLocals - 2);
+            reWriterWrapper.LoadLocal(indexMethodTrace);
+            reWriterWrapper.LoadLocal(indexRet);
+            reWriterWrapper.LoadLocal(indexEx);
             reWriterWrapper.CallMember(endMemberRef, true);
 
             ILInstr* pEndFinallyInstr = reWriterWrapper.EndFinally();
             pNewInstr->m_pTarget = pEndFinallyInstr;
 
             if (!isVoidMethod) {
-                reWriterWrapper.LoadLocal(rewriter.cNewLocals - 3);
+                reWriterWrapper.LoadLocal(indexRet);
                 if (retIsBoxedType) {
                     reWriterWrapper.UnboxAny(retTypeTok);
                 }else{
@@ -824,7 +828,7 @@ namespace trace {
                             if (retIsBoxedType) {
                                 reWriterWrapper.Box(retTypeTok);
                             }
-                            reWriterWrapper.StLocal(rewriter.cNewLocals - 3);
+                            reWriterWrapper.StLocal(indexRet);
                         }
                         pInstr->m_opcode = CEE_LEAVE_S;
                         pInstr->m_pTarget = pEndFinallyInstr->m_pNext;
@@ -863,12 +867,6 @@ namespace trace {
 
             hr = rewriter.Export();
             RETURN_OK_IF_FAILED(hr);
-
-            LPCBYTE pMethodBytes;
-            ULONG pMethodSize;
-            hr = corProfilerInfo->GetILFunctionBody(moduleId, function_token, &pMethodBytes, &pMethodSize);
-            RETURN_OK_IF_FAILED(hr);
-            Info(HexStr(pMethodBytes, pMethodSize));
         }
 
         return  S_OK;
