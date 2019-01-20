@@ -610,8 +610,8 @@ namespace trace {
             return S_OK;
         }
 
-        if (functionInfo.type.name == "Samples.RedisCore.Program"_W &&
-            functionInfo.name == "Test2"_W) {
+        if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
+            functionInfo.name == "ExecuteSyncImpl"_W) {
             
             auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
             if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {

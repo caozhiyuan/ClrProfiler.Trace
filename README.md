@@ -4,7 +4,7 @@
 This sample shows il rewrite (open dev.cmd to develop)
 
 1. we try wapper a method and trace it.
-2. we add try catch finally in to method and trace it (ongoing)
+2. we add try catch finally in to method and trace it
 
 
 some help links:
