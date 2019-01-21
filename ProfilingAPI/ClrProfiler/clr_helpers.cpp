@@ -330,7 +330,7 @@ namespace trace
     }
 
     // Param ::= CustomMod* ( TYPEDBYREF | [BYREF] Type ) 
-    // CustomMod* TYPEDBYREF we don't support
+    // CustomMod* TYPEDBYREF ELEMENT_TYPE_BYREF we don't support
     bool ParseParam(PCCOR_SIGNATURE &pbCur, PCCOR_SIGNATURE pbEnd)
     {
         if (*pbCur == ELEMENT_TYPE_CMOD_OPT || *pbCur == ELEMENT_TYPE_CMOD_REQD) {
@@ -347,7 +347,7 @@ namespace trace
 
         if (*pbCur == ELEMENT_TYPE_BYREF)
         {
-            pbCur++;
+            return false;
         }
 
         if (!ParseType(pbCur, pbEnd))
@@ -357,7 +357,7 @@ namespace trace
     }
 
     // RetType ::= CustomMod* ( VOID | TYPEDBYREF | [BYREF] Type ) 
-    // CustomMod* TYPEDBYREF we don't support
+    // CustomMod* TYPEDBYREF ELEMENT_TYPE_BYREF we don't support
     bool ParseRetType(PCCOR_SIGNATURE &pbCur, PCCOR_SIGNATURE pbEnd)
     {
         if (*pbCur == ELEMENT_TYPE_CMOD_OPT || *pbCur == ELEMENT_TYPE_CMOD_REQD) {
@@ -380,7 +380,7 @@ namespace trace
 
         if (*pbCur == ELEMENT_TYPE_BYREF)
         {
-            pbCur++;
+            return false;
         }
 
         if (!ParseType(pbCur, pbEnd))
@@ -446,10 +446,6 @@ namespace trace
         bool flag = false;
         PCCOR_SIGNATURE pbCur = &pbBase[offset];
 
-        if (*pbCur == ELEMENT_TYPE_BYREF) {
-            pbCur++;
-        }
-
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:
         case  ELEMENT_TYPE_CHAR:
@@ -488,10 +484,6 @@ namespace trace
         mdToken token = mdTokenNil;
         PCCOR_SIGNATURE pbCur = &pbBase[offset];
         const PCCOR_SIGNATURE pTemp = pbCur;
-
-        if (*pbCur == ELEMENT_TYPE_BYREF) {
-            pbCur++;
-        }
 
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:

@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Datadog.Trace.ClrProfiler;
 using StackExchange.Redis;
 
 namespace Samples.RedisCore
