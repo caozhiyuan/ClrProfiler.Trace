@@ -3,8 +3,8 @@ CoreCLR Profiler ILReWrite
 
 This sample shows il rewrite (open dev.cmd to develop)
 
-1¡¢hook il in premain assembly.customloadfrom(you profiler C# dll)
-2¡¢add try catch finally in to need trace method
+1.hook il in premain assembly.customloadfrom(you profiler C# dll)
+2.add try catch finally in to need trace method
 
 Prerequisites
 -------------
