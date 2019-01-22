@@ -20,6 +20,9 @@ namespace trace {
         ICorProfilerInfo8* corProfilerInfo;
         std::mutex iLRewriteMapLock;
         std::unordered_map<mdMethodDef, bool> iLRewriteMap{};
+        bool entryPointReWrote = false;
+        WSTRING clrProfilerHomeEnvValue;
+        AssemblyProperty corAssemblyProperty{};
     public:
         CorProfiler();
         virtual ~CorProfiler();

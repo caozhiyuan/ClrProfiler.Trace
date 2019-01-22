@@ -46,6 +46,8 @@ namespace trace {
 
         this->corProfilerInfo->SetEventMask(eventMask);
 
+        this->clrProfilerHomeEnvValue = GetEnvironmentValue(kClrProfilerHomeEnv);
+
         return S_OK;
     }
 
@@ -105,230 +107,6 @@ namespace trace {
         return S_OK;
     }
 
-    HRESULT copyGenericParams(CComPtr<IMetaDataImport2>& pImport, CComPtr<IMetaDataEmit2>& pEmit, 
-        mdMethodDef mdProb, mdMethodDef mdWrapper, 
-        int* ptOwnerTypes)
-    {
-        int i = 0;
-        for (mdGenericParam kmdGenericParam : EnumGenericParams(pImport,mdProb)) 
-        {
-            WCHAR paramName[kNameMaxSize];
-            ULONG        pulParamSeq;
-            DWORD        pdwParamFlags;
-            mdToken      ptOwner;
-            DWORD        reserved;
-            ULONG        pchName;
-            auto hr = pImport->GetGenericParamProps(kmdGenericParam,
-                &pulParamSeq,
-                &pdwParamFlags,
-                &ptOwner,
-                &reserved,
-                paramName,
-                kNameMaxSize,
-                &pchName);
-
-            IfFailRet(hr);
-
-           if(TypeFromToken(ptOwner) == mdtMethodDef){
-               ptOwnerTypes[i++] = 0;
-           }
-           else{
-               ptOwnerTypes[i++] = 1;
-           }
-
-            std::vector<mdToken> ptkConstraintTypes;
-            for (mdGenericParamConstraint element : EnumGenericParamConstraints(pImport, kmdGenericParam)) 
-            {
-                mdToken ptkConstraintType;
-                hr = pImport->GetGenericParamConstraintProps(element,
-                    NULL,
-                    &ptkConstraintType);
-
-                IfFailRet(hr);
-                ptkConstraintTypes.push_back(ptkConstraintType);
-            }
-
-            auto paramNameStr = WSTRING(paramName);
-            mdGenericParam pgp;
-            hr = pEmit->DefineGenericParam(mdWrapper,
-                pulParamSeq,
-                pdwParamFlags,
-                paramNameStr.data(),
-                0,
-                ptkConstraintTypes.data(),
-                &pgp);
-
-            IfFailRet(hr);
-        }
-        return S_OK;
-    }
-
-    HRESULT copyParams(CComPtr<IMetaDataImport2>& pImport, CComPtr<IMetaDataEmit2>& pEmit, 
-        mdMethodDef mdProb, mdMethodDef mdWrapper)
-    {
-        for (mdParamDef kmdParamDef : EnumParams(pImport, mdProb)) 
-        {
-            ULONG pulParamSeq;
-            WCHAR paramName[kNameMaxSize];
-            DWORD          pdwAttr;
-            DWORD          pdwCPlusTypeFlag;
-            UVCP_CONSTANT  ppValue;
-            ULONG          pcchValue;
-            auto hr = pImport->GetParamProps(kmdParamDef,
-                NULL,
-                &pulParamSeq,
-                paramName,
-                kNameMaxSize,
-                NULL,
-                &pdwAttr,
-                &pdwCPlusTypeFlag,
-                &ppValue,
-                &pcchValue);
-
-            IfFailRet(hr);
-            auto paramNameStr = WSTRING(paramName);
-
-            mdParamDef ppd;
-            hr = pEmit->DefineParam(mdWrapper,
-                pulParamSeq,
-                paramNameStr.data(),
-                pdwAttr,
-                pdwCPlusTypeFlag,
-                ppValue,
-                pcchValue,
-                &ppd);
-
-            IfFailRet(hr);
-        }
-        return S_OK;
-    }
-
-    mdToken getMethodToken(CComPtr<IMetaDataEmit2>& pEmit, mdMemberRef pmr, 
-        ULONG numberOfTypeArguments, 
-        int* genericParamOwnerTypes)
-    {
-        if (numberOfTypeArguments == 0)
-            return pmr;
-
-        UNALIGNED INT32 temp = 0;
-        const auto dataSize = CorSigCompressData(numberOfTypeArguments, &temp);
-        const ULONG signature_len = numberOfTypeArguments * 2 + 1 + dataSize;
-        BYTE* signature = new BYTE[signature_len];
-
-        signature[0] = (BYTE)IMAGE_CEE_CS_CALLCONV_GENERICINST;
-
-        memcpy(signature + 1, &temp, dataSize);
-
-        ULONG offset = 1 + dataSize;
-        for (ULONG i = 0; i < numberOfTypeArguments; i++) {
-            if(genericParamOwnerTypes[i] == 0) {
-                signature[offset++] = (BYTE)ELEMENT_TYPE_MVAR;
-            }
-            else {
-                signature[offset++] = (BYTE)ELEMENT_TYPE_VAR;
-            }
-            const auto size = CorSigCompressData(i, &temp);
-            memcpy(signature + offset, &temp, size);
-            offset += size;
-        }
-
-        mdMethodSpec kpmi = mdMethodSpecNil;
-        pEmit->DefineMethodSpec(pmr, signature, signature_len, &kpmi);
-
-        return kpmi;
-    }
-
-    void genLoadArgumentBytes(ULONG numberOfArguments, LPBYTE pwMethodBytes, ULONG& offset, bool staticFlag) 
-    {
-        const unsigned k = staticFlag ? 0 : 1;
-        const ULONG count = staticFlag ? numberOfArguments - 1 : numberOfArguments;
-        for (unsigned i = k; i <= count; i++) {
-            if (i == 0) 
-            {
-                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
-            }
-            else if (i == 1) 
-            {
-                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_1;
-            }
-            else if (i == 2) 
-            {
-                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_2;
-            }
-            else if (i == 3) 
-            {
-                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_3;
-            }
-            else if (i >= 4 && i <= 255) {
-                pwMethodBytes[offset++] = (BYTE)CEE_LDARG_S;
-                pwMethodBytes[offset++] = (BYTE)i;
-            }
-            else 
-            {
-                *(UNALIGNED INT16*)&(pwMethodBytes[offset]) = CEE_LDARG;
-                offset += 2;
-                *(UNALIGNED INT16*)&(pwMethodBytes[offset]) = i;
-                offset += 2;
-            }
-        }
-    }
-
-    unsigned getNumberOfArgumentsSize(ULONG numberOfArguments, bool staticFlag)
-    {
-        ULONG codeSize = 0;
-        const unsigned k = staticFlag ? 0 : 1;
-        const ULONG count = staticFlag ? numberOfArguments - 1 : numberOfArguments;
-        for (unsigned i = k; i <= count; i++) {
-            if (i < 4) {
-                codeSize += 1;
-            }
-            else  if (i >= 4 && i <= 255) {
-                //ldarg.s 5
-                codeSize += 2;
-            }
-            else { 
-                //ldarg 555
-                codeSize += 4;
-            }
-        }
-        return codeSize;
-    }
-
-    LPBYTE GetWrapperMethodIL(IMethodMalloc* pIMethodMalloc, mdToken pmi,
-        DWORD pdwAttr, MethodSignature signature)
-    {
-        const auto numberOfArguments = signature.NumberOfArguments();
-        const auto numberOfTypeArguments = signature.NumberOfTypeArguments();
-        const auto staticFlag = (pdwAttr & mdStatic) == mdStatic;
-        //call mdToken ret
-        ULONG codeSizeNew = 1 + 4 + 1;
-        if(!staticFlag) {
-            //ldArg.0 
-            codeSizeNew += 1;
-        }
-        codeSizeNew += getNumberOfArgumentsSize(numberOfArguments, staticFlag);
-
-        LPBYTE pwMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(codeSizeNew + 1);
-        ULONG offset = 0;
-        pwMethodBytes[offset++] = (BYTE)(CorILMethod_TinyFormat | (codeSizeNew << 2));
-
-        if(!staticFlag)
-        {
-            pwMethodBytes[offset++] = (BYTE)CEE_LDARG_0;
-        }
-
-        genLoadArgumentBytes(numberOfArguments, pwMethodBytes, offset, staticFlag);
-
-        pwMethodBytes[offset++] = (BYTE)CEE_CALL;
-
-        *(UNALIGNED INT32*)&(pwMethodBytes[offset]) = pmi;
-        offset += 4;
-
-        pwMethodBytes[offset++] = (BYTE)CEE_RET;
-
-        return pwMethodBytes;
-    }
-
     HRESULT STDMETHODCALLTYPE CorProfiler::ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) 
     {
         auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
@@ -336,8 +114,7 @@ namespace trace {
             return S_OK;
         }
 
-        if (module_info.assembly.name == "StackExchange.Redis"_W) {
-            //1. we try wapper a method and trace it. this is a sample
+        if (module_info.assembly.name == L"mscorlib" || module_info.assembly.name == L"System.Private.CoreLib") {
 
             CComPtr<IUnknown> metadata_interfaces;
             auto hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
@@ -345,9 +122,29 @@ namespace trace {
                 metadata_interfaces.GetAddressOf());
             RETURN_OK_IF_FAILED(hr);
 
-            mdAssemblyRef assemblyRef;
-            hr = GetProfilerAssemblyRef(metadata_interfaces, assemblyRef);
+            auto pAssemblyImport = metadata_interfaces.As<IMetaDataAssemblyImport>(
+                IID_IMetaDataAssemblyImport);
+            if (pAssemblyImport.IsNull()) {
+                return S_OK;
+            }
+
+            mdAssembly assembly;
+            hr = pAssemblyImport->GetAssemblyFromScope(&assembly);
             RETURN_OK_IF_FAILED(hr);
+
+            hr = pAssemblyImport->GetAssemblyProps(
+                assembly,
+                &corAssemblyProperty.ppbPublicKey,
+                &corAssemblyProperty.pcbPublicKey,
+                &corAssemblyProperty.pulHashAlgId,
+                NULL,
+                0,
+                NULL,
+                &corAssemblyProperty.pMetaData,
+                &corAssemblyProperty.assemblyFlags);
+            RETURN_OK_IF_FAILED(hr);
+
+            corAssemblyProperty.szName = module_info.assembly.name;
 
             auto pImport = metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
             auto pEmit = metadata_interfaces.As<IMetaDataEmit2>(IID_IMetaDataEmit);
@@ -359,124 +156,81 @@ namespace trace {
             hr = pImport->GetModuleFromScope(&module);
             RETURN_OK_IF_FAILED(hr);
 
-            const LPCWSTR wszTypeToReference = L"Datadog.Trace.ClrProfiler.Integrations.StackExchange.Redis.ConnectionMultiplexer";
-            mdTypeRef typeRef = mdTokenNil;
-            hr = pEmit->DefineTypeRefByName(
-                assemblyRef,
-                wszTypeToReference,
-                &typeRef);
+            mdTypeDef assemblyTypeDef;
+            hr = pImport->FindTypeDefByName(kAssemblyTypeName, NULL, &assemblyTypeDef);
             RETURN_OK_IF_FAILED(hr);
 
-            const LPCWSTR mdProbeName = L"ExecuteAsyncImpl";
-            std::vector<BYTE> sigFunctionProbe = { 0x10,0x01,0x05,0x1C,0x1C,0x1C,0x1C,0x1C,0x1C };
-            mdMemberRef pmr;
-            hr = pEmit->DefineMemberRef(
-                typeRef,
-                mdProbeName,
-                sigFunctionProbe.data(),
-                (DWORD)sigFunctionProbe.size(),
-                &pmr);
-
-            RETURN_OK_IF_FAILED(hr);
-
-            const LPCWSTR typeNameToProb = L"StackExchange.Redis.ConnectionMultiplexer";
-            mdTypeDef typeToProb;
-            hr = pImport->FindTypeDefByName(
-                typeNameToProb,
-                mdTokenNil,
-                &typeToProb);
-            RETURN_OK_IF_FAILED(hr);
-
-            mdMethodDef mdProb;
-            std::vector<BYTE> sigFunctionProbe2;
-            hr = pImport->FindMember(
-                typeToProb,
-                mdProbeName,
-                sigFunctionProbe2.data(),
-                (DWORD)sigFunctionProbe2.size(),
-                &mdProb);
-            RETURN_OK_IF_FAILED(hr);
-
-            DWORD       pdwAttr;
-            PCCOR_SIGNATURE ppvSigBlob;
-            ULONG       pcbSigBlob;
-            ULONG       pulCodeRVA;
-            DWORD       pdwImplFlags;
-            hr = pImport->GetMethodProps(
-                mdProb,
-                NULL,
-                NULL,
-                0,
-                NULL,
-                &pdwAttr,
-                &ppvSigBlob,
-                &pcbSigBlob,
-                &pulCodeRVA,
-                &pdwImplFlags);
-            RETURN_OK_IF_FAILED(hr);
-
-            auto signature = MethodSignature(ppvSigBlob, pcbSigBlob);
-            hr = signature.TryParse();
-            RETURN_OK_IF_FAILED(hr);
-
-            auto numberOfArguments = signature.NumberOfArguments();
-            auto numberOfTypeArguments = signature.NumberOfTypeArguments();
-            if (numberOfArguments < 8 && numberOfTypeArguments < 8)
+            auto enumerator = EnumMembersWithName(pImport, assemblyTypeDef, kAssemblyLoadMethodName);
+            for (auto assemblyLoadMethodDef : enumerator)
             {
-                const WSTRING prefixStr = "Trace_"_W;
-                WSTRING mdProbeWrapperName = prefixStr + WSTRING(mdProbeName);
-                mdMethodDef mdWrapper;
-                hr = pEmit->DefineMethod(
-                    typeToProb,
-                    mdProbeWrapperName.data(),
-                    pdwAttr,
-                    ppvSigBlob,
-                    pcbSigBlob,
-                    pulCodeRVA,
-                    pdwImplFlags,
-                    &mdWrapper);
+                PCCOR_SIGNATURE raw_signature;
+                ULONG raw_signature_len;
+                DWORD       pdwAttr;
+                ULONG       pulCodeRVA;
+                DWORD       pdwImplFlags;
+                hr = pImport->GetMethodProps(
+                    assemblyLoadMethodDef,
+                    NULL,
+                    NULL,
+                    0,
+                    NULL,
+                    &pdwAttr,
+                    &raw_signature,
+                    &raw_signature_len,
+                    &pulCodeRVA,
+                    &pdwImplFlags);
                 RETURN_OK_IF_FAILED(hr);
 
-                int* genericParamOwnerTypes = new int[numberOfTypeArguments];
-                if (numberOfTypeArguments > 0)
-                {
-                    hr = copyGenericParams(pImport, pEmit, mdProb, mdWrapper, genericParamOwnerTypes);
+                auto signature = MethodSignature(raw_signature, raw_signature_len);
+                hr = signature.TryParse();
+                RETURN_OK_IF_FAILED(hr);
+
+                if (signature.NumberOfArguments() == 1) {
+
+                    // if don't define a custom load from , will raise cor lib bad image load
+                    COR_SIGNATURE customAssemblyLoadSig[] =
+                    {
+                       IMAGE_CEE_CS_CALLCONV_DEFAULT ,
+                       0x01,
+                       ELEMENT_TYPE_VOID,
+                       ELEMENT_TYPE_STRING
+                    };
+                    mdMethodDef customAssemblyLoadMethodDef;
+                    hr = pEmit->DefineMethod(
+                        assemblyTypeDef,
+                        kAssemblyCustomLoadMethodName,
+                        pdwAttr,
+                        customAssemblyLoadSig,
+                        sizeof(customAssemblyLoadSig),
+                        pulCodeRVA,
+                        pdwImplFlags,
+                        &customAssemblyLoadMethodDef);
                     RETURN_OK_IF_FAILED(hr);
-                }
 
-                if (numberOfArguments > 0)
-                {
-                    hr = copyParams(pImport, pEmit, mdProb, mdWrapper);
+                    CComPtr<IMethodMalloc>  pIMethodMalloc;
+                    hr = corProfilerInfo->GetILFunctionBodyAllocator(moduleId, pIMethodMalloc.GetAddressOf());
                     RETURN_OK_IF_FAILED(hr);
+
+                    auto pwMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(9);
+                    const ULONG codeSize = 8;
+                    ULONG offset = 0;
+                    pwMethodBytes[offset++] = (BYTE)(CorILMethod_TinyFormat | codeSize << 2);
+                    pwMethodBytes[offset++] = CEE_LDARG_0;
+                    pwMethodBytes[offset++] = CEE_CALL;
+                    *(UNALIGNED INT32*)&(pwMethodBytes[offset]) = assemblyLoadMethodDef;
+                    offset += 4;
+                    pwMethodBytes[offset++] = (BYTE)CEE_POP;
+                    pwMethodBytes[offset] = (BYTE)CEE_RET;
+
+                    hr = corProfilerInfo->SetILFunctionBody(moduleId, customAssemblyLoadMethodDef, pwMethodBytes);
+                    RETURN_OK_IF_FAILED(hr);
+
+                    break;
                 }
-
-                LPCBYTE pMethodBytes;
-                ULONG pMethodSize;
-                hr = corProfilerInfo->GetILFunctionBody(moduleId, mdProb, &pMethodBytes, &pMethodSize);
-                RETURN_OK_IF_FAILED(hr);
-
-                IMethodMalloc* pIMethodMalloc;
-                hr = corProfilerInfo->GetILFunctionBodyAllocator(moduleId, &pIMethodMalloc);
-                RETURN_OK_IF_FAILED(hr);
-
-                auto pNewMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(pMethodSize);
-                memcpy(pNewMethodBytes, pMethodBytes, pMethodSize);
-                hr = corProfilerInfo->SetILFunctionBody(moduleId, mdWrapper, pNewMethodBytes);
-                RETURN_OK_IF_FAILED(hr);
-
-                auto pmi = getMethodToken(pEmit, pmr, numberOfTypeArguments, genericParamOwnerTypes);
-                if(pmi == mdMethodSpecNil) {
-                    RETURN_OK_IF_FAILED(E_FAIL);
-                }
-                auto pwMethodBytes = GetWrapperMethodIL(pIMethodMalloc, pmi, pdwAttr, signature);
-
-                hr = corProfilerInfo->SetILFunctionBody(moduleId, mdProb, pwMethodBytes);
-                RETURN_OK_IF_FAILED(hr);
-
-                pIMethodMalloc->Release();
             }
-        }
 
+            return S_OK;
+        }
         return S_OK;
     }
 
@@ -520,7 +274,8 @@ namespace trace {
         return S_OK;
     }
 
-    HRESULT AddVarToLocal(CComPtr<IMetaDataImport2>& pImport, 
+    // add ret ex methodTrace var to local var
+    HRESULT ModifyLocalSig(CComPtr<IMetaDataImport2>& pImport,
         CComPtr<IMetaDataEmit2>& pEmit,
         ILRewriter& reWriter, 
         mdTypeRef exTypeRef,
@@ -631,14 +386,77 @@ namespace trace {
             return S_OK;
         }
 
-        if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
-            functionInfo.name == "ExecuteSyncImpl"_W) {
-            
-            auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
-            if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {
+        auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
+        if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {
+            return S_OK;
+        }
+
+        if (!entryPointReWrote && functionInfo.id == module_info.GetEntryPointToken()) {
+
+            mdAssemblyRef corLibAssemblyRef = GetCorLibAssemblyRef(metadata_interfaces, corAssemblyProperty);
+            if (corLibAssemblyRef == mdAssemblyRefNil) {
                 return S_OK;
             }
 
+            auto pAssemblyImport = metadata_interfaces.As<IMetaDataAssemblyImport>(
+                IID_IMetaDataAssemblyImport);
+            auto pAssemblyEmit =
+                metadata_interfaces.As<IMetaDataAssemblyEmit>(IID_IMetaDataAssemblyEmit);
+
+            if (pAssemblyImport.IsNull() || pAssemblyEmit.IsNull()) {
+                return S_OK;
+            }
+
+            mdTypeRef assemblyTypeRef;
+            hr = pEmit->DefineTypeRefByName(
+                corLibAssemblyRef,
+                kAssemblyTypeName,
+                &assemblyTypeRef);
+            RETURN_OK_IF_FAILED(hr);
+            COR_SIGNATURE assemblyLoadSig[] =
+            {
+                IMAGE_CEE_CS_CALLCONV_DEFAULT ,
+                0x01,
+                ELEMENT_TYPE_VOID,
+                ELEMENT_TYPE_STRING
+            };
+            mdMemberRef assemblyLoadMemberRef;
+            hr = pEmit->DefineMemberRef(
+                assemblyTypeRef,
+                kAssemblyCustomLoadMethodName,
+                assemblyLoadSig,
+                sizeof(assemblyLoadSig),
+                &assemblyLoadMemberRef);
+
+            mdString profilerTraceDllNameTextToken;
+            auto clrProfilerTraceDllName = clrProfilerHomeEnvValue + "\\"_W + kClrProfilerDllName;
+            hr = pEmit->DefineUserString(clrProfilerTraceDllName.data(), (ULONG)clrProfilerTraceDllName.length(), &profilerTraceDllNameTextToken);
+            RETURN_OK_IF_FAILED(hr);
+
+            ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
+            RETURN_OK_IF_FAILED(rewriter.Import());
+
+            auto pReWriter = &rewriter;
+            ILRewriterWrapper reWriterWrapper(pReWriter);
+            ILInstr * pFirstOriginalInstr = pReWriter->GetILList()->m_pNext;
+            reWriterWrapper.SetILPosition(pFirstOriginalInstr);
+            reWriterWrapper.LoadStr(profilerTraceDllNameTextToken);
+            reWriterWrapper.CallMember(assemblyLoadMemberRef, false);
+            hr = rewriter.Export();
+            RETURN_OK_IF_FAILED(hr);
+
+            {
+                std::lock_guard<std::mutex> guard(iLRewriteMapLock);
+                iLRewriteMap[function_token] = true;
+            }
+            entryPointReWrote = true;
+            
+            return S_OK;
+        }
+
+        if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
+            functionInfo.name == "ExecuteSyncImpl"_W) {
+            
             hr = functionInfo.signature.TryParse();
             RETURN_OK_IF_FAILED(hr);
 
@@ -714,14 +532,7 @@ namespace trace {
                 &endMemberRef);
             RETURN_OK_IF_FAILED(hr);
 
-            auto pAssemblyImport = metadata_interfaces.As<IMetaDataAssemblyImport>(
-                IID_IMetaDataAssemblyImport);
-
-            if (pAssemblyImport.IsNull()) {
-                return S_OK;
-            }
-
-            mdAssemblyRef corLibAssemblyRef = FindCorLibAssemblyRef(pAssemblyImport);
+            mdAssemblyRef corLibAssemblyRef = GetCorLibAssemblyRef(metadata_interfaces, corAssemblyProperty);
             if (corLibAssemblyRef == mdAssemblyRefNil) {
                 return S_OK;
             }
@@ -736,8 +547,8 @@ namespace trace {
             ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
             RETURN_OK_IF_FAILED(rewriter.Import());
 
-            //add local sig
-            hr = AddVarToLocal(pImport, pEmit, rewriter, exTypeRef, methodTraceTypeRef);
+            //ModifyLocalSig
+            hr = ModifyLocalSig(pImport, pEmit, rewriter, exTypeRef, methodTraceTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
             //add try catch finally

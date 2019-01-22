@@ -612,15 +612,37 @@ namespace trace
         return mdAssemblyRefNil;
     }
 
-    mdAssemblyRef FindCorLibAssemblyRef(
-        const CComPtr<IMetaDataAssemblyImport>& assembly_import) {
-        for (mdAssemblyRef assembly_ref : EnumAssemblyRefs(assembly_import)) {
+    mdAssemblyRef GetCorLibAssemblyRef(CComPtr<IUnknown>& metadata_interfaces,
+        AssemblyProperty assemblyProperty) {
+
+        mdAssemblyRef md_assembly_ref = mdAssemblyRefNil;
+        auto assembly_import = metadata_interfaces.As<IMetaDataAssemblyImport>(
+            IID_IMetaDataAssemblyImport);
+        auto assembly_emit =
+            metadata_interfaces.As<IMetaDataAssemblyEmit>(IID_IMetaDataAssemblyEmit);
+
+        if (assembly_emit.IsNull() || assembly_import.IsNull()) {
+            return md_assembly_ref;
+        }
+
+        for (auto assembly_ref : EnumAssemblyRefs(assembly_import)) {
             auto name = GetAssemblyName(assembly_import, assembly_ref);
-            if (name == L"System.Runtime" || name == L"mscorlib" || name == L"System.Private.CoreLib") {
-                return assembly_ref;
+            if (name == assemblyProperty.szName) {
+                md_assembly_ref = assembly_ref;
+                return md_assembly_ref;
             }
         }
-        return mdAssemblyRefNil;
+
+        assembly_emit->DefineAssemblyRef(
+            assemblyProperty.ppbPublicKey,
+            assemblyProperty.pcbPublicKey,
+            assemblyProperty.szName.data(),
+            &assemblyProperty.pMetaData,
+            &assemblyProperty.pulHashAlgId,
+            sizeof(assemblyProperty.pulHashAlgId),
+            assemblyProperty.assemblyFlags,
+            &md_assembly_ref);
+        return md_assembly_ref;
     }
 
     ModuleInfo GetModuleInfo(ICorProfilerInfo3* info, const ModuleID& module_id) {
@@ -636,8 +658,14 @@ namespace trace
         if (FAILED(hr) || module_path_len == 0) {
             return {};
         }
-        return { module_id, WSTRING(module_path), GetAssemblyInfo(info, assembly_id),
-                module_flags };
+
+        return {
+            module_id,
+            WSTRING(module_path),
+            GetAssemblyInfo(info, assembly_id),
+            module_flags,
+            base_load_address
+        };
     }
 
     TypeInfo GetTypeInfo(const CComPtr<IMetaDataImport2>& metadata_import,
@@ -741,8 +769,6 @@ namespace trace
                 MethodSignature(raw_signature,raw_signature_len) };
     }
 
-    //1. .net framework gac or net core DOTNET_ADDITIONAL_DEPS=%PROGRAMFILES%\dotnet\x64\additionalDeps\Datadog.Trace.ClrProfiler.Managed
-    //2. just proj ref
     HRESULT GetProfilerAssemblyRef(CComPtr<IUnknown>& metadata_interfaces, mdAssemblyRef& assemblyRef) {
 
         auto pAssemblyImport = metadata_interfaces.As<IMetaDataAssemblyImport>(
@@ -754,32 +780,27 @@ namespace trace
             return E_FAIL;
         }
 
-        mdAssembly assembly;
-        HRESULT hr = pAssemblyImport->GetAssemblyFromScope(&assembly);
-        IfFailRet(hr);
-
-        auto token = FindAssemblyRef(pAssemblyImport, kProfilerAssemblyName);
+        const auto token = FindAssemblyRef(pAssemblyImport, kProfilerAssemblyName);
         if (token != mdAssemblyRefNil) {
             assemblyRef = token;
             return S_OK;
         }
 
-        BYTE rgbPublicKeyToken[] = { 0xde, 0xf8, 0x6d, 0x06, 0x1d, 0x0d, 0x2e, 0xeb };
         WCHAR wszLocale[MAX_PATH];
         wcscpy_s(wszLocale, L"neutral");
 
         ASSEMBLYMETADATA assemblyMetaData;
         ZeroMemory(&assemblyMetaData, sizeof(assemblyMetaData));
-        assemblyMetaData.usMajorVersion = 0;
-        assemblyMetaData.usMinorVersion = 6;
+        assemblyMetaData.usMajorVersion = 1;
+        assemblyMetaData.usMinorVersion = 0;
         assemblyMetaData.usBuildNumber = 0;
         assemblyMetaData.usRevisionNumber = 0;
         assemblyMetaData.szLocale = wszLocale;
         assemblyMetaData.cbLocale = _countof(wszLocale);
 
-        hr = pAssemblyEmit->DefineAssemblyRef(
-            (void *)rgbPublicKeyToken,
-            sizeof(rgbPublicKeyToken),
+        auto hr = pAssemblyEmit->DefineAssemblyRef(
+            NULL,
+            0,
             kProfilerAssemblyName,
             &assemblyMetaData,
             NULL,
@@ -787,7 +808,6 @@ namespace trace
             0,
             &assemblyRef);
         IfFailRet(hr);
-
         return  hr;
     }
 }

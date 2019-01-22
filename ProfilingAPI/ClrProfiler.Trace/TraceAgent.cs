@@ -1,6 +1,8 @@
 ﻿using System;
+using System.IO;
+using System.Reflection;
 
-namespace Datadog.Trace.ClrProfiler
+namespace ClrProfiler.Trace
 {
     public delegate void EndMethodDelegate(object returnValue, Exception ex);
 
@@ -12,6 +14,25 @@ namespace Datadog.Trace.ClrProfiler
         private TraceAgent()
         {
             _wrapperService = new WrapperService();
+
+            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
+        }
+
+        private Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            if (args.RequestingAssembly.FullName.Contains("ClrProfiler.Trace"))
+            {
+                var home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
+                if (!string.IsNullOrEmpty(home))
+                {
+                    var filepath = Path.Combine(home, $"{new AssemblyName(args.Name).Name}.dll");
+                    if (File.Exists(filepath))
+                    {
+                        return Assembly.LoadFrom(filepath);
+                    }
+                }
+            }
+            return null;
         }
 
         public static object GetInstance()

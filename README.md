@@ -1,10 +1,9 @@
 CoreCLR Profiler ILReWrite
 ==========================================
 
-This sample shows il rewrite two ways (open dev.cmd to develop)
+This sample shows il rewrite (open dev.cmd to develop)
 
-1. wapper a method and trace it.
-2. we add try catch finally in to method
+add try catch finally in to method
 
 Prerequisites
 -------------

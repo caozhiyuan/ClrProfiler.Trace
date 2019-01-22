@@ -12,12 +12,20 @@ namespace trace {
 
     const size_t kNameMaxSize = 1024;
     const ULONG kEnumeratorMax = 256;
-    const auto kProfilerAssemblyName = L"Datadog.Trace.ClrProfiler.Managed";
-    const auto kTraceAgentTypeName = L"Datadog.Trace.ClrProfiler.TraceAgent";
+    const auto kProfilerAssemblyName = L"ClrProfiler.Trace";
+    const auto kTraceAgentTypeName = L"ClrProfiler.Trace.TraceAgent";
     const auto kGetInstanceMethodName = L"GetInstance";
     const auto kBeforeMethodName = L"BeforeMethod";
     const auto kEndMethodName = L"EndMethod";
-    const auto kMethodTraceTypeName = L"Datadog.Trace.ClrProfiler.MethodTrace";
+    const auto kMethodTraceTypeName = L"ClrProfiler.Trace.MethodTrace";
+
+    const auto kAssemblyTypeName = L"System.Reflection.Assembly";
+    const auto kAssemblyLoadMethodName = L"LoadFrom";
+    const auto kAssemblyCustomLoadMethodName = L"CustomLoadFrom";
+
+    const auto kClrProfilerHomeEnv = L"CLRPROFILER_HOME";
+
+    const auto kClrProfilerDllName = "ClrProfiler.Trace.dll"_W;
 
     template <typename T>
     class EnumeratorIterator;
@@ -209,6 +217,33 @@ namespace trace {
         });
     }
 
+    static Enumerator<mdToken> EnumMembersWithName(
+        const CComPtr<IMetaDataImport2>& metadata_import,
+        const mdToken& parent_token,
+        LPCWSTR szName) {
+        return Enumerator<mdToken>(
+            [metadata_import, parent_token, szName](HCORENUM* ptr, mdMethodDef arr[],
+                ULONG max, ULONG* cnt) -> HRESULT {
+            return metadata_import->EnumMembersWithName(ptr, parent_token, szName, arr, max, cnt);
+        },
+            [metadata_import](HCORENUM ptr) -> void {
+            metadata_import->CloseEnum(ptr);
+        });
+    }
+
+    struct AssemblyProperty {
+        const void  *ppbPublicKey;
+        ULONG       pcbPublicKey;
+        ULONG       pulHashAlgId;
+        ASSEMBLYMETADATA pMetaData{};
+        WSTRING     szName;
+        DWORD assemblyFlags = 0;
+
+        AssemblyProperty() : ppbPublicKey(nullptr), pcbPublicKey(0), pulHashAlgId(0), szName(""_W)
+        {
+        }
+    };
+
     struct AssemblyInfo {
         const AssemblyID id;
         const WSTRING name;
@@ -224,15 +259,23 @@ namespace trace {
         const WSTRING path;
         const AssemblyInfo assembly;
         const DWORD flags;
+        const LPCBYTE baseLoadAddress;
 
-        ModuleInfo() : id(0), path(""_W), assembly({}), flags(0) {}
-        ModuleInfo(ModuleID id, WSTRING path, AssemblyInfo assembly, DWORD flags)
-            : id(id), path(path), assembly(assembly), flags(flags) {}
+        ModuleInfo() : id(0), path(""_W), assembly({}), flags(0), baseLoadAddress(nullptr){}
+        ModuleInfo(ModuleID id, WSTRING path, AssemblyInfo assembly, DWORD flags, LPCBYTE baseLoadAddress)
+            : id(id), path(path), assembly(assembly), flags(flags), baseLoadAddress(baseLoadAddress) {}
 
         bool IsValid() const { return id != 0; }
 
         bool IsWindowsRuntime() const {
             return ((flags & COR_PRF_MODULE_WINDOWS_RUNTIME) != 0);
+        }
+
+        mdToken GetEntryPointToken() const {
+            const auto ntHeaders = (IMAGE_NT_HEADERS*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
+            const auto directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
+            const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
+            return corHeader->EntryPointToken;
         }
     };
 
@@ -285,6 +328,9 @@ namespace trace {
         CorCallingConvention CallingConvention() const {
             return CorCallingConvention(len == 0 ? 0 : pbBase[0]);
         }
+        bool IsEmpty() const  {
+            return len == 0;
+        }
     };
 
     struct FunctionInfo {
@@ -293,7 +339,7 @@ namespace trace {
         const TypeInfo type;
         MethodSignature signature;
 
-        FunctionInfo() : id(0), name(""_W), type({}), signature() {}
+        FunctionInfo() : id(0), name(""_W), type({}), signature({}) {}
         FunctionInfo(mdToken id, WSTRING name, TypeInfo type,
             MethodSignature signature)
             : id(id), name(name), type(type), signature(signature) {}
@@ -318,7 +364,8 @@ namespace trace {
     TypeInfo GetTypeInfo(const CComPtr<IMetaDataImport2>& metadata_import,
         const mdToken& token);
 
-    mdAssemblyRef FindCorLibAssemblyRef(const CComPtr<IMetaDataAssemblyImport>& assembly_import);
+    mdAssemblyRef GetCorLibAssemblyRef(CComPtr<IUnknown>& metadata_interfaces,
+        AssemblyProperty assemblyProperty);
 
     FunctionInfo GetFunctionInfo(const CComPtr<IMetaDataImport2>& metadata_import,
         const mdToken& token);
