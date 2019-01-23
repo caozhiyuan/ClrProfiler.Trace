@@ -844,7 +844,7 @@ namespace trace
                 return {};
             }
             auto generic_info = GetFunctionInfo(metadata_import, parent_token);
-            std::memcpy(function_name, generic_info.name.c_str(),
+            memcpy(function_name, generic_info.name.c_str(),
                 sizeof(WCHAR) * (generic_info.name.length() + 1));
             function_name_len = (DWORD)(generic_info.name.length() + 1);
         } break;

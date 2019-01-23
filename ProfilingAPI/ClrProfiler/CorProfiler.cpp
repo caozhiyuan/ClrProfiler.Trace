@@ -18,6 +18,7 @@ namespace trace {
 
     CorProfiler::CorProfiler() : refCount(0), corProfilerInfo(nullptr)
     {
+        Info("ctor"_W);
     }
 
     CorProfiler::~CorProfiler()
