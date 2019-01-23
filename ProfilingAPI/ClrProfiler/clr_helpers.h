@@ -12,18 +12,18 @@ namespace trace {
 
     const size_t kNameMaxSize = 1024;
     const ULONG kEnumeratorMax = 256;
-    const auto kProfilerAssemblyName = L"ClrProfiler.Trace";
-    const auto kTraceAgentTypeName = L"ClrProfiler.Trace.TraceAgent";
-    const auto kGetInstanceMethodName = L"GetInstance";
-    const auto kBeforeMethodName = L"BeforeMethod";
-    const auto kEndMethodName = L"EndMethod";
-    const auto kMethodTraceTypeName = L"ClrProfiler.Trace.MethodTrace";
+    const auto kProfilerAssemblyName = "ClrProfiler.Trace"_W;
+    const auto kTraceAgentTypeName = "ClrProfiler.Trace.TraceAgent"_W;
+    const auto kGetInstanceMethodName = "GetInstance"_W;
+    const auto kBeforeMethodName = "BeforeMethod"_W;
+    const auto kEndMethodName = "EndMethod"_W;
+    const auto kMethodTraceTypeName = "ClrProfiler.Trace.MethodTrace"_W;
 
-    const auto kAssemblyTypeName = L"System.Reflection.Assembly";
-    const auto kAssemblyLoadMethodName = L"LoadFrom";
-    const auto kAssemblyCustomLoadMethodName = L"CustomLoadFrom";
+    const auto kAssemblyTypeName = "System.Reflection.Assembly"_W;
+    const auto kAssemblyLoadMethodName = "LoadFrom"_W;
+    const auto kAssemblyCustomLoadMethodName = "CustomLoadFrom"_W;
 
-    const auto kClrProfilerHomeEnv = L"CLRPROFILER_HOME";
+    const auto kClrProfilerHomeEnv = "CLRPROFILER_HOME"_W;
 
     const auto kClrProfilerDllName = "ClrProfiler.Trace.dll"_W;
 

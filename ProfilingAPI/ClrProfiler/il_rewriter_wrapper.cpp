@@ -88,7 +88,7 @@ void ILRewriterWrapper::StLocal(unsigned index) const
     };
 
     ILInstr* pNewInstr = m_ILRewriter->NewILInstr();
-    if (index >= 0 && index <= 3) {
+    if (index <= 3) {
         pNewInstr->m_opcode = opcodes[index];
     }
     else if (index <= 255) {
@@ -112,7 +112,7 @@ void ILRewriterWrapper::LoadLocal(unsigned index) const
     };
 
     ILInstr* pNewInstr = m_ILRewriter->NewILInstr();
-    if (index >= 0 && index <= 3) {
+    if (index <= 3) {
         pNewInstr->m_opcode = opcodes[index];
     }
     else if (index <= 255) {
