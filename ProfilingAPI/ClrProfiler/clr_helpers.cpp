@@ -452,52 +452,52 @@ namespace trace
 
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.Boolean", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemBoolean.data(), &token);
             break;
         case  ELEMENT_TYPE_CHAR:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.Char", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemChar.data(), &token);
             break;
         case  ELEMENT_TYPE_I1:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.Byte", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemByte.data(), &token);
             break;
         case  ELEMENT_TYPE_U1:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.SByte", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemSByte.data(), &token);
             break;
         case  ELEMENT_TYPE_U2:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.UInt16", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemUInt16.data(), &token);
             break;
         case  ELEMENT_TYPE_I2:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.Int16", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemInt16.data(), &token);
             break;
         case  ELEMENT_TYPE_I4:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.Int32", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemInt32.data(), &token);
             break;
         case  ELEMENT_TYPE_U4:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.UInt32", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemUInt32.data(), &token);
             break;
         case  ELEMENT_TYPE_I8:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.Int64", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemInt64.data(), &token);
             break;
         case  ELEMENT_TYPE_U8:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.UInt64", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemUInt64.data(), &token);
             break;
         case  ELEMENT_TYPE_R4:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.Single", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemSingle.data(), &token);
             break;
         case  ELEMENT_TYPE_R8:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.Double", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemDouble.data(), &token);
             break;
         case  ELEMENT_TYPE_I:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.IntPtr", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemIntPtr.data(), &token);
             break;
         case  ELEMENT_TYPE_U:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.UIntPtr", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemUIntPtr.data(), &token);
             break;
         case  ELEMENT_TYPE_STRING:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.String", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemString.data(), &token);
             break;
         case  ELEMENT_TYPE_OBJECT:
-            pEmit->DefineTypeRefByName(corLibRef, L"System.Object", &token);
+            pEmit->DefineTypeRefByName(corLibRef, SystemObject.data(), &token);
             break;
         case  ELEMENT_TYPE_CLASS:
             pbCur++;
@@ -529,67 +529,67 @@ namespace trace
         WSTRING tokenName = ""_W;
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:
-            tokenName = "System.Boolean"_W;
+            tokenName = SystemBoolean;
             pbCur++;
             break;
         case  ELEMENT_TYPE_CHAR:
-            tokenName = "System.Char"_W;
+            tokenName = SystemChar;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I1:
-            tokenName = "System.Byte"_W;
+            tokenName = SystemByte;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U1:
-            tokenName = "System.SByte"_W;
+            tokenName = SystemSByte;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U2:
-            tokenName = "System.UInt16"_W;
+            tokenName = SystemUInt16;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I2:
-            tokenName = "System.Int16"_W;
+            tokenName = SystemInt16;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I4:
-            tokenName = "System.Int32"_W;
+            tokenName = SystemInt32;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U4:
-            tokenName = "System.UInt32"_W;
+            tokenName = SystemUInt32;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I8:
-            tokenName = "System.Int64"_W;
+            tokenName = SystemInt64;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U8:
-            tokenName = "System.UInt64"_W;
+            tokenName = SystemUInt64;
             pbCur++;
             break;
         case  ELEMENT_TYPE_R4:
-            tokenName = "System.Single"_W;
+            tokenName = SystemSingle;
             pbCur++;
             break;
         case  ELEMENT_TYPE_R8:
-            tokenName = "System.Double"_W;
+            tokenName = SystemDouble;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I:
-            tokenName = "System.IntPtr"_W;
+            tokenName = SystemIntPtr;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U:
-            tokenName = "System.UIntPtr"_W;
+            tokenName = SystemUIntPtr;
             pbCur++;
             break;
         case  ELEMENT_TYPE_STRING:
-            tokenName = "System.String"_W;
+            tokenName = SystemString;
             pbCur++;
             break;
         case  ELEMENT_TYPE_OBJECT:
-            tokenName = "System.Object"_W;
+            tokenName = SystemObject;
             pbCur++;
             break;
         case  ELEMENT_TYPE_CLASS:
@@ -630,7 +630,7 @@ namespace trace
             pbCur++;
             ULONG num = 0;
             pbCur += CorSigUncompressData(pbCur, &num);
-            tokenName = "!!"_W + std::to_wstring(num);
+            tokenName = "!!"_W + ToWSTRING(std::to_string(num));
             break;
         }
         case  ELEMENT_TYPE_VAR:
@@ -638,7 +638,7 @@ namespace trace
             pbCur++;
             ULONG num = 0;
             pbCur += CorSigUncompressData(pbCur, &num);
-            tokenName = "!"_W + std::to_wstring(num);
+            tokenName = "!"_W + ToWSTRING(std::to_string(num));
             break;
         }
         default:
@@ -880,7 +880,7 @@ namespace trace
         }
 
         WCHAR wszLocale[MAX_PATH];
-        wcscpy_s(wszLocale, L"neutral");
+        wcscpy_s(wszLocale, "neutral"_W.data());
 
         ASSEMBLYMETADATA assemblyMetaData;
         ZeroMemory(&assemblyMetaData, sizeof(assemblyMetaData));
@@ -894,7 +894,7 @@ namespace trace
         auto hr = pAssemblyEmit->DefineAssemblyRef(
             NULL,
             0,
-            kProfilerAssemblyName,
+            kProfilerAssemblyName.data(),
             &assemblyMetaData,
             NULL,
             NULL,

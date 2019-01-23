@@ -115,7 +115,7 @@ namespace trace {
             return S_OK;
         }
 
-        if (module_info.assembly.name == L"mscorlib" || module_info.assembly.name == L"System.Private.CoreLib") {
+        if (module_info.assembly.name == "mscorlib"_W || module_info.assembly.name == "System.Private.CoreLib"_W) {
 
             CComPtr<IUnknown> metadata_interfaces;
             auto hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
@@ -158,10 +158,10 @@ namespace trace {
             RETURN_OK_IF_FAILED(hr);
 
             mdTypeDef assemblyTypeDef;
-            hr = pImport->FindTypeDefByName(kAssemblyTypeName, NULL, &assemblyTypeDef);
+            hr = pImport->FindTypeDefByName(kAssemblyTypeName.data(), NULL, &assemblyTypeDef);
             RETURN_OK_IF_FAILED(hr);
 
-            auto enumerator = EnumMembersWithName(pImport, assemblyTypeDef, kAssemblyLoadMethodName);
+            auto enumerator = EnumMembersWithName(pImport, assemblyTypeDef, kAssemblyLoadMethodName.data());
             for (auto assemblyLoadMethodDef : enumerator)
             {
                 PCCOR_SIGNATURE raw_signature;
@@ -199,7 +199,7 @@ namespace trace {
                     mdMethodDef customAssemblyLoadMethodDef;
                     hr = pEmit->DefineMethod(
                         assemblyTypeDef,
-                        kAssemblyCustomLoadMethodName,
+                        kAssemblyCustomLoadMethodName.data(),
                         pdwAttr,
                         customAssemblyLoadSig,
                         sizeof(customAssemblyLoadSig),
@@ -411,7 +411,7 @@ namespace trace {
             mdTypeRef assemblyTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 corLibAssemblyRef,
-                kAssemblyTypeName,
+                kAssemblyTypeName.data(),
                 &assemblyTypeRef);
             RETURN_OK_IF_FAILED(hr);
             COR_SIGNATURE assemblyLoadSig[] =
@@ -424,7 +424,7 @@ namespace trace {
             mdMemberRef assemblyLoadMemberRef;
             hr = pEmit->DefineMemberRef(
                 assemblyTypeRef,
-                kAssemblyCustomLoadMethodName,
+                kAssemblyCustomLoadMethodName.data(),
                 assemblyLoadSig,
                 sizeof(assemblyLoadSig),
                 &assemblyLoadMemberRef);
@@ -468,7 +468,7 @@ namespace trace {
             mdTypeRef traceAgentTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 assemblyRef,
-                kTraceAgentTypeName,
+                kTraceAgentTypeName.data(),
                 &traceAgentTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
@@ -482,7 +482,7 @@ namespace trace {
             mdMemberRef getInstanceMemberRef;
             hr = pEmit->DefineMemberRef(
                 traceAgentTypeRef,
-                kGetInstanceMethodName,
+                kGetInstanceMethodName.data(),
                 traceInstanceSig,
                 sizeof(traceInstanceSig),
                 &getInstanceMemberRef);
@@ -491,7 +491,7 @@ namespace trace {
             mdTypeRef methodTraceTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 assemblyRef,
-                kMethodTraceTypeName,
+                kMethodTraceTypeName.data(),
                 &methodTraceTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
@@ -510,7 +510,7 @@ namespace trace {
             mdMemberRef beforeMemberRef;
             hr = pEmit->DefineMemberRef(
                 traceAgentTypeRef,
-                kBeforeMethodName,
+                kBeforeMethodName.data(),
                 traceBeforeSig,
                 sizeof(traceBeforeSig),
                 &beforeMemberRef);
@@ -527,7 +527,7 @@ namespace trace {
             mdMemberRef endMemberRef;
             hr = pEmit->DefineMemberRef(
                 methodTraceTypeRef,
-                kEndMethodName,
+                kEndMethodName.data(),
                 traceEndSig,
                 sizeof(traceEndSig),
                 &endMemberRef);
@@ -541,7 +541,7 @@ namespace trace {
             mdTypeRef exTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 corLibAssemblyRef,
-                L"System.Exception",
+                SystemException.data(),
                 &exTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
@@ -557,7 +557,7 @@ namespace trace {
             mdTypeRef objectTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 corLibAssemblyRef,
-                L"System.Object",
+                SystemObject.data(),
                 &objectTypeRef);
             RETURN_OK_IF_FAILED(hr);
 
