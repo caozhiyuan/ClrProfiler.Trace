@@ -71,6 +71,9 @@ Number ::= 29-bit-encoded-integer
     if ((EXPR) == false) return E_FAIL; \
   } while (0)
 
+#undef _countof
+#define _countof(array) (sizeof(array) / sizeof(array[0]))
+
 namespace trace
 {
     bool ParseByte(PCCOR_SIGNATURE &pbCur, PCCOR_SIGNATURE pbEnd, unsigned char *pbOut)
@@ -879,17 +882,12 @@ namespace trace
             return S_OK;
         }
 
-        WCHAR wszLocale[MAX_PATH];
-        wcscpy_s(wszLocale, "neutral"_W.data());
-
         ASSEMBLYMETADATA assemblyMetaData;
         ZeroMemory(&assemblyMetaData, sizeof(assemblyMetaData));
         assemblyMetaData.usMajorVersion = 1;
         assemblyMetaData.usMinorVersion = 0;
         assemblyMetaData.usBuildNumber = 0;
         assemblyMetaData.usRevisionNumber = 0;
-        assemblyMetaData.szLocale = wszLocale;
-        assemblyMetaData.cbLocale = _countof(wszLocale);
 
         auto hr = pAssemblyEmit->DefineAssemblyRef(
             NULL,

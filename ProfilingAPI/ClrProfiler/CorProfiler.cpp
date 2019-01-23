@@ -563,7 +563,7 @@ namespace trace {
 
             mdString typeNameTextToken;
             auto typeName = functionInfo.type.name.data();
-            hr = pEmit->DefineUserString(typeName, (ULONG)wcslen(typeName), &typeNameTextToken);
+            hr = pEmit->DefineUserString(typeName, (ULONG)functionInfo.type.name.size(), &typeNameTextToken);
             RETURN_OK_IF_FAILED(hr);
 
             auto indexRet = rewriter.cNewLocals - 3;
@@ -572,7 +572,7 @@ namespace trace {
 
             mdString methodNameTextToken;
             auto methodName = functionInfo.name.data();
-            hr = pEmit->DefineUserString(methodName, (ULONG)wcslen(methodName), &methodNameTextToken);
+            hr = pEmit->DefineUserString(methodName, (ULONG)functionInfo.name.size(), &methodNameTextToken);
             RETURN_OK_IF_FAILED(hr);
             ILRewriterWrapper reWriterWrapper(pReWriter);
             ILInstr * pFirstOriginalInstr = pReWriter->GetILList()->m_pNext;
