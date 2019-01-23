@@ -155,41 +155,12 @@ namespace trace
         return true;
     }
 
-    bool ParseArrayShape(PCCOR_SIGNATURE &pbCur, PCCOR_SIGNATURE pbEnd)
-    {
-        unsigned rank;
-        unsigned numsizes;
-        unsigned size;
-
-        // ArrayShape ::= Rank NumSizes Size* NumLoBounds LoBound*
-        if (!ParseNumber(pbCur, pbEnd, &rank))
-            return false;
-
-        if (!ParseNumber(pbCur, pbEnd, &numsizes))
-            return false;
-
-        for (unsigned i = 0; i < numsizes; i++)
-        {
-            if (!ParseNumber(pbCur, pbEnd, &size))
-                return false;
-        }
-
-        if (!ParseNumber(pbCur, pbEnd, &numsizes))
-            return false;
-
-        for (unsigned i = 0; i < numsizes; i++)
-        {
-            if (!ParseNumber(pbCur, pbEnd, &size))
-                return false;
-        }
-        return true;
-    }
-
     /*  we don't support
         PTR CustomMod* VOID
         PTR CustomMod* Type
         FNPTR MethodDefSig
         FNPTR MethodRefSig
+        ARRAY Type ArrayShape
         CustomMod*
      */
     bool ParseType(PCCOR_SIGNATURE &pbCur, PCCOR_SIGNATURE pbEnd)
@@ -268,13 +239,7 @@ namespace trace
 
         case  ELEMENT_TYPE_ARRAY:
             // ARRAY Type ArrayShape
-
-            if (!ParseType(pbCur, pbEnd))
-                return false;
-
-            if (!ParseArrayShape(pbCur, pbEnd))
-                return false;
-            break;
+            return false;
 
         case  ELEMENT_TYPE_SZARRAY:
             // SZARRAY Type
@@ -543,7 +508,6 @@ namespace trace
             break;
         case  ELEMENT_TYPE_GENERICINST:
         case  ELEMENT_TYPE_SZARRAY:
-        case  ELEMENT_TYPE_ARRAY:
         case  ELEMENT_TYPE_MVAR:
         case  ELEMENT_TYPE_VAR:
             pEmit->GetTokenFromTypeSpec(pbCur, length - static_cast<ULONG>(pbCur - pTemp), &token);
@@ -552,6 +516,135 @@ namespace trace
             break;
         }
         return token;
+    }
+
+    WSTRING MethodArgument::GetTypeTokName(CComPtr<IMetaDataImport2>& pImport) const
+    {
+        PCCOR_SIGNATURE pbCur = &pbBase[offset];
+        return GetTypeTokName(pbCur, pImport);
+    }
+
+    WSTRING MethodArgument::GetTypeTokName(PCCOR_SIGNATURE& pbCur, CComPtr<IMetaDataImport2>& pImport) const
+    {
+        WSTRING tokenName = ""_W;
+        switch (*pbCur) {
+        case  ELEMENT_TYPE_BOOLEAN:
+            tokenName = L"System.Boolean";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_CHAR:
+            tokenName = L"System.Char";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_I1:
+            tokenName = L"System.Byte";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_U1:
+            tokenName = L"System.SByte";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_U2:
+            tokenName = L"System.UInt16";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_I2:
+            tokenName = L"System.Int16";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_I4:
+            tokenName = L"System.Int32";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_U4:
+            tokenName = L"System.UInt32";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_I8:
+            tokenName = L"System.Int64";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_U8:
+            tokenName = L"System.UInt64";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_R4:
+            tokenName = L"System.Single";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_R8:
+            tokenName = L"System.Double";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_I:
+            tokenName = L"System.IntPtr";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_U:
+            tokenName = L"System.UIntPtr";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_STRING:
+            tokenName = L"System.String";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_OBJECT:
+            tokenName = L"System.Object";
+            pbCur++;
+            break;
+        case  ELEMENT_TYPE_CLASS:
+        case  ELEMENT_TYPE_VALUETYPE:
+        {
+            pbCur++;
+            mdToken token;
+            pbCur += CorSigUncompressToken(pbCur, &token);
+            tokenName = GetTypeInfo(pImport, token).name;
+            break;
+        }
+        case  ELEMENT_TYPE_SZARRAY:
+        {
+            pbCur++;
+            mdToken token;
+            pbCur += CorSigUncompressToken(pbCur, &token);
+            tokenName = GetTypeInfo(pImport, token).name + "[]"_W;
+            break;
+        }
+        case  ELEMENT_TYPE_GENERICINST:
+        {
+            pbCur++;
+            tokenName = GetTypeTokName(pbCur, pImport);
+            tokenName += "["_W;
+            ULONG num = 0;
+            pbCur += CorSigUncompressData(pbCur, &num);
+            for (ULONG i = 0; i < num; i++) {
+                tokenName += GetTypeTokName(pbCur, pImport);
+                if (i != num - 1) {
+                    tokenName += ","_W;
+                }
+            }
+            tokenName += "]"_W;
+            break;
+        }
+        case  ELEMENT_TYPE_MVAR:
+        {
+            pbCur++;
+            ULONG num = 0;
+            pbCur += CorSigUncompressData(pbCur, &num);
+            tokenName = "!!"_W + std::to_wstring(num);
+            break;
+        }
+        case  ELEMENT_TYPE_VAR:
+        {
+            pbCur++;
+            ULONG num = 0;
+            pbCur += CorSigUncompressData(pbCur, &num);
+            tokenName = "!"_W + std::to_wstring(num);
+            break;
+        }
+        default:
+            break;
+        }
+        return tokenName;
     }
 
     AssemblyInfo GetAssemblyInfo(ICorProfilerInfo3* info,

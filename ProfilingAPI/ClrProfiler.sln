@@ -10,15 +10,15 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{12470FC6-9830-4448-BBEE-87807049796E}"
 	ProjectSection(SolutionItems) = preProject
 		..\.editorconfig = ..\.editorconfig
+		..\build.cmd = ..\build.cmd
+		..\build.sh = ..\build.sh
 		..\dev.cmd = ..\dev.cmd
 		..\ilanaly.txt = ..\ilanaly.txt
-		..\ilopdef.txt = ..\ilopdef.txt
-		..\ILRewriter.temp = ..\ILRewriter.temp
 		..\LICENSE = ..\LICENSE
 		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClrProfiler.Trace", "ClrProfiler.Trace\ClrProfiler.Trace.csproj", "{34113CD4-9FF1-4C70-9E0E-D04A7035716C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClrProfiler.Trace", "ClrProfiler.Trace\ClrProfiler.Trace.csproj", "{34113CD4-9FF1-4C70-9E0E-D04A7035716C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

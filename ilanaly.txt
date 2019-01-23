@@ -44,7 +44,7 @@
         [24] valuetype [System.Collections]System.Collections.Generic.List`1/Enumerator`0<class [System.Runtime]System.Tuple`2<string, string>> enumerator,
         [25] class [System.Runtime]System.Tuple`2<string, string> tuple)
      //07  SIG_LOCAL_SIG used for the .locals directive
-     //1a 26¸ö²ÎÊý
+     //1a 26 vars
      //1e00
      //1512819c011e00
      //1280c1

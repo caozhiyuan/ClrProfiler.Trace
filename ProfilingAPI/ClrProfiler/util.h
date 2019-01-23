@@ -1,11 +1,9 @@
 #ifndef CLR_PROFILER_UTIL_H_
 #define CLR_PROFILER_UTIL_H_
 
-#include <sstream>
 #include <string>
 #include <vector>
-
-#include "string.h"
+#include "string.h" // NOLINT
 
 namespace trace {
 

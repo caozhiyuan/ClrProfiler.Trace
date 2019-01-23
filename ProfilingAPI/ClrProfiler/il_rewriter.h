@@ -4,11 +4,8 @@
 // Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full
 // license information.
-#include <cassert>
 #include <corhlpr.h>
 #include <corprof.h>
-#include "CComPtr.h"
-#include "logging.h"
 
 typedef enum {
 #define OPDEF(c, s, pop, push, args, type, l, s1, s2, ctrl) c,

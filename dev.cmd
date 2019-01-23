@@ -12,5 +12,3 @@ IF EXIST "D:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7
 ) ELSE (
     START "Visual Studio" "D:\Program Files (x86)\Microsoft Visual Studio\Preview\Enterprise\Common7\IDE\devenv.exe" "%~dp0\ProfilingAPI\ClrProfiler.sln"
 )
-
-pause

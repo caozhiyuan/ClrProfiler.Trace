@@ -167,7 +167,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ClrProfiler.def" />
-    <None Include="sigparse.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

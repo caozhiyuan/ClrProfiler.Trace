@@ -2,10 +2,8 @@
 
 #include <cwctype>
 #include <iterator>
-#include <sstream>
 #include <string>
 #include <vector>
-#include "miniutf.hpp"
 
 namespace trace {
 

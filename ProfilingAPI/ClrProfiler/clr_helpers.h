@@ -3,7 +3,7 @@
 
 #include <functional>
 #include <vector>
-#include "string.h"
+#include "string.h"  // NOLINT
 #include "util.h"
 #include "CComPtr.h"
 #include <corprof.h>
@@ -293,9 +293,11 @@ namespace trace {
         ULONG offset;
         ULONG length;
         PCCOR_SIGNATURE pbBase;
-        mdToken GetTypeTok(CComPtr<IMetaDataEmit2>& pEmit,
-            mdAssemblyRef corLibRef) const;
+        mdToken GetTypeTok(CComPtr<IMetaDataEmit2>& pEmit, mdAssemblyRef corLibRef) const;
+        WSTRING GetTypeTokName(CComPtr<IMetaDataImport2>& pImport) const;
         bool IsBoxedType() const;
+    private:
+        WSTRING GetTypeTokName(PCCOR_SIGNATURE& pbCur, CComPtr<IMetaDataImport2>& pImport) const;
     };
 
     struct MethodSignature {
