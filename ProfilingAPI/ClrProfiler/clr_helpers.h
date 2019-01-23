@@ -7,6 +7,7 @@
 #include "util.h"
 #include "CComPtr.h"
 #include <corprof.h>
+#include <corhdr.h>
 #include "logging.h"
 
 namespace trace {
