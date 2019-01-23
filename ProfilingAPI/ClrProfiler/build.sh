@@ -18,6 +18,6 @@ INCLUDES="-I $CORECLR_PATH/src/pal/inc/rt -I $CORECLR_PATH/src/pal/prebuilt/inc 
 
 mkdir -p obj/$BuildType/$BuildArch
 
-clang++-3.5 -shared -o obj/$BuildType/$BuildArch/$Output $CXX_FLAGS $INCLUDES ClassFactory.cpp dllmain.cpp
+clang++-3.9 -shared -o obj/$BuildType/$BuildArch/$Output $CXX_FLAGS $INCLUDES ClassFactory.cpp dllmain.cpp
 
 printf 'Done.\n'
