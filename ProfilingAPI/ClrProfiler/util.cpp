@@ -48,10 +48,9 @@ WSTRING Trim(const WSTRING &str) {
 WSTRING GetEnvironmentValue(const WSTRING &name) {
 #ifdef _WIN32
   const size_t max_buf_size = 4096;
-  WSTRING buf(max_buf_size, 0);
-  auto len =
-      GetEnvironmentVariable(name.data(), buf.data(), (DWORD)(buf.size()));
-  return Trim(buf.substr(0, len));
+  WCHAR buf[max_buf_size];
+  const auto len = GetEnvironmentVariable(name.data(), buf, max_buf_size);
+  return Trim(WSTRING(buf).substr(0, len));
 #else
   auto cstr = std::getenv(ToString(name).c_str());
   if (cstr == nullptr) {
@@ -82,9 +81,9 @@ std::vector<WSTRING> GetEnvironmentValues(const WSTRING &name) {
 constexpr char HexMap[] = { '0', '1', '2', '3', '4', '5', '6', '7',
                '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
-std::wstring HexStr(const unsigned char *data, int len)
+WSTRING HexStr(const unsigned char *data, int len)
 {
-    std::wstring s(len * 2, ' ');
+    WSTRING s(len * 2, ' ');
     for (int i = 0; i < len; ++i) {
         s[2 * i] = HexMap[(data[i] & 0xF0) >> 4];
         s[2 * i + 1] = HexMap[data[i] & 0x0F];

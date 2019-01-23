@@ -529,67 +529,67 @@ namespace trace
         WSTRING tokenName = ""_W;
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:
-            tokenName = L"System.Boolean";
+            tokenName = "System.Boolean"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_CHAR:
-            tokenName = L"System.Char";
+            tokenName = "System.Char"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I1:
-            tokenName = L"System.Byte";
+            tokenName = "System.Byte"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U1:
-            tokenName = L"System.SByte";
+            tokenName = "System.SByte"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U2:
-            tokenName = L"System.UInt16";
+            tokenName = "System.UInt16"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I2:
-            tokenName = L"System.Int16";
+            tokenName = "System.Int16"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I4:
-            tokenName = L"System.Int32";
+            tokenName = "System.Int32"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U4:
-            tokenName = L"System.UInt32";
+            tokenName = "System.UInt32"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I8:
-            tokenName = L"System.Int64";
+            tokenName = "System.Int64"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U8:
-            tokenName = L"System.UInt64";
+            tokenName = "System.UInt64"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_R4:
-            tokenName = L"System.Single";
+            tokenName = "System.Single"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_R8:
-            tokenName = L"System.Double";
+            tokenName = "System.Double"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_I:
-            tokenName = L"System.IntPtr";
+            tokenName = "System.IntPtr"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_U:
-            tokenName = L"System.UIntPtr";
+            tokenName = "System.UIntPtr"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_STRING:
-            tokenName = L"System.String";
+            tokenName = "System.String"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_OBJECT:
-            tokenName = L"System.Object";
+            tokenName = "System.Object"_W;
             pbCur++;
             break;
         case  ELEMENT_TYPE_CLASS:
