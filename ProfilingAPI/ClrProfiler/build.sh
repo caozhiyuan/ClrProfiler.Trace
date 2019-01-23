@@ -1,7 +1,5 @@
 #!/bin/sh
 
-cd ProfilingAPI/ClrProfiler
-
 [ -z "${CORECLR_PATH:-}" ] && CORECLR_PATH=~/coreclr
 [ -z "${BuildOS:-}"      ] && BuildOS=Linux
 [ -z "${BuildArch:-}"    ] && BuildArch=x64
@@ -15,9 +13,11 @@ printf '  BuildType    : %s\n' "$BuildType"
 
 printf '  Building %s ... ' "$Output"
 
-CXX_FLAGS="$CXX_FLAGS --no-undefined -Wno-invalid-noreturn -fPIC -fms-extensions -DBIT64 -DPAL_STDCPP_COMPAT -DPLATFORM_UNIX -std=c++14"
+CXX_FLAGS="$CXX_FLAGS -Wno-invalid-noreturn -fPIC -fms-extensions -DBIT64 -DPAL_STDCPP_COMPAT -DPLATFORM_UNIX -std=c++11"
 INCLUDES="-I $CORECLR_PATH/src/pal/inc/rt -I $CORECLR_PATH/src/pal/prebuilt/inc -I $CORECLR_PATH/src/pal/inc -I $CORECLR_PATH/src/inc -I $CORECLR_PATH/bin/Product/$BuildOS.$BuildArch.$BuildType/inc"
 
-clang++ -shared $CXX_FLAGS $INCLUDES string.cpp logging.cpp miniutf.hpp miniutf.cpp clr_helpers.cpp il_rewriter.cpp il_rewriter_wrapper.cpp ClassFactory.cpp CorProfiler.cpp dllmain.cpp
+mkdir -p obj/$BuildType/$BuildArch
+
+clang++-3.5 -shared -o obj/$BuildType/$BuildArch/$Output $CXX_FLAGS $INCLUDES ClassFactory.cpp dllmain.cpp
 
 printf 'Done.\n'
