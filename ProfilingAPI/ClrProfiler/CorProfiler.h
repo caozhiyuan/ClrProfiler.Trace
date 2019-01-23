@@ -23,6 +23,7 @@ namespace trace {
         bool entryPointReWrote = false;
         WSTRING clrProfilerHomeEnvValue;
         AssemblyProperty corAssemblyProperty{};
+        bool customLoadFromInit = false;
     public:
         CorProfiler();
         virtual ~CorProfiler();

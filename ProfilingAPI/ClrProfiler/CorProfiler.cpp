@@ -18,7 +18,7 @@ namespace trace {
 
     CorProfiler::CorProfiler() : refCount(0), corProfilerInfo(nullptr)
     {
-        Info("ctor"_W);
+
     }
 
     CorProfiler::~CorProfiler()
@@ -48,7 +48,7 @@ namespace trace {
         this->corProfilerInfo->SetEventMask(eventMask);
 
         this->clrProfilerHomeEnvValue = GetEnvironmentValue(kClrProfilerHomeEnv);
-
+    
         return S_OK;
     }
 
@@ -116,6 +116,10 @@ namespace trace {
         }
 
         if (module_info.assembly.name == "mscorlib"_W || module_info.assembly.name == "System.Private.CoreLib"_W) {
+                                  
+            if(corAssemblyProperty.szName.size() != 0) {
+                return S_OK;
+            }
 
             CComPtr<IUnknown> metadata_interfaces;
             auto hr = corProfilerInfo->GetModuleMetaData(moduleId, ofRead | ofWrite,
@@ -160,7 +164,7 @@ namespace trace {
             mdTypeDef assemblyTypeDef;
             hr = pImport->FindTypeDefByName(kAssemblyTypeName.data(), NULL, &assemblyTypeDef);
             RETURN_OK_IF_FAILED(hr);
-
+         
             auto enumerator = EnumMembersWithName(pImport, assemblyTypeDef, kAssemblyLoadMethodName.data());
             for (auto assemblyLoadMethodDef : enumerator)
             {
@@ -186,7 +190,7 @@ namespace trace {
                 hr = signature.TryParse();
                 RETURN_OK_IF_FAILED(hr);
 
-                if (signature.NumberOfArguments() == 1) {
+                if (signature.NumberOfArguments() == 1 && !customLoadFromInit) {
 
                     // if don't define a custom load from , will raise cor lib bad image load
                     COR_SIGNATURE customAssemblyLoadSig[] =
@@ -226,6 +230,7 @@ namespace trace {
                     hr = corProfilerInfo->SetILFunctionBody(moduleId, customAssemblyLoadMethodDef, pwMethodBytes);
                     RETURN_OK_IF_FAILED(hr);
 
+                    customLoadFromInit = true;
                     break;
                 }
             }
@@ -392,8 +397,13 @@ namespace trace {
             return S_OK;
         }
 
-        if (!entryPointReWrote && functionInfo.id == module_info.GetEntryPointToken()) {
+        if(module_info.assembly.name == "Samples.RedisCore"_W){
+            Info(functionInfo.name);
+            Info(functionInfo.id);
+            Info(module_info.GetEntryPointToken2());
+        }
 
+        if (!entryPointReWrote && functionInfo.id == module_info.GetEntryPointToken()) {
             mdAssemblyRef corLibAssemblyRef = GetCorLibAssemblyRef(metadata_interfaces, corAssemblyProperty);
             if (corLibAssemblyRef == mdAssemblyRefNil) {
                 return S_OK;

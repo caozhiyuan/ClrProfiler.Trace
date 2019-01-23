@@ -7,6 +7,7 @@
 #include "util.h"
 #include "CComPtr.h"
 #include <corprof.h>
+#include "logging.h"
 
 namespace trace {
 
@@ -293,6 +294,15 @@ namespace trace {
             const auto ntHeaders = (IMAGE_NT_HEADERS*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
             const auto directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
             const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
+            return corHeader->EntryPointToken;
+        }
+
+        mdToken GetEntryPointToken2() const {
+            const auto ntHeaders = (IMAGE_NT_HEADERS*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
+            const auto directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
+            Info(directoryEntry.VirtualAddress);
+            const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
+            Info(corHeader->EntryPointToken);
             return corHeader->EntryPointToken;
         }
     };
