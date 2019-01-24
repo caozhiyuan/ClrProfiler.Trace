@@ -318,8 +318,9 @@ namespace trace {
             {
                 const auto ntHeaders = (IMAGE_NT_HEADERS*)pntHeaders;
                 IMAGE_SECTION_HEADER *sectionRet = NULL;
-                auto *section = (IMAGE_SECTION_HEADER*)pntHeaders + FIELD_OFFSET(IMAGE_NT_HEADERS, OptionalHeader) + VAL16(ntHeaders->FileHeader.SizeOfOptionalHeader);
-                auto *sectionEnd = section + VAL16(ntHeaders->FileHeader.NumberOfSections);
+                const auto pSection = pntHeaders + FIELD_OFFSET(IMAGE_NT_HEADERS, OptionalHeader) + VAL16(ntHeaders->FileHeader.SizeOfOptionalHeader);
+                auto section = (IMAGE_SECTION_HEADER*)pSection;
+                const auto sectionEnd = (IMAGE_SECTION_HEADER*)(pSection + VAL16(ntHeaders->FileHeader.NumberOfSections));
                 while (section < sectionEnd)
                 {
                     if (rva < VAL32(section->VirtualAddress)
