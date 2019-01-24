@@ -22,6 +22,7 @@ namespace ClrProfiler.Trace
         {
             if (args.RequestingAssembly.FullName.Contains("ClrProfiler.Trace"))
             {
+                Console.WriteLine(args.Name);
                 var home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
                 if (!string.IsNullOrEmpty(home))
                 {

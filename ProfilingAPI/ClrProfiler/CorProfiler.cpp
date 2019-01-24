@@ -115,11 +115,6 @@ namespace trace {
             return S_OK;
         }
 
-        if(module_info.assembly.name == "System.Web"_W)
-        {
-            entryPointReWrote = true;
-        }
-
         if (module_info.assembly.name == "mscorlib"_W || module_info.assembly.name == "System.Private.CoreLib"_W) {
                                   
             if(!corAssemblyProperty.szName.empty()) {

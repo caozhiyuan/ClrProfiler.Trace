@@ -1,14 +1,17 @@
-using System;
+﻿using System;
 using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using StackExchange.Redis;
 
-namespace Samples.RedisCore
+namespace Samples.Redis
 {
     class Program
     {
         static void Main(string[] args)
         {
+
             Console.WriteLine($"Is64BitProcess:{Environment.Is64BitProcess}");
 
             RunStackExchange("StackExchange").Wait();

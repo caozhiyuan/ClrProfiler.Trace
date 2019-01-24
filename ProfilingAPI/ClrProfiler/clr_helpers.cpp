@@ -607,9 +607,7 @@ namespace trace
         case  ELEMENT_TYPE_SZARRAY:
         {
             pbCur++;
-            mdToken token;
-            pbCur += CorSigUncompressToken(pbCur, &token);
-            tokenName = GetTypeInfo(pImport, token).name + "[]"_W;
+            tokenName = GetTypeTokName(pbCur, pImport) + "[]"_W;
             break;
         }
         case  ELEMENT_TYPE_GENERICINST:
@@ -889,9 +887,10 @@ namespace trace
         assemblyMetaData.usBuildNumber = 0;
         assemblyMetaData.usRevisionNumber = 0;
 
+        BYTE rgbPublicKeyToken[] = { 0xb2, 0x24, 0x8d, 0x6c, 0x40, 0x0b, 0x48, 0x7d };
         auto hr = pAssemblyEmit->DefineAssemblyRef(
-            NULL,
-            0,
+            (void *)rgbPublicKeyToken,
+            sizeof(rgbPublicKeyToken),
             kProfilerAssemblyName.data(),
             &assemblyMetaData,
             NULL,

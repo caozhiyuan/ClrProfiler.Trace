@@ -290,7 +290,7 @@ namespace trace {
             return ((flags & COR_PRF_MODULE_WINDOWS_RUNTIME) != 0);
         }
 
-        mdToken GetEntryPointToken(bool& isError) const {
+        mdToken GetEntryPointToken() const {
             const auto ntHeaders = (IMAGE_NT_HEADERS64*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
             if (ntHeaders->OptionalHeader.Magic == VAL16(IMAGE_NT_OPTIONAL_HDR32_MAGIC)) {
                 const auto ntHeaders32 = (IMAGE_NT_HEADERS32*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
