@@ -291,18 +291,57 @@ namespace trace {
         }
 
         mdToken GetEntryPointToken() const {
-            const auto ntHeaders = (IMAGE_NT_HEADERS64*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
-            if (ntHeaders->OptionalHeader.Magic == VAL16(IMAGE_NT_OPTIONAL_HDR32_MAGIC)) {
-                const auto ntHeaders32 = (IMAGE_NT_HEADERS32*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
-                const auto directoryEntry = ntHeaders32->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
-                const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
-                return corHeader->EntryPointToken;
+            const auto pntHeaders = baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew);
+            const auto ntHeaders = (IMAGE_NT_HEADERS64*)pntHeaders;
+            IMAGE_DATA_DIRECTORY directoryEntry;
+            if (ntHeaders->OptionalHeader.Magic == VAL16(IMAGE_NT_OPTIONAL_HDR32_MAGIC)) 
+            {
+                directoryEntry = ((IMAGE_NT_HEADERS32*)pntHeaders)->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
             }
-            else {
-                const auto directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
-                const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
-                return corHeader->EntryPointToken;
+            else 
+            {
+                directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
             }
+            const auto corHeader = (IMAGE_COR20_HEADER*)GetRvaData(VAL32(directoryEntry.VirtualAddress), pntHeaders);
+            return corHeader->EntryPointToken;
+        }
+
+    private:
+        static ULONG AlignUp(ULONG value, UINT alignment)
+        {
+            return (value + alignment - 1)&~(alignment - 1);
+        }
+
+        LPCBYTE GetRvaData(DWORD rva, LPCBYTE pntHeaders) const
+        {
+            if (COR_PRF_MODULE_FLAT_LAYOUT & flags)
+            {
+                const auto ntHeaders = (IMAGE_NT_HEADERS*)pntHeaders;
+                IMAGE_SECTION_HEADER *sectionRet = NULL;
+                auto *section = (IMAGE_SECTION_HEADER*)pntHeaders + FIELD_OFFSET(IMAGE_NT_HEADERS, OptionalHeader) + VAL16(ntHeaders->FileHeader.SizeOfOptionalHeader);
+                auto *sectionEnd = section + VAL16(ntHeaders->FileHeader.NumberOfSections);
+                while (section < sectionEnd)
+                {
+                    if (rva < VAL32(section->VirtualAddress)
+                        + AlignUp((UINT)VAL32(section->Misc.VirtualSize), (UINT)VAL32(ntHeaders->OptionalHeader.SectionAlignment)))
+                    {
+                        if (rva < VAL32(section->VirtualAddress))
+                            sectionRet = NULL;
+                        else
+                        {
+                            sectionRet = section;
+                        }
+                    }
+                    section++;
+                }
+                if (sectionRet == NULL)
+                {
+                    return baseLoadAddress + rva;
+                }
+                return baseLoadAddress + rva - VAL32(sectionRet->VirtualAddress) + VAL32(sectionRet->PointerToRawData);
+
+            }
+            return baseLoadAddress + rva;
         }
     };
 
