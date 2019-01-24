@@ -454,22 +454,29 @@ namespace trace {
             return S_OK;
         }
 
-        if (!entryPointReWrote) {
+        //.net framework need add gac 
+        //.net core add premain il
+        if(corAssemblyProperty.szName != "mscorlib"_W)
+        {
+            if (!entryPointReWrote) {
 #ifdef _WIN32
-            auto entryPointToken = module_info.GetEntryPointToken();
-            if (functionInfo.id == entryPointToken) {
-                return PreMainLoadAssembly(metadata_interfaces, pEmit, moduleId, function_token);
-            }
-#else
-            if ((functionInfo.name == "Main"_W || functionInfo.name == "main"_W)) {
-                hr = functionInfo.signature.TryParse();
-                RETURN_OK_IF_FAILED(hr);
-                if (functionInfo.GuessIsEntryPointSig(pImport)) {
+                auto entryPointToken = module_info.GetEntryPointToken();
+                if (functionInfo.id == entryPointToken) {
                     return PreMainLoadAssembly(metadata_interfaces, pEmit, moduleId, function_token);
+                }
+#else
+                //linux GetEntryPointToken issue https://github.com/dotnet/coreclr/issues/22151
+                // use GuessIsEntryPointSig
+                if ((functionInfo.name == "Main"_W || functionInfo.name == "main"_W)) {
+                    hr = functionInfo.signature.TryParse();
+                    RETURN_OK_IF_FAILED(hr);
+                    if (functionInfo.GuessIsEntryPointSig(pImport)) {
+                        return PreMainLoadAssembly(metadata_interfaces, pEmit, moduleId, function_token);
                 }
             }
 #endif
-            return S_OK;
+                return S_OK;
+        }
         }
 
         if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
