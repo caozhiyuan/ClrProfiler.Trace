@@ -115,6 +115,12 @@ namespace trace {
             return S_OK;
         }
 
+        const auto entryPointToken = module_info.GetEntryPointToken();
+        {
+            std::lock_guard<std::mutex> guard(mapLock);
+            moduleEntryTokenMap[moduleId] = entryPointToken;
+        }
+
         if (module_info.assembly.name == "mscorlib"_W || module_info.assembly.name == "System.Private.CoreLib"_W) {
                                   
             if(!corAssemblyProperty.szName.empty()) {
@@ -353,63 +359,6 @@ namespace trace {
         return S_OK;
     }
 
-    HRESULT CorProfiler::PreMainLoadAssembly(CComPtr<IUnknown>& metadata_interfaces,
-        CComPtr<IMetaDataEmit2>& pEmit,
-        ModuleID moduleId, 
-        mdToken function_token)
-    {
-        const mdAssemblyRef corLibAssemblyRef = GetCorLibAssemblyRef(metadata_interfaces, corAssemblyProperty);
-        if (corLibAssemblyRef == mdAssemblyRefNil) {
-            return S_OK;
-        }
-
-        mdTypeRef assemblyTypeRef;
-        auto hr = pEmit->DefineTypeRefByName(
-            corLibAssemblyRef,
-            kAssemblyTypeName.data(),
-            &assemblyTypeRef);
-        RETURN_OK_IF_FAILED(hr);
-        COR_SIGNATURE assemblyLoadSig[] =
-        {
-            IMAGE_CEE_CS_CALLCONV_DEFAULT ,
-            0x01,
-            ELEMENT_TYPE_VOID,
-            ELEMENT_TYPE_STRING
-        };
-        mdMemberRef assemblyLoadMemberRef;
-        hr = pEmit->DefineMemberRef(
-            assemblyTypeRef,
-            kAssemblyCustomLoadMethodName.data(),
-            assemblyLoadSig,
-            sizeof(assemblyLoadSig),
-            &assemblyLoadMemberRef);
-
-        mdString profilerTraceDllNameTextToken;
-        auto clrProfilerTraceDllName = clrProfilerHomeEnvValue + "\\"_W + kClrProfilerDllName;
-        hr = pEmit->DefineUserString(clrProfilerTraceDllName.data(), (ULONG)clrProfilerTraceDllName.length(), &profilerTraceDllNameTextToken);
-        RETURN_OK_IF_FAILED(hr);
-
-        ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
-        RETURN_OK_IF_FAILED(rewriter.Import());
-
-        auto pReWriter = &rewriter;
-        ILRewriterWrapper reWriterWrapper(pReWriter);
-        ILInstr * pFirstOriginalInstr = pReWriter->GetILList()->m_pNext;
-        reWriterWrapper.SetILPosition(pFirstOriginalInstr);
-        reWriterWrapper.LoadStr(profilerTraceDllNameTextToken);
-        reWriterWrapper.CallMember(assemblyLoadMemberRef, false);
-        hr = rewriter.Export();
-        RETURN_OK_IF_FAILED(hr);
-
-        {
-            std::lock_guard<std::mutex> guard(iLRewriteMapLock);
-            iLRewriteMap[function_token] = true;
-        }
-        entryPointReWrote = true;
-
-        return S_OK;
-    }
-
     HRESULT STDMETHODCALLTYPE CorProfiler::JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock)
     {
         mdToken function_token = mdTokenNil;
@@ -419,7 +368,7 @@ namespace trace {
 
         bool isiLRewrote = false;
         {
-            std::lock_guard<std::mutex> guard(iLRewriteMapLock);
+            std::lock_guard<std::mutex> guard(mapLock);
             if (iLRewriteMap.count(function_token) > 0) {
                 isiLRewrote = true;
             }
@@ -449,22 +398,63 @@ namespace trace {
             return S_OK;
         }
 
-        auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
-        if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {
-            return S_OK;
-        }
-
         //.net framework need add gac 
         //.net core add premain il
-        if(corAssemblyProperty.szName != "mscorlib"_W)
+        if (corAssemblyProperty.szName != "mscorlib"_W &&
+            !entryPointReWrote &&
+            moduleEntryTokenMap.count(moduleId) > 0 &&
+            functionInfo.id == moduleEntryTokenMap[moduleId])
         {
-            if (!entryPointReWrote) {
-                auto entryPointToken = module_info.GetEntryPointToken();
-                if (functionInfo.id == entryPointToken) {
-                    return PreMainLoadAssembly(metadata_interfaces, pEmit, moduleId, function_token);
-                }
+            const mdAssemblyRef corLibAssemblyRef = GetCorLibAssemblyRef(metadata_interfaces, corAssemblyProperty);
+            if (corLibAssemblyRef == mdAssemblyRefNil) {
                 return S_OK;
             }
+
+            mdTypeRef assemblyTypeRef;
+            hr = pEmit->DefineTypeRefByName(
+                corLibAssemblyRef,
+                kAssemblyTypeName.data(),
+                &assemblyTypeRef);
+            RETURN_OK_IF_FAILED(hr);
+            COR_SIGNATURE assemblyLoadSig[] =
+            {
+                IMAGE_CEE_CS_CALLCONV_DEFAULT ,
+                0x01,
+                ELEMENT_TYPE_VOID,
+                ELEMENT_TYPE_STRING
+            };
+            mdMemberRef assemblyLoadMemberRef;
+            hr = pEmit->DefineMemberRef(
+                assemblyTypeRef,
+                kAssemblyCustomLoadMethodName.data(),
+                assemblyLoadSig,
+                sizeof(assemblyLoadSig),
+                &assemblyLoadMemberRef);
+
+            mdString profilerTraceDllNameTextToken;
+            auto clrProfilerTraceDllName = clrProfilerHomeEnvValue + "\\"_W + kClrProfilerDllName;
+            hr = pEmit->DefineUserString(clrProfilerTraceDllName.data(), (ULONG)clrProfilerTraceDllName.length(), &profilerTraceDllNameTextToken);
+            RETURN_OK_IF_FAILED(hr);
+
+            ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
+            RETURN_OK_IF_FAILED(rewriter.Import());
+
+            auto pReWriter = &rewriter;
+            ILRewriterWrapper reWriterWrapper(pReWriter);
+            ILInstr * pFirstOriginalInstr = pReWriter->GetILList()->m_pNext;
+            reWriterWrapper.SetILPosition(pFirstOriginalInstr);
+            reWriterWrapper.LoadStr(profilerTraceDllNameTextToken);
+            reWriterWrapper.CallMember(assemblyLoadMemberRef, false);
+            hr = rewriter.Export();
+            RETURN_OK_IF_FAILED(hr);
+
+            {
+                std::lock_guard<std::mutex> guard(mapLock);
+                iLRewriteMap[function_token] = true;
+            }
+            entryPointReWrote = true;
+
+            return S_OK;
         }
 
         if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
@@ -714,7 +704,7 @@ namespace trace {
             RETURN_OK_IF_FAILED(hr);
 
             {
-                std::lock_guard<std::mutex> guard(iLRewriteMapLock);
+                std::lock_guard<std::mutex> guard(mapLock);
                 iLRewriteMap[function_token] = true;
             }
         }

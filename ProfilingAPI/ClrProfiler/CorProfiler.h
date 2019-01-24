@@ -18,12 +18,13 @@ namespace trace {
     private:
         std::atomic<int> refCount;
         ICorProfilerInfo8* corProfilerInfo;
-        std::mutex iLRewriteMapLock;
+        std::mutex mapLock;
         std::unordered_map<mdMethodDef, bool> iLRewriteMap{};
         bool entryPointReWrote = false;
         WSTRING clrProfilerHomeEnvValue;
         AssemblyProperty corAssemblyProperty{};
         bool customLoadFromInit = false;
+        std::unordered_map<ModuleID, mdToken> moduleEntryTokenMap{};
     public:
         CorProfiler();
         virtual ~CorProfiler();
@@ -157,7 +158,5 @@ namespace trace {
 
             return count;
         }
-
-        HRESULT PreMainLoadAssembly(CComPtr<IUnknown>& metadata_interfaces, CComPtr<IMetaDataEmit2>& pEmit,ModuleID moduleId, mdToken function_token);
     };
 }
