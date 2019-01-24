@@ -463,6 +463,10 @@ namespace trace {
             hr = functionInfo.signature.TryParse();
             RETURN_OK_IF_FAILED(hr);
 
+            if(!(functionInfo.signature.CallingConvention() & IMAGE_CEE_CS_CALLCONV_HASTHIS)) {
+                return S_OK;
+            }
+
             mdAssemblyRef assemblyRef;
             hr = GetProfilerAssemblyRef(metadata_interfaces, assemblyRef);
             RETURN_OK_IF_FAILED(hr);
