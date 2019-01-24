@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>../../ClrProfiler.pfx</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>../../tools/clrprofiler.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
 </Project>
