@@ -472,11 +472,11 @@ namespace trace {
                     RETURN_OK_IF_FAILED(hr);
                     if (functionInfo.GuessIsEntryPointSig(pImport)) {
                         return PreMainLoadAssembly(metadata_interfaces, pEmit, moduleId, function_token);
+                    }
                 }
-            }
 #endif
                 return S_OK;
-        }
+            }
         }
 
         if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
