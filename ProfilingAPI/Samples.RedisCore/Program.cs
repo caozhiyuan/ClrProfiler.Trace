@@ -35,15 +35,6 @@ namespace Samples.RedisCore
                 var c = db.StringGet($"{prefix}INCR");
 
                 Console.WriteLine(c);
-
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
-                for (int i = 0; i < 10000; i++)
-                {
-                    db.StringSet($"{prefix}INCR{i}", "0");
-                }
-                sw.Stop();
-                Console.WriteLine(sw.ElapsedMilliseconds);
             }
 
             Console.ReadLine();

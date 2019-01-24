@@ -7,7 +7,6 @@
 #include "util.h"
 #include "CComPtr.h"
 #include <corprof.h>
-#include <corhdr.h>
 #include "logging.h"
 
 namespace trace {
@@ -291,20 +290,28 @@ namespace trace {
             return ((flags & COR_PRF_MODULE_WINDOWS_RUNTIME) != 0);
         }
 
-        mdToken GetEntryPointToken() const {
-            const auto ntHeaders = (IMAGE_NT_HEADERS*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
-            const auto directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
-            const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
-            return corHeader->EntryPointToken;
-        }
-
-        mdToken GetEntryPointToken2() const {
-            const auto ntHeaders = (IMAGE_NT_HEADERS*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
-            const auto directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
-            Info(directoryEntry.VirtualAddress);
-            const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
-            Info(corHeader->EntryPointToken);
-            return corHeader->EntryPointToken;
+        mdToken GetEntryPointToken(bool& isError) const {
+            try
+            {
+                const auto ntHeaders = (IMAGE_NT_HEADERS64*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
+                if (ntHeaders->OptionalHeader.Magic == VAL16(IMAGE_NT_OPTIONAL_HDR32_MAGIC)) {
+                    const auto ntHeaders32 = (IMAGE_NT_HEADERS32*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
+                    const auto directoryEntry = ntHeaders32->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
+                    const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
+                    return corHeader->EntryPointToken;
+                }
+                else {
+                    const auto directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
+                    const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
+                    return corHeader->EntryPointToken;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                isError = true;
+                Info("GetEntryPointToken Error",e.what());
+                return mdTokenNil;
+            }
         }
     };
 
@@ -376,6 +383,40 @@ namespace trace {
             : id(id), name(name), type(type), signature(signature) {}
 
         bool IsValid() const { return id != 0; }
+
+        bool GuessIsEntryPointSig(CComPtr<IMetaDataImport2>& pImport) const {
+
+            if (signature.CallingConvention() == IMAGE_CEE_CS_CALLCONV_DEFAULT){
+                if (!signature.IsVoidMethod()) {
+                    auto ret = signature.GetRet();
+                    const auto retTypeName = ret.GetTypeTokName(pImport);
+                    if (retTypeName == SystemInt32 || retTypeName == SystemUInt32) {
+                        if (signature.NumberOfArguments() == 0) {
+                            return true;
+                        }
+
+                        if (signature.NumberOfArguments() == 1) {
+                            auto args = signature.GetMethodArguments();
+                            if (args[0].GetTypeTokName(pImport) == "System.String[]"_W) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                else {
+                    if (signature.NumberOfArguments() == 0){
+                        return true;
+                    }
+                    if (signature.NumberOfArguments() == 1) {
+                        auto args = signature.GetMethodArguments();
+                        if (args[0].GetTypeTokName(pImport) == "System.String[]"_W) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
     };
 
     WSTRING GetAssemblyName(const CComPtr<IMetaDataAssemblyImport>& assembly_import);

@@ -46,7 +46,7 @@ namespace trace {
         HRESULT STDMETHODCALLTYPE ClassLoadFinished(ClassID classId, HRESULT hrStatus) override;
         HRESULT STDMETHODCALLTYPE ClassUnloadStarted(ClassID classId) override;
         HRESULT STDMETHODCALLTYPE ClassUnloadFinished(ClassID classId, HRESULT hrStatus) override;
-        HRESULT STDMETHODCALLTYPE FunctionUnloadStarted(FunctionID functionId) override;       
+        HRESULT STDMETHODCALLTYPE FunctionUnloadStarted(FunctionID functionId) override;
         HRESULT STDMETHODCALLTYPE JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock) override;
         HRESULT STDMETHODCALLTYPE JITCompilationFinished(FunctionID functionId, HRESULT hrStatus, BOOL fIsSafeToBlock) override;
         HRESULT STDMETHODCALLTYPE JITCachedFunctionSearchStarted(FunctionID functionId, BOOL* pbUseCachedFunction) override;
@@ -157,5 +157,7 @@ namespace trace {
 
             return count;
         }
+
+        HRESULT PreMainLoadAssembly(CComPtr<IUnknown>& metadata_interfaces, CComPtr<IMetaDataEmit2>& pEmit,ModuleID moduleId, mdToken function_token);
     };
 }
