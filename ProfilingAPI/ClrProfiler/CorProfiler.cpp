@@ -460,18 +460,20 @@ namespace trace {
         }
 
         if (!entryPointReWrote) {
-            bool isError;
-            auto entryPointToken = module_info.GetEntryPointToken(isError);
+#ifdef _WIN32
+            auto entryPointToken = module_info.GetEntryPointToken();
             if (functionInfo.id == entryPointToken) {
                 return PreMainLoadAssembly(metadata_interfaces, pEmit, moduleId, function_token);
             }
-            if (isError && functionInfo.name == "Main"_W || functionInfo.name == "main"_W) {
+#else
+            if ((functionInfo.name == "Main"_W || functionInfo.name == "main"_W)) {
                 hr = functionInfo.signature.TryParse();
                 RETURN_OK_IF_FAILED(hr);
                 if (functionInfo.GuessIsEntryPointSig(pImport)) {
                     return PreMainLoadAssembly(metadata_interfaces, pEmit, moduleId, function_token);
                 }
             }
+#endif
             return S_OK;
         }
 

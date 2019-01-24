@@ -291,26 +291,17 @@ namespace trace {
         }
 
         mdToken GetEntryPointToken(bool& isError) const {
-            try
-            {
-                const auto ntHeaders = (IMAGE_NT_HEADERS64*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
-                if (ntHeaders->OptionalHeader.Magic == VAL16(IMAGE_NT_OPTIONAL_HDR32_MAGIC)) {
-                    const auto ntHeaders32 = (IMAGE_NT_HEADERS32*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
-                    const auto directoryEntry = ntHeaders32->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
-                    const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
-                    return corHeader->EntryPointToken;
-                }
-                else {
-                    const auto directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
-                    const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
-                    return corHeader->EntryPointToken;
-                }
+            const auto ntHeaders = (IMAGE_NT_HEADERS64*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
+            if (ntHeaders->OptionalHeader.Magic == VAL16(IMAGE_NT_OPTIONAL_HDR32_MAGIC)) {
+                const auto ntHeaders32 = (IMAGE_NT_HEADERS32*)(baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew));
+                const auto directoryEntry = ntHeaders32->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
+                const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
+                return corHeader->EntryPointToken;
             }
-            catch (const std::exception& e)
-            {
-                isError = true;
-                Info("GetEntryPointToken Error",e.what());
-                return mdTokenNil;
+            else {
+                const auto directoryEntry = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER];
+                const auto corHeader = (IMAGE_COR20_HEADER*)(baseLoadAddress + VAL32(directoryEntry.VirtualAddress));
+                return corHeader->EntryPointToken;
             }
         }
     };
