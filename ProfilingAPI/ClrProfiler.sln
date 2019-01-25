@@ -13,6 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\dev.cmd = ..\dev.cmd
 		..\LICENSE = ..\LICENSE
 		..\README.md = ..\README.md
+		..\trace.json = ..\trace.json
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClrProfiler.Trace", "ClrProfiler.Trace\ClrProfiler.Trace.csproj", "{34113CD4-9FF1-4C70-9E0E-D04A7035716C}"
@@ -31,20 +32,16 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|Win32.ActiveCfg = Debug|Win32
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|Win32.Build.0 = Debug|Win32
+		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|Win32.ActiveCfg = Debug|x64
 		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|x64.ActiveCfg = Debug|x64
 		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|x64.Build.0 = Debug|x64
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|x86.ActiveCfg = Debug|Win32
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|x86.Build.0 = Debug|Win32
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|Any CPU.ActiveCfg = Release|Win32
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|Win32.ActiveCfg = Release|Win32
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|Win32.Build.0 = Release|Win32
+		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Debug|x86.ActiveCfg = Debug|x64
+		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|Any CPU.ActiveCfg = Release|x64
+		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|Win32.ActiveCfg = Release|x64
 		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|x64.ActiveCfg = Release|x64
 		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|x64.Build.0 = Release|x64
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|x86.ActiveCfg = Release|Win32
-		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|x86.Build.0 = Release|Win32
+		{91B6272F-5780-4C94-8071-DBBA7B4F67F3}.Release|x86.ActiveCfg = Release|x64
 		{ED05D8AE-F48D-48B5-A1A4-E65089170F63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{ED05D8AE-F48D-48B5-A1A4-E65089170F63}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ED05D8AE-F48D-48B5-A1A4-E65089170F63}.Debug|Win32.ActiveCfg = Debug|Any CPU

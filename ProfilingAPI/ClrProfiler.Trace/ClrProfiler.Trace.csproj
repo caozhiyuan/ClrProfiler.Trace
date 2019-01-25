@@ -6,4 +6,10 @@
     <AssemblyOriginatorKeyFile>../../tools/clrprofiler.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\trace.json" Link="trace.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

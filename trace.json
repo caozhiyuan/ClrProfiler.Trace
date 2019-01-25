@@ -1,0 +1,36 @@
+{
+    "instrumentation": [
+        {
+            "assemblyName": "StackExchange.Redis",
+            "className": "StackExchange.Redis.ConnectionMultiplexer",
+            "methods": [
+                {
+                    "methodName": "ExecuteSyncImpl"
+                },
+                {
+                    "methodName": "ExecuteAsyncImpl"
+                }
+            ]
+        },
+        {
+            "assemblyName": "System.Net.Http",
+            "className": "System.Net.Http.HttpClient",
+            "methods": [
+                {
+                    "methodName": "SendAsync",
+                    "paramsName": "System.Net.Http.HttpRequestMessage,System.Net.Http.HttpCompletionOption,System.Threading.CancellationToken"
+                }
+            ]
+        },
+        {
+            "assemblyName": "System.Data.SqlClient",
+            "className": "System.Data.SqlClient.SqlCommand",
+            "methods": [
+                {
+                    "methodName": "ExecuteNonQueryAsync",
+                    "paramsName": "System.Threading.CancellationToken"
+                }
+            ]
+        }
+    ]
+}

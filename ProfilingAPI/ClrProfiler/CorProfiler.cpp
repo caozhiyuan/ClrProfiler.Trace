@@ -2,17 +2,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 #include "CorProfiler.h"
-#include "corhlpr.h"
 #include "CComPtr.h"
 #include "logging.h"  // NOLINT
+#include "corhlpr.h"
 #include "macros.h"
 #include "clr_helpers.h"
+#include "config_loader.h"
 #include "il_rewriter.h"
+#include "il_rewriter_wrapper.h"
 #include <string>
 #include <vector>
 #include <iostream>
 #include <cassert>
-#include "il_rewriter_wrapper.h"
 
 namespace trace {
 
@@ -48,7 +49,16 @@ namespace trace {
         this->corProfilerInfo->SetEventMask(eventMask);
 
         this->clrProfilerHomeEnvValue = GetEnvironmentValue(kClrProfilerHomeEnv);
-    
+
+        if(this->clrProfilerHomeEnvValue.empty()) {
+            return E_FAIL;
+        }
+
+        this->traceAssemblies = LoadTraceAssemblies(this->clrProfilerHomeEnvValue);
+        if (this->traceAssemblies.empty()) {
+            return E_FAIL;
+        }
+
         return S_OK;
     }
 
@@ -113,12 +123,12 @@ namespace trace {
         auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
         if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {
             return S_OK;
-        }
-
+        }        
         const auto entryPointToken = module_info.GetEntryPointToken();
+        ModuleMetaInfo* module_metadata = new ModuleMetaInfo(entryPointToken, module_info.assembly.name);
         {
             std::lock_guard<std::mutex> guard(mapLock);
-            moduleEntryTokenMap[moduleId] = entryPointToken;
+            moduleMetaInfoMap[moduleId] = module_metadata;
         }
 
         if (module_info.assembly.name == "mscorlib"_W || module_info.assembly.name == "System.Private.CoreLib"_W) {
@@ -359,12 +369,57 @@ namespace trace {
         return S_OK;
     }
 
+    bool CorProfiler::FunctionIsNeedTrace(CComPtr<IMetaDataImport2>& pImport, ModuleMetaInfo* moduleMetaInfo, FunctionInfo functionInfo)
+    {
+        auto isTrace = false;
+        for (const auto& assembly : traceAssemblies) {
+            if (assembly.assemblyName == moduleMetaInfo->assemblyName&&
+                functionInfo.type.name == assembly.className) {
+                for (const auto& method : assembly.methods) {
+                    if (method.methodName == functionInfo.name) {
+                        auto paramIsMatch = true;
+                        if (!method.paramsName.empty()) {
+                            auto paramNames = Split(method.paramsName, static_cast<wchar_t>(','));
+                            auto arguments = functionInfo.signature.GetMethodArguments();
+                            for (unsigned i = 0; i < arguments.size(); i++) {
+                                auto typeTokName = arguments[i].GetTypeTokName(pImport);
+                                if (typeTokName != paramNames[i])
+                                {
+                                    paramIsMatch = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if (paramIsMatch) {
+                            isTrace = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (isTrace) 
+                break;
+        }
+        return isTrace;
+    }
+
     HRESULT STDMETHODCALLTYPE CorProfiler::JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock)
     {
         mdToken function_token = mdTokenNil;
         ModuleID moduleId;
         auto hr = corProfilerInfo->GetFunctionInfo(functionId, NULL, &moduleId, &function_token);
         RETURN_OK_IF_FAILED(hr);
+
+        ModuleMetaInfo* moduleMetaInfo = nullptr;
+        {
+            std::lock_guard<std::mutex> guard(mapLock);
+            if (moduleMetaInfoMap.count(moduleId) > 0) {
+                moduleMetaInfo = moduleMetaInfoMap[moduleId];
+            }
+        }
+        if(moduleMetaInfo == nullptr) {
+            return S_OK;
+        }
 
         bool isiLRewrote = false;
         {
@@ -373,7 +428,8 @@ namespace trace {
                 isiLRewrote = true;
             }
         }
-        if(isiLRewrote){
+
+        if (isiLRewrote) {
             return S_OK;
         }
 
@@ -402,8 +458,7 @@ namespace trace {
         //.net core add premain il
         if (corAssemblyProperty.szName != "mscorlib"_W &&
             !entryPointReWrote &&
-            moduleEntryTokenMap.count(moduleId) > 0 &&
-            functionInfo.id == moduleEntryTokenMap[moduleId])
+            functionInfo.id == moduleMetaInfo->entryPointToken)
         {
             const mdAssemblyRef corLibAssemblyRef = GetCorLibAssemblyRef(metadata_interfaces, corAssemblyProperty);
             if (corLibAssemblyRef == mdAssemblyRefNil) {
@@ -453,266 +508,265 @@ namespace trace {
                 iLRewriteMap[function_token] = true;
             }
             entryPointReWrote = true;
-
             return S_OK;
         }
 
-        if (functionInfo.type.name == "StackExchange.Redis.ConnectionMultiplexer"_W &&
-            functionInfo.name == "ExecuteSyncImpl"_W) {
-            
-            hr = functionInfo.signature.TryParse();
-            RETURN_OK_IF_FAILED(hr);
+        hr = functionInfo.signature.TryParse();
+        RETURN_OK_IF_FAILED(hr);
 
-            if(!(functionInfo.signature.CallingConvention() & IMAGE_CEE_CS_CALLCONV_HASTHIS)) {
-                return S_OK;
-            }
+        if (!(functionInfo.signature.CallingConvention() & IMAGE_CEE_CS_CALLCONV_HASTHIS)) {
+            return S_OK;
+        }
 
-            mdAssemblyRef assemblyRef;
-            hr = GetProfilerAssemblyRef(metadata_interfaces, assemblyRef);
-            RETURN_OK_IF_FAILED(hr);
+        if(!FunctionIsNeedTrace(pImport, moduleMetaInfo, functionInfo))
+        {
+            return S_OK;
+        }
 
-            mdTypeRef traceAgentTypeRef;
-            hr = pEmit->DefineTypeRefByName(
-                assemblyRef,
-                kTraceAgentTypeName.data(),
-                &traceAgentTypeRef);
-            RETURN_OK_IF_FAILED(hr);
+        mdAssemblyRef assemblyRef;
+        hr = GetProfilerAssemblyRef(metadata_interfaces, assemblyRef);
+        RETURN_OK_IF_FAILED(hr);
 
-            COR_SIGNATURE traceInstanceSig[] =
-            {
-                IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                0x00,
-                ELEMENT_TYPE_OBJECT
-            };
+        mdTypeRef traceAgentTypeRef;
+        hr = pEmit->DefineTypeRefByName(
+            assemblyRef,
+            kTraceAgentTypeName.data(),
+            &traceAgentTypeRef);
+        RETURN_OK_IF_FAILED(hr);
 
-            mdMemberRef getInstanceMemberRef;
-            hr = pEmit->DefineMemberRef(
-                traceAgentTypeRef,
-                kGetInstanceMethodName.data(),
-                traceInstanceSig,
-                sizeof(traceInstanceSig),
-                &getInstanceMemberRef);
-            RETURN_OK_IF_FAILED(hr);
+        COR_SIGNATURE traceInstanceSig[] =
+        {
+            IMAGE_CEE_CS_CALLCONV_DEFAULT,
+            0x00,
+            ELEMENT_TYPE_OBJECT
+        };
 
-            mdTypeRef methodTraceTypeRef;
-            hr = pEmit->DefineTypeRefByName(
-                assemblyRef,
-                kMethodTraceTypeName.data(),
-                &methodTraceTypeRef);
-            RETURN_OK_IF_FAILED(hr);
+        mdMemberRef getInstanceMemberRef;
+        hr = pEmit->DefineMemberRef(
+            traceAgentTypeRef,
+            kGetInstanceMethodName.data(),
+            traceInstanceSig,
+            sizeof(traceInstanceSig),
+            &getInstanceMemberRef);
+        RETURN_OK_IF_FAILED(hr);
 
-            COR_SIGNATURE traceBeforeSig[] = 
-            {
-                IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS ,
-                0x04 ,
-                ELEMENT_TYPE_OBJECT,
-                ELEMENT_TYPE_STRING ,
-                ELEMENT_TYPE_STRING,
-                ELEMENT_TYPE_OBJECT,
-                ELEMENT_TYPE_SZARRAY,
-                ELEMENT_TYPE_OBJECT
-            };
+        mdTypeRef methodTraceTypeRef;
+        hr = pEmit->DefineTypeRefByName(
+            assemblyRef,
+            kMethodTraceTypeName.data(),
+            &methodTraceTypeRef);
+        RETURN_OK_IF_FAILED(hr);
 
-            mdMemberRef beforeMemberRef;
-            hr = pEmit->DefineMemberRef(
-                traceAgentTypeRef,
-                kBeforeMethodName.data(),
-                traceBeforeSig,
-                sizeof(traceBeforeSig),
-                &beforeMemberRef);
-            RETURN_OK_IF_FAILED(hr);
+        COR_SIGNATURE traceBeforeSig[] =
+        {
+            IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS ,
+            0x04 ,
+            ELEMENT_TYPE_OBJECT,
+            ELEMENT_TYPE_STRING ,
+            ELEMENT_TYPE_STRING,
+            ELEMENT_TYPE_OBJECT,
+            ELEMENT_TYPE_SZARRAY,
+            ELEMENT_TYPE_OBJECT
+        };
 
-            COR_SIGNATURE traceEndSig[] =
-            {
-                IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                0x02,
-                ELEMENT_TYPE_VOID,
-                ELEMENT_TYPE_OBJECT,
-                ELEMENT_TYPE_OBJECT
-            };
-            mdMemberRef endMemberRef;
-            hr = pEmit->DefineMemberRef(
-                methodTraceTypeRef,
-                kEndMethodName.data(),
-                traceEndSig,
-                sizeof(traceEndSig),
-                &endMemberRef);
-            RETURN_OK_IF_FAILED(hr);
+        mdMemberRef beforeMemberRef;
+        hr = pEmit->DefineMemberRef(
+            traceAgentTypeRef,
+            kBeforeMethodName.data(),
+            traceBeforeSig,
+            sizeof(traceBeforeSig),
+            &beforeMemberRef);
+        RETURN_OK_IF_FAILED(hr);
 
-            mdAssemblyRef corLibAssemblyRef = GetCorLibAssemblyRef(metadata_interfaces, corAssemblyProperty);
-            if (corLibAssemblyRef == mdAssemblyRefNil) {
-                return S_OK;
-            }
+        COR_SIGNATURE traceEndSig[] =
+        {
+            IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS,
+            0x02,
+            ELEMENT_TYPE_VOID,
+            ELEMENT_TYPE_OBJECT,
+            ELEMENT_TYPE_OBJECT
+        };
+        mdMemberRef endMemberRef;
+        hr = pEmit->DefineMemberRef(
+            methodTraceTypeRef,
+            kEndMethodName.data(),
+            traceEndSig,
+            sizeof(traceEndSig),
+            &endMemberRef);
+        RETURN_OK_IF_FAILED(hr);
 
-            mdTypeRef exTypeRef;
-            hr = pEmit->DefineTypeRefByName(
-                corLibAssemblyRef,
-                SystemException.data(),
-                &exTypeRef);
-            RETURN_OK_IF_FAILED(hr);
+        mdAssemblyRef corLibAssemblyRef = GetCorLibAssemblyRef(metadata_interfaces, corAssemblyProperty);
+        if (corLibAssemblyRef == mdAssemblyRefNil) {
+            return S_OK;
+        }
 
-            ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
-            RETURN_OK_IF_FAILED(rewriter.Import());
+        mdTypeRef exTypeRef;
+        hr = pEmit->DefineTypeRefByName(
+            corLibAssemblyRef,
+            SystemException.data(),
+            &exTypeRef);
+        RETURN_OK_IF_FAILED(hr);
 
-            //ModifyLocalSig
-            hr = ModifyLocalSig(pImport, pEmit, rewriter, exTypeRef, methodTraceTypeRef);
-            RETURN_OK_IF_FAILED(hr);
+        ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
+        RETURN_OK_IF_FAILED(rewriter.Import());
 
-            //add try catch finally
-            auto pReWriter = &rewriter;
-            mdTypeRef objectTypeRef;
-            hr = pEmit->DefineTypeRefByName(
-                corLibAssemblyRef,
-                SystemObject.data(),
-                &objectTypeRef);
-            RETURN_OK_IF_FAILED(hr);
+        //ModifyLocalSig
+        hr = ModifyLocalSig(pImport, pEmit, rewriter, exTypeRef, methodTraceTypeRef);
+        RETURN_OK_IF_FAILED(hr);
 
-            mdString typeNameTextToken;
-            auto typeName = functionInfo.type.name.data();
-            hr = pEmit->DefineUserString(typeName, (ULONG)functionInfo.type.name.size(), &typeNameTextToken);
-            RETURN_OK_IF_FAILED(hr);
+        //add try catch finally
+        auto pReWriter = &rewriter;
+        mdTypeRef objectTypeRef;
+        hr = pEmit->DefineTypeRefByName(
+            corLibAssemblyRef,
+            SystemObject.data(),
+            &objectTypeRef);
+        RETURN_OK_IF_FAILED(hr);
 
-            auto indexRet = rewriter.cNewLocals - 3;
-            auto indexEx = rewriter.cNewLocals - 2;
-            auto indexMethodTrace = rewriter.cNewLocals - 1;
+        mdString typeNameTextToken;
+        auto typeName = functionInfo.type.name.data();
+        hr = pEmit->DefineUserString(typeName, (ULONG)functionInfo.type.name.size(), &typeNameTextToken);
+        RETURN_OK_IF_FAILED(hr);
 
-            mdString methodNameTextToken;
-            auto methodName = functionInfo.name.data();
-            hr = pEmit->DefineUserString(methodName, (ULONG)functionInfo.name.size(), &methodNameTextToken);
-            RETURN_OK_IF_FAILED(hr);
-            ILRewriterWrapper reWriterWrapper(pReWriter);
-            ILInstr * pFirstOriginalInstr = pReWriter->GetILList()->m_pNext;
-            reWriterWrapper.SetILPosition(pFirstOriginalInstr);
-            reWriterWrapper.LoadNull();
-            reWriterWrapper.StLocal(indexMethodTrace);
-            reWriterWrapper.LoadNull();
-            reWriterWrapper.StLocal(indexEx);
-            reWriterWrapper.LoadNull();
-            reWriterWrapper.StLocal(indexRet);
-            ILInstr* pTryStartInstr = reWriterWrapper.CallMember0(getInstanceMemberRef, false);
-            reWriterWrapper.Cast(traceAgentTypeRef);
-            reWriterWrapper.LoadStr(typeNameTextToken);
-            reWriterWrapper.LoadStr(methodNameTextToken);
-            reWriterWrapper.LoadArgument(0);
-            auto argNum = functionInfo.signature.NumberOfArguments();
-            reWriterWrapper.CreateArray(objectTypeRef, argNum);
-            auto arguments = functionInfo.signature.GetMethodArguments();
-            for (unsigned i = 0; i < argNum; i++) {
-              
-                reWriterWrapper.BeginLoadValueIntoArray(i);
-                reWriterWrapper.LoadArgument(i + 1);
-                if(arguments[i].IsBoxedType()) {
-                    auto tok = arguments[i].GetTypeTok(pEmit, corLibAssemblyRef);
-                    if (tok == mdTokenNil) {
-                        return S_OK;
-                    }
-                    reWriterWrapper.Box(tok);
+        auto indexRet = rewriter.cNewLocals - 3;
+        auto indexEx = rewriter.cNewLocals - 2;
+        auto indexMethodTrace = rewriter.cNewLocals - 1;
+
+        mdString methodNameTextToken;
+        auto methodName = functionInfo.name.data();
+        hr = pEmit->DefineUserString(methodName, (ULONG)functionInfo.name.size(), &methodNameTextToken);
+        RETURN_OK_IF_FAILED(hr);
+        ILRewriterWrapper reWriterWrapper(pReWriter);
+        ILInstr * pFirstOriginalInstr = pReWriter->GetILList()->m_pNext;
+        reWriterWrapper.SetILPosition(pFirstOriginalInstr);
+        reWriterWrapper.LoadNull();
+        reWriterWrapper.StLocal(indexMethodTrace);
+        reWriterWrapper.LoadNull();
+        reWriterWrapper.StLocal(indexEx);
+        reWriterWrapper.LoadNull();
+        reWriterWrapper.StLocal(indexRet);
+        ILInstr* pTryStartInstr = reWriterWrapper.CallMember0(getInstanceMemberRef, false);
+        reWriterWrapper.Cast(traceAgentTypeRef);
+        reWriterWrapper.LoadStr(typeNameTextToken);
+        reWriterWrapper.LoadStr(methodNameTextToken);
+        reWriterWrapper.LoadArgument(0);
+        auto argNum = functionInfo.signature.NumberOfArguments();
+        reWriterWrapper.CreateArray(objectTypeRef, argNum);
+        auto arguments = functionInfo.signature.GetMethodArguments();
+        for (unsigned i = 0; i < argNum; i++) {
+            reWriterWrapper.BeginLoadValueIntoArray(i);
+            reWriterWrapper.LoadArgument(i + 1);
+            if (arguments[i].IsBoxedType()) {
+                auto tok = arguments[i].GetTypeTok(pEmit, corLibAssemblyRef);
+                if (tok == mdTokenNil) {
+                    return S_OK;
                 }
-                reWriterWrapper.EndLoadValueIntoArray();
+                reWriterWrapper.Box(tok);
             }
-            reWriterWrapper.CallMember(beforeMemberRef, true);
-            reWriterWrapper.Cast(methodTraceTypeRef);
-            reWriterWrapper.StLocal(rewriter.cNewLocals - 1);
+            reWriterWrapper.EndLoadValueIntoArray();
+        }
+        reWriterWrapper.CallMember(beforeMemberRef, true);
+        reWriterWrapper.Cast(methodTraceTypeRef);
+        reWriterWrapper.StLocal(rewriter.cNewLocals - 1);
 
-            ILInstr* pRetInstr = pReWriter->NewILInstr();
-            pRetInstr->m_opcode = CEE_RET;
-            pReWriter->InsertAfter(pReWriter->GetILList()->m_pPrev, pRetInstr);
+        ILInstr* pRetInstr = pReWriter->NewILInstr();
+        pRetInstr->m_opcode = CEE_RET;
+        pReWriter->InsertAfter(pReWriter->GetILList()->m_pPrev, pRetInstr);
 
-            bool isVoidMethod = functionInfo.signature.IsVoidMethod();
-            auto ret = functionInfo.signature.GetRet();
-            bool retIsBoxedType = false;
-            mdToken retTypeTok;
-            if (!isVoidMethod) {
-                retTypeTok = ret.GetTypeTok(pEmit, corLibAssemblyRef);
-                if (ret.IsBoxedType()) {
-                    retIsBoxedType = true;
-                }
+        bool isVoidMethod = functionInfo.signature.IsVoidMethod();
+        auto ret = functionInfo.signature.GetRet();
+        bool retIsBoxedType = false;
+        mdToken retTypeTok;
+        if (!isVoidMethod) {
+            retTypeTok = ret.GetTypeTok(pEmit, corLibAssemblyRef);
+            if (ret.IsBoxedType()) {
+                retIsBoxedType = true;
             }
-            reWriterWrapper.SetILPosition(pRetInstr);
-            reWriterWrapper.StLocal(indexEx);
-            ILInstr* pRethrowInstr = reWriterWrapper.Rethrow();
+        }
+        reWriterWrapper.SetILPosition(pRetInstr);
+        reWriterWrapper.StLocal(indexEx);
+        ILInstr* pRethrowInstr = reWriterWrapper.Rethrow();
 
+        reWriterWrapper.LoadLocal(indexRet);
+        ILInstr* pNewInstr = pReWriter->NewILInstr();
+        pNewInstr->m_opcode = CEE_BRFALSE_S;
+        pReWriter->InsertBefore(pRetInstr, pNewInstr);
+
+        reWriterWrapper.LoadLocal(indexMethodTrace);
+        reWriterWrapper.LoadLocal(indexRet);
+        reWriterWrapper.LoadLocal(indexEx);
+        reWriterWrapper.CallMember(endMemberRef, true);
+
+        ILInstr* pEndFinallyInstr = reWriterWrapper.EndFinally();
+        pNewInstr->m_pTarget = pEndFinallyInstr;
+
+        if (!isVoidMethod) {
             reWriterWrapper.LoadLocal(indexRet);
-            ILInstr* pNewInstr = pReWriter->NewILInstr();
-            pNewInstr->m_opcode = CEE_BRFALSE_S;
-            pReWriter->InsertBefore(pRetInstr, pNewInstr);
-
-            reWriterWrapper.LoadLocal(indexMethodTrace);
-            reWriterWrapper.LoadLocal(indexRet);
-            reWriterWrapper.LoadLocal(indexEx);
-            reWriterWrapper.CallMember(endMemberRef, true);
-
-            ILInstr* pEndFinallyInstr = reWriterWrapper.EndFinally();
-            pNewInstr->m_pTarget = pEndFinallyInstr;
-
-            if (!isVoidMethod) {
-                reWriterWrapper.LoadLocal(indexRet);
-                if (retIsBoxedType) {
-                    reWriterWrapper.UnboxAny(retTypeTok);
-                }else{
-                    reWriterWrapper.Cast(retTypeTok);
-                }
+            if (retIsBoxedType) {
+                reWriterWrapper.UnboxAny(retTypeTok);
             }
-
-            for (ILInstr * pInstr = pReWriter->GetILList()->m_pNext;
-                pInstr != pReWriter->GetILList();
-                pInstr = pInstr->m_pNext) {
-                switch (pInstr->m_opcode)
-                {
-                case CEE_RET:
-                {
-                    if (pInstr != pRetInstr) {
-                        if (!isVoidMethod) {
-                            reWriterWrapper.SetILPosition(pInstr);
-                            if (retIsBoxedType) {
-                                reWriterWrapper.Box(retTypeTok);
-                            }
-                            reWriterWrapper.StLocal(indexRet);
-                        }
-                        pInstr->m_opcode = CEE_LEAVE_S;
-                        pInstr->m_pTarget = pEndFinallyInstr->m_pNext;
-                    }
-                    break;
-                }
-                default:
-                    break;
-                }
-            }
-
-            EHClause exClause{};
-            exClause.m_Flags = COR_ILEXCEPTION_CLAUSE_NONE;
-            exClause.m_pTryBegin = pTryStartInstr;
-            exClause.m_pTryEnd = pRethrowInstr->m_pPrev;
-            exClause.m_pHandlerBegin = pRethrowInstr->m_pPrev;
-            exClause.m_pHandlerEnd = pRethrowInstr;
-            exClause.m_ClassToken = exTypeRef;
-
-            EHClause finallyClause{};
-            finallyClause.m_Flags = COR_ILEXCEPTION_CLAUSE_FINALLY;
-            finallyClause.m_pTryBegin = pTryStartInstr;
-            finallyClause.m_pTryEnd = pRethrowInstr->m_pNext;
-            finallyClause.m_pHandlerBegin = pRethrowInstr->m_pNext;
-            finallyClause.m_pHandlerEnd = pEndFinallyInstr;
-
-            auto m_pEHNew = new EHClause[rewriter.m_nEH + 2];
-            for (unsigned i = 0; i < rewriter.m_nEH; i++) {
-                m_pEHNew[i] = rewriter.m_pEH[i];
-            }
-
-            rewriter.m_nEH += 2;
-            m_pEHNew[rewriter.m_nEH - 2] = exClause;
-            m_pEHNew[rewriter.m_nEH - 1] = finallyClause;
-            rewriter.m_pEH = m_pEHNew;
-
-            hr = rewriter.Export();
-            RETURN_OK_IF_FAILED(hr);
-
-            {
-                std::lock_guard<std::mutex> guard(mapLock);
-                iLRewriteMap[function_token] = true;
+            else {
+                reWriterWrapper.Cast(retTypeTok);
             }
         }
 
+        for (ILInstr * pInstr = pReWriter->GetILList()->m_pNext;
+            pInstr != pReWriter->GetILList();
+            pInstr = pInstr->m_pNext) {
+            switch (pInstr->m_opcode)
+            {
+            case CEE_RET:
+            {
+                if (pInstr != pRetInstr) {
+                    if (!isVoidMethod) {
+                        reWriterWrapper.SetILPosition(pInstr);
+                        if (retIsBoxedType) {
+                            reWriterWrapper.Box(retTypeTok);
+                        }
+                        reWriterWrapper.StLocal(indexRet);
+                    }
+                    pInstr->m_opcode = CEE_LEAVE_S;
+                    pInstr->m_pTarget = pEndFinallyInstr->m_pNext;
+                }
+                break;
+            }
+            default:
+                break;
+            }
+        }
+
+        EHClause exClause{};
+        exClause.m_Flags = COR_ILEXCEPTION_CLAUSE_NONE;
+        exClause.m_pTryBegin = pTryStartInstr;
+        exClause.m_pTryEnd = pRethrowInstr->m_pPrev;
+        exClause.m_pHandlerBegin = pRethrowInstr->m_pPrev;
+        exClause.m_pHandlerEnd = pRethrowInstr;
+        exClause.m_ClassToken = exTypeRef;
+
+        EHClause finallyClause{};
+        finallyClause.m_Flags = COR_ILEXCEPTION_CLAUSE_FINALLY;
+        finallyClause.m_pTryBegin = pTryStartInstr;
+        finallyClause.m_pTryEnd = pRethrowInstr->m_pNext;
+        finallyClause.m_pHandlerBegin = pRethrowInstr->m_pNext;
+        finallyClause.m_pHandlerEnd = pEndFinallyInstr;
+
+        auto m_pEHNew = new EHClause[rewriter.m_nEH + 2];
+        for (unsigned i = 0; i < rewriter.m_nEH; i++) {
+            m_pEHNew[i] = rewriter.m_pEH[i];
+        }
+
+        rewriter.m_nEH += 2;
+        m_pEHNew[rewriter.m_nEH - 2] = exClause;
+        m_pEHNew[rewriter.m_nEH - 1] = finallyClause;
+        rewriter.m_pEH = m_pEHNew;
+
+        hr = rewriter.Export();
+        RETURN_OK_IF_FAILED(hr);
+
+        {
+            std::lock_guard<std::mutex> guard(mapLock);
+            iLRewriteMap[function_token] = true;
+        }
         return  S_OK;
     }
 

@@ -10,6 +10,7 @@
 #include "corprof.h"
 #include "clr_helpers.h"
 #include "il_rewriter.h"
+#include "config_loader.h"
 
 namespace trace {
 
@@ -24,7 +25,8 @@ namespace trace {
         WSTRING clrProfilerHomeEnvValue;
         AssemblyProperty corAssemblyProperty{};
         bool customLoadFromInit = false;
-        std::unordered_map<ModuleID, mdToken> moduleEntryTokenMap{};
+        std::unordered_map<ModuleID, ModuleMetaInfo*> moduleMetaInfoMap{};
+        std::vector<TraceAssembly> traceAssemblies;
     public:
         CorProfiler();
         virtual ~CorProfiler();
@@ -158,5 +160,7 @@ namespace trace {
 
             return count;
         }
+
+        bool FunctionIsNeedTrace(CComPtr<IMetaDataImport2>& pImport, ModuleMetaInfo* moduleMetaInfo, FunctionInfo functionInfo);
     };
 }

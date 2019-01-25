@@ -19,16 +19,12 @@ namespace Samples.Redis
             Console.ReadLine();
         }
 
-        private static string Host()
-        {
-            return Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost";
-        }
         private static async Task RunStackExchange(string prefix)
         {
             prefix += "StackExchange.Redis.";
 
             Console.WriteLine($"Testing StackExchange.Redis {prefix}");
-            using (var redis = ConnectionMultiplexer.Connect(Host() + ",allowAdmin=true"))
+            using (var redis = ConnectionMultiplexer.Connect("localhost,allowAdmin=true"))
             {
                 redis.Configure(Console.Out);
 

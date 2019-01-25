@@ -273,6 +273,15 @@ namespace trace {
         bool is_valid() const { return id != 0; }
     };
 
+    class ModuleMetaInfo {
+    public:
+        const mdToken entryPointToken;
+        const WSTRING assemblyName;
+        ModuleMetaInfo(mdToken entry_point_token, WSTRING assembly_name)
+            : entryPointToken(entry_point_token),
+              assemblyName(assembly_name){}
+    };
+
     struct ModuleInfo {
         const ModuleID id;
         const WSTRING path;
@@ -409,45 +418,9 @@ namespace trace {
         MethodSignature signature;
 
         FunctionInfo() : id(0), name(""_W), type({}), signature({}) {}
-        FunctionInfo(mdToken id, WSTRING name, TypeInfo type,
-            MethodSignature signature)
-            : id(id), name(name), type(type), signature(signature) {}
+        FunctionInfo(mdToken id, WSTRING name, TypeInfo type, MethodSignature signature) : id(id), name(name), type(type), signature(signature) {}
 
         bool IsValid() const { return id != 0; }
-
-        bool GuessIsEntryPointSig(CComPtr<IMetaDataImport2>& pImport) const {
-
-            if (signature.CallingConvention() == IMAGE_CEE_CS_CALLCONV_DEFAULT){
-                if (!signature.IsVoidMethod()) {
-                    auto ret = signature.GetRet();
-                    const auto retTypeName = ret.GetTypeTokName(pImport);
-                    if (retTypeName == SystemInt32 || retTypeName == SystemUInt32) {
-                        if (signature.NumberOfArguments() == 0) {
-                            return true;
-                        }
-
-                        if (signature.NumberOfArguments() == 1) {
-                            auto args = signature.GetMethodArguments();
-                            if (args[0].GetTypeTokName(pImport) == "System.String[]"_W) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-                else {
-                    if (signature.NumberOfArguments() == 0){
-                        return true;
-                    }
-                    if (signature.NumberOfArguments() == 1) {
-                        auto args = signature.GetMethodArguments();
-                        if (args[0].GetTypeTokName(pImport) == "System.String[]"_W) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
     };
 
     WSTRING GetAssemblyName(const CComPtr<IMetaDataAssemblyImport>& assembly_import);

@@ -1,5 +1,5 @@
 using System;
-using System.Diagnostics;
+using System.Net.Http;
 using System.Threading.Tasks;
 using StackExchange.Redis;
 
@@ -7,25 +7,35 @@ namespace Samples.RedisCore
 {
     class Program
     {
+        private static readonly HttpClient HttpClient = new HttpClient();
+
         static void Main(string[] args)
         {
             Console.WriteLine($"Is64BitProcess:{Environment.Is64BitProcess}");
 
-            RunStackExchange("StackExchange").Wait();
+            Run().GetAwaiter().GetResult();
 
             Console.ReadLine();
         }
 
-        private static string Host()
+        private static async Task Run()
         {
-            return Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost";
+            await RunStackExchange("StackExchange");
+
+            await RunGetBing();
         }
+
+        private static async Task<string> RunGetBing()
+        {
+            return await HttpClient.GetStringAsync("https://cn.bing.com/").ConfigureAwait(false);
+        }
+
         private static async Task RunStackExchange(string prefix)
         {
             prefix += "StackExchange.Redis.";
 
             Console.WriteLine($"Testing StackExchange.Redis {prefix}");
-            using (var redis = ConnectionMultiplexer.Connect(Host() + ",allowAdmin=true"))
+            using (var redis = ConnectionMultiplexer.Connect("localhost,allowAdmin=true"))
             {
                 redis.Configure(Console.Out);
 
@@ -38,8 +48,6 @@ namespace Samples.RedisCore
 
                 Console.WriteLine(c);
             }
-
-            Console.ReadLine();
         }
     }
 }
