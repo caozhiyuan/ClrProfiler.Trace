@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace ClrProfiler.Trace.Hooks.Sql
 {
@@ -25,11 +24,16 @@ namespace ClrProfiler.Trace.Hooks.Sql
 #endif
             return delegate (object returnValue, Exception ex)
             {
-#if DEBUG
-                Console.WriteLine($"returnValue:{returnValue}");
-                Console.WriteLine($"ex:{ex}");
-#endif
+                Level(traceMethodInfo,returnValue,ex);
             };
+        }
+
+        private void Level(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
+        {
+#if DEBUG
+            Console.WriteLine($"returnValue:{ret}");
+            Console.WriteLine($"ex:{ex}");
+#endif
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)

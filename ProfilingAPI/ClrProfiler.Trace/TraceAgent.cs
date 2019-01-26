@@ -68,6 +68,8 @@ namespace ClrProfiler.Trace
         public object[] MethodArguments { get; set; }
 
         public UInt32 FunctionToken { get; set; }
+
+        public object TraceContext { get; set; }
     }
 
     public class MethodTrace

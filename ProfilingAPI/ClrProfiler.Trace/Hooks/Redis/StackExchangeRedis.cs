@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace ClrProfiler.Trace.Hooks.Redis
 {
@@ -29,30 +28,24 @@ namespace ClrProfiler.Trace.Hooks.Redis
             {
                 return delegate (object returnValue, Exception ex)
                 {
-#if DEBUG
-                    Console.WriteLine($"returnValue:{returnValue}");
-                    Console.WriteLine($"ex:{ex}");
-#endif
+                    Level(traceMethodInfo, returnValue, ex);
                 };
             }
             else
             {
                 return delegate (object returnValue, Exception ex)
                 {
-#if DEBUG
-                    Console.WriteLine($"ex:{ex}");
-#endif
-                    ((Task) returnValue).ContinueWith(n =>
-                    {
-                        if (n.IsFaulted)
-                        {
-                            Console.WriteLine($"ex:{ex}");
-                        }
-                        var ret = ((dynamic) n).Result;
-                        Console.WriteLine($"returnValue:{ret}");
-                    }, TaskContinuationOptions.ExecuteSynchronously);
+                    TraceDelegateHelper.AsyncMethodEnd(Level, traceMethodInfo, ex, returnValue);
                 };
             }
+        }
+
+        private void Level(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
+        {
+#if DEBUG
+            Console.WriteLine($"returnValue:{ret}");
+            Console.WriteLine($"ex:{ex}");
+#endif
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
