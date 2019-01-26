@@ -63,3 +63,5 @@ https://github.com/Microsoft/clr-samples
 https://github.com/brian-reichle/MethodCheck
 
 https://www.codeproject.com/articles/42655/%2fArticles%2f42655%2fNET-file-format-Signatures-under-the-hood-Part-2#LocalVarSig1.1
+
+https://github.com/DataDog/dd-trace-dotnet
