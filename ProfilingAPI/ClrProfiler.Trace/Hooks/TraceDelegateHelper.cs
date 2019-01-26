@@ -13,16 +13,17 @@ namespace ClrProfiler.Trace.Hooks
 
             if (returnValue != null)
             {
-                var value = returnValue;
-                returnValue = ((Task)value).ContinueWith(n =>
+                returnValue = ((Task)returnValue).ContinueWith(n =>
                 {
                     if (n.IsFaulted)
                     {
                         endMethodDelegate(traceMethodInfo,null, ex);
+                        return Task.FromException(n.Exception ?? new Exception("unknown exception"));
                     }
 
                     var ret = ((dynamic)n).Result;
                     endMethodDelegate(traceMethodInfo, ret, null);
+                    return ret;
                 }, TaskContinuationOptions.ExecuteSynchronously);
             }
         }

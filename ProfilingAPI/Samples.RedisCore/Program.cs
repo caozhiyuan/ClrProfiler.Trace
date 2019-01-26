@@ -78,12 +78,11 @@ namespace Samples.RedisCore
             Console.WriteLine($"Testing StackExchange.Redis {prefix}");
             using (var redis = ConnectionMultiplexer.Connect("localhost,allowAdmin=true"))
             {
-                redis.Configure(Console.Out);
+                var db = redis.GetDatabase(0);
 
-                var db = redis.GetDatabase(1);
                 await db.StringSetAsync($"{prefix}INCR", "0");
 
-                db.StringSet($"{prefix}INCR", "0");
+                db.StringSet($"{prefix}INCR", DateTime.Now.ToLongDateString());
 
                 var c = db.StringGet($"{prefix}INCR");
 
