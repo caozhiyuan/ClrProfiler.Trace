@@ -23,18 +23,15 @@ Building
 windows 
 
 install vcpkg and run
+
 ```batch
-$packages = @("spdlog", "nlohmann-json")
-$platforms = @("x86", "x64")
-foreach ($platform in $platforms) {
-    foreach ($package in $packages) {
-       $p = Run $vcpkgExe "install","$($package):$($platform)-windows-static" $vcpkgRoot
-    }
-}
+powershell ./scripts/install-vcpkgs.ps1
 ```
+
 msbuild ClrProfiler.dll
 
-linux (linx branch)
+linux (please use linx branch)
+
 ClrProfiler/build.sh build ClrProfiler.so
 
 ### Setup
