@@ -39,9 +39,10 @@ namespace ClrProfiler.Trace
                 FunctionToken = functionToken,
                 MethodArguments = methodArguments
             };
-            if (WrappersCache.ContainsKey(functionToken))
+
+            if (WrappersCache.TryGetValue(functionToken, out var foundWrapper))
             {
-                return WrappersCache[functionToken].BeforeWrappedMethod(traceMethodInfo);
+                return foundWrapper.BeforeWrappedMethod(traceMethodInfo);
             }
 
             foreach (var wrapper in LazyWrappers.Value)
@@ -52,9 +53,10 @@ namespace ClrProfiler.Trace
                     break;
                 }
             }
-            if (WrappersCache.ContainsKey(functionToken))
+
+            if (WrappersCache.TryGetValue(functionToken, out foundWrapper))
             {
-                return WrappersCache[functionToken].BeforeWrappedMethod(traceMethodInfo);
+                return foundWrapper.BeforeWrappedMethod(traceMethodInfo);
             }
             return null;
         }
