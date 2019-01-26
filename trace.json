@@ -13,6 +13,18 @@
             ]
         },
         {
+            "assemblyName": "StackExchange.Redis.StrongName",
+            "className": "StackExchange.Redis.ConnectionMultiplexer",
+            "methods": [
+                {
+                    "methodName": "ExecuteSyncImpl"
+                },
+                {
+                    "methodName": "ExecuteAsyncImpl"
+                }
+            ]
+        },
+        {
             "assemblyName": "System.Net.Http",
             "className": "System.Net.Http.HttpClient",
             "methods": [
@@ -29,6 +41,34 @@
                 {
                     "methodName": "ExecuteNonQueryAsync",
                     "paramsName": "System.Threading.CancellationToken"
+                },
+                {
+                    "methodName": "ExecuteReaderAsync",
+                    "paramsName": "System.Data.CommandBehavior,System.Threading.CancellationToken"
+                },
+                {
+                    "methodName": "ExecuteScalarAsync",
+                    "paramsName": "System.Threading.CancellationToken"
+                },
+                {
+                    "methodName": "ExecuteXmlReaderAsync",
+                    "paramsName": "System.Threading.CancellationToken"
+                }
+            ]
+        },
+        {
+            "assemblyName": "MySql.Data",
+            "className": "MySql.Data.MySqlClient.MySqlCommand",
+            "methods": [
+                {
+                    "methodName": "ExecuteNonQuery"
+                },
+                {
+                    "methodName": "ExecuteReader",
+                    "paramsName": "System.Data.CommandBehavior"
+                },
+                {
+                    "methodName": "ExecuteScalar"
                 }
             ]
         }

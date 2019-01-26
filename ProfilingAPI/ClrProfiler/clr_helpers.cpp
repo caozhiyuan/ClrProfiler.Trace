@@ -505,6 +505,7 @@ namespace trace
         case  ELEMENT_TYPE_CLASS:
             pbCur++;
             token = CorSigUncompressToken(pbCur);
+            break;
         case  ELEMENT_TYPE_VALUETYPE:
             pbCur++;
             token = CorSigUncompressToken(pbCur);

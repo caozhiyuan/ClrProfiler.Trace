@@ -373,21 +373,25 @@ namespace trace {
     {
         auto isTrace = false;
         for (const auto& assembly : traceAssemblies) {
-            if (assembly.assemblyName == moduleMetaInfo->assemblyName&&
-                functionInfo.type.name == assembly.className) {
+            if (assembly.assemblyName == moduleMetaInfo->assemblyName && functionInfo.type.name == assembly.className) {
                 for (const auto& method : assembly.methods) {
                     if (method.methodName == functionInfo.name) {
                         auto paramIsMatch = true;
                         if (!method.paramsName.empty()) {
                             auto paramNames = Split(method.paramsName, static_cast<wchar_t>(','));
                             auto arguments = functionInfo.signature.GetMethodArguments();
-                            for (unsigned i = 0; i < arguments.size(); i++) {
-                                auto typeTokName = arguments[i].GetTypeTokName(pImport);
-                                if (typeTokName != paramNames[i])
-                                {
-                                    paramIsMatch = false;
-                                    break;
+                            if(!arguments.empty()){
+                                for (unsigned i = 0; i < arguments.size(); i++) {
+                                    auto typeTokName = arguments[i].GetTypeTokName(pImport);
+                                    if (typeTokName != paramNames[i])
+                                    {
+                                        paramIsMatch = false;
+                                        break;
+                                    }
                                 }
+                            }
+                            else{
+                                paramIsMatch = false;
                             }
                         }
                         if (paramIsMatch) {
@@ -560,13 +564,14 @@ namespace trace {
         COR_SIGNATURE traceBeforeSig[] =
         {
             IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS ,
-            0x04 ,
+            0x05 ,
             ELEMENT_TYPE_OBJECT,
             ELEMENT_TYPE_STRING ,
             ELEMENT_TYPE_STRING,
             ELEMENT_TYPE_OBJECT,
             ELEMENT_TYPE_SZARRAY,
-            ELEMENT_TYPE_OBJECT
+            ELEMENT_TYPE_OBJECT,
+            ELEMENT_TYPE_U4
         };
 
         mdMemberRef beforeMemberRef;
@@ -665,6 +670,7 @@ namespace trace {
             }
             reWriterWrapper.EndLoadValueIntoArray();
         }
+        reWriterWrapper.LoadInt32((INT32)function_token);
         reWriterWrapper.CallMember(beforeMemberRef, true);
         reWriterWrapper.Cast(methodTraceTypeRef);
         reWriterWrapper.StLocal(rewriter.cNewLocals - 1);
@@ -687,7 +693,7 @@ namespace trace {
         reWriterWrapper.StLocal(indexEx);
         ILInstr* pRethrowInstr = reWriterWrapper.Rethrow();
 
-        reWriterWrapper.LoadLocal(indexRet);
+        reWriterWrapper.LoadLocal(indexMethodTrace);
         ILInstr* pNewInstr = pReWriter->NewILInstr();
         pNewInstr->m_opcode = CEE_BRFALSE_S;
         pReWriter->InsertBefore(pRetInstr, pNewInstr);

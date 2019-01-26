@@ -44,6 +44,8 @@ void ILRewriterWrapper::LoadInt32(const INT32 value) const {
 
   if (value >= 0 && value <= 8) {
     pNewInstr->m_opcode = opcodes[value];
+  }else if(value == -1) {
+      pNewInstr->m_opcode = CEE_LDC_I4_M1;
   } else if (-128 <= value && value <= 127) {
     pNewInstr->m_opcode = CEE_LDC_I4_S;
     pNewInstr->m_Arg8 = static_cast<INT8>(value);

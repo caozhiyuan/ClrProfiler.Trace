@@ -12,6 +12,7 @@ Prerequisites
 
 * CoreCLR Repository (build from source) Dependencies
 * Visual Studio 2017 (Windows)
+* vcpkg (Windows)
 * CLang3.5 (Ubuntu)
 
 Building
@@ -19,8 +20,22 @@ Building
 
 ### Build
 
-windows msbuild ClrProfiler.dll
-linux ClrProfiler/build.sh build ClrProfiler.so
+windows 
+
+install vcpkg and run
+```batch
+$packages = @("spdlog", "nlohmann-json")
+$platforms = @("x86", "x64")
+foreach ($platform in $platforms) {
+    foreach ($package in $packages) {
+       $p = Run $vcpkgExe "install","$($package):$($platform)-windows-static" $vcpkgRoot
+    }
+}
+```
+msbuild ClrProfiler.dll
+
+linux (linx branch)
+ClrProfiler/build.sh build ClrProfiler.so
 
 ### Setup
 

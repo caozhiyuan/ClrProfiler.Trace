@@ -41,44 +41,33 @@ namespace ClrProfiler.Trace
             return Instance;
         }
 
-        public object BeforeMethod(string typeName, string methodName, object invocationTarget, object[] methodArguments)
+        public object BeforeMethod(string typeName, string methodName, object invocationTarget, object[] methodArguments, UInt32 functionToken)
         {
             try
             {
                 var args = methodArguments;
-                var endMethodDelegate = this._wrapperService.BeforeWrappedMethod(typeName, methodName, invocationTarget, args);
-                return ((endMethodDelegate != null) ? new MethodTrace(endMethodDelegate) : null);
+                var endMethodDelegate = this._wrapperService.BeforeWrappedMethod(typeName, methodName, invocationTarget, args, functionToken);
+                return endMethodDelegate != null ? new MethodTrace(endMethodDelegate) : default(MethodTrace);
             }
             catch (Exception ex)
             {
-                return null;
+                System.Diagnostics.Trace.WriteLine(ex);
+                return default(MethodTrace);
             }
         }
     }
 
-    public class WrapperService
+    public class TraceMethodInfo
     {
-        public EndMethodDelegate BeforeWrappedMethod(string typeName, string methodName, object invocationTarget, object[] methodArguments)
-        {
-#if DEBUG
-            Console.WriteLine($"typeName;{typeName} methodName:{methodName}");
-            if (methodArguments != null)
-            {
-                Console.WriteLine("methodArguments:");
-                foreach (var methodArgument in methodArguments)
-                {
-                    Console.WriteLine(methodArgument);
-                }
-            }
-#endif
-            return delegate (object returnValue, Exception ex)
-            {
-#if DEBUG
-                Console.WriteLine($"returnValue:{returnValue}");
-                Console.WriteLine($"ex:{ex}");
-#endif
-            };
-        }
+        public string TypeName { get; set; }
+
+        public string MethodName { get; set; }
+
+        public object InvocationTarget { get; set; }
+
+        public object[] MethodArguments { get; set; }
+
+        public UInt32 FunctionToken { get; set; }
     }
 
     public class MethodTrace

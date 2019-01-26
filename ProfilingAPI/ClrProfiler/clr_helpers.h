@@ -300,6 +300,10 @@ namespace trace {
         }
 
         mdToken GetEntryPointToken() const {
+            if (baseLoadAddress == nullptr) {
+                return  mdTokenNil;
+            }
+
             const auto pntHeaders = baseLoadAddress + VAL32(((IMAGE_DOS_HEADER*)baseLoadAddress)->e_lfanew);
             const auto ntHeaders = (IMAGE_NT_HEADERS64*)pntHeaders;
             IMAGE_DATA_DIRECTORY directoryEntry;
