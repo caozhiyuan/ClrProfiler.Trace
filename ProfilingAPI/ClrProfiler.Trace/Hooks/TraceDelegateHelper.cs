@@ -7,24 +7,71 @@ namespace ClrProfiler.Trace.Hooks
 
     public static class TraceDelegateHelper
     {
-        public static void AsyncMethodEnd(AsyncMethodEndDelegate endMethodDelegate, TraceMethodInfo traceMethodInfo , Exception ex, object returnValue)
+        private static readonly TaskCanceledException CanceledException = new TaskCanceledException();
+
+        public static void AsyncTaskResultMethodEnd(AsyncMethodEndDelegate leave,
+            TraceMethodInfo traceMethodInfo,
+            Exception ex, 
+            object returnValue)
         {
-            endMethodDelegate(traceMethodInfo,null, ex);
+            AsyncMethodEnd(leave, traceMethodInfo, ex, returnValue);
+        }
+
+        public static void AsyncTaskMethodEnd(AsyncMethodEndDelegate leave,
+            TraceMethodInfo traceMethodInfo,
+            Exception ex, 
+            object returnValue)
+        {
+            AsyncMethodEnd(leave, traceMethodInfo, ex, returnValue, false);
+        }
+
+        private static void AsyncMethodEnd(AsyncMethodEndDelegate endMethodDelegate, 
+            TraceMethodInfo traceMethodInfo, 
+            Exception ex,
+            object returnValue,
+            bool hasResult = true)
+        {
+            if (ex != null)
+            {
+                endMethodDelegate(traceMethodInfo, null, ex);
+                return;
+            }
 
             if (returnValue != null)
             {
-                returnValue = ((Task)returnValue).ContinueWith(n =>
+                var tcs = new TaskCompletionSource<dynamic>();
+                ((Task)returnValue).ContinueWith(n =>
                 {
                     if (n.IsFaulted)
                     {
-                        endMethodDelegate(traceMethodInfo,null, ex);
-                        return Task.FromException(n.Exception ?? new Exception("unknown exception"));
+                        var ex0 = n.Exception?.InnerException ?? new Exception("unknown exception");
+                        endMethodDelegate(traceMethodInfo, null, ex0);
+                        tcs.SetException(ex0);
                     }
-
-                    var ret = ((dynamic)n).Result;
-                    endMethodDelegate(traceMethodInfo, ret, null);
-                    return ret;
-                }, TaskContinuationOptions.ExecuteSynchronously);
+                    else
+                    {
+                        if (n.IsCanceled)
+                        {
+                            endMethodDelegate(traceMethodInfo, null, CanceledException);
+                            tcs.SetCanceled();
+                        }
+                        else
+                        {
+                            if (hasResult)
+                            {
+                                var ret = ((dynamic)n).Result;
+                                endMethodDelegate(traceMethodInfo, ret, null);
+                                tcs.SetResult(ret);
+                            }
+                            else
+                            {
+                                endMethodDelegate(traceMethodInfo, null, null);
+                                tcs.SetResult(1);
+                            }
+                        }
+                    }
+                }, TaskScheduler.Default);
+                returnValue = tcs.Task;
             }
         }
     }

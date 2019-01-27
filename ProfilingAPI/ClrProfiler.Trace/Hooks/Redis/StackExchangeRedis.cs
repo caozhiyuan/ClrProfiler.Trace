@@ -28,23 +28,22 @@ namespace ClrProfiler.Trace.Hooks.Redis
             {
                 return delegate (object returnValue, Exception ex)
                 {
-                    Level(traceMethodInfo, returnValue, ex);
+                    Leave(traceMethodInfo, returnValue, ex);
                 };
             }
             else
             {
                 return delegate (object returnValue, Exception ex)
                 {
-                    TraceDelegateHelper.AsyncMethodEnd(Level, traceMethodInfo, ex, returnValue);
+                    TraceDelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
                 };
             }
         }
 
-        private void Level(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
+        private void Leave(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
         {
 #if DEBUG
-            Console.WriteLine($"returnValue:{ret}");
-            Console.WriteLine($"ex:{ex}");
+            Console.WriteLine($"returnValue:{ret},ex:{ex}");
 #endif
         }
 
