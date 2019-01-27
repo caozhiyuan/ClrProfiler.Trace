@@ -1,6 +1,6 @@
 #include "config_loader.h"
 #include "util.h"
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 #include "logging.h"
 #include <fstream>
 
@@ -50,7 +50,6 @@ namespace trace
                     traceAssemblies.push_back(std::get<0>(i));
                 }
             }
-            Info("Loaded TraceAssemblies: ", j.dump());
         }
         catch (const json::parse_error& e) {
             Warn("Invalid TraceAssemblies:", e.what());
@@ -74,7 +73,7 @@ namespace trace
 
     std::vector<TraceAssembly> LoadTraceAssemblies(const WSTRING& traceHomePath) {
 
-        const auto traceJsonFilePath = traceHomePath + "\\"_W + "trace.json"_W;
+        const auto traceJsonFilePath = traceHomePath + PathSeparator + "trace.json"_W;
         std::vector<TraceAssembly> traceAssemblies;
         try {
             std::ifstream stream;

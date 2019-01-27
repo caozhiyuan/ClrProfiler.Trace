@@ -12,7 +12,6 @@ Prerequisites
 
 * CoreCLR Repository (build from source) Dependencies
 * Visual Studio 2017 (Windows)
-* vcpkg (Windows)
 * CLang3.5 (Ubuntu)
 
 Building
@@ -22,15 +21,9 @@ Building
 
 windows 
 
-install vcpkg and run
-
-```batch
-powershell ./scripts/install-vcpkgs.ps1
-```
-
 msbuild ClrProfiler.dll
 
-linux (please use linx branch)
+linux
 
 ClrProfiler/build.sh build ClrProfiler.so
 

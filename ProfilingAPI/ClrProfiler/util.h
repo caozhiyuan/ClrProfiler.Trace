@@ -7,29 +7,35 @@
 
 namespace trace {
 
-template <typename Out>
-void Split(const WSTRING &s, wchar_t delim, Out result);
+#ifdef _WIN32
+    const auto PathSeparator = "\\"_W;
+#else
+    const auto PathSeparator = "/"_W;
+#endif
 
-// Split splits a string by the given delimiter.
-std::vector<WSTRING> Split(const WSTRING &s, wchar_t delim);
+    template <typename Out>
+    void Split(const WSTRING &s, wchar_t delim, Out result);
 
-// Trim removes space from the beginning and end of a string.
-WSTRING Trim(const WSTRING &str);
+    // Split splits a string by the given delimiter.
+    std::vector<WSTRING> Split(const WSTRING &s, wchar_t delim);
 
-// GetEnvironmentValue returns the environment variable value for the given
-// name. Space is trimmed.
-WSTRING GetEnvironmentValue(const WSTRING &name);
+    // Trim removes space from the beginning and end of a string.
+    WSTRING Trim(const WSTRING &str);
 
-// GetEnvironmentValues returns environment variable values for the given name
-// split by the delimiter. Space is trimmed and empty values are ignored.
-std::vector<WSTRING> GetEnvironmentValues(const WSTRING &name,
-                                          const wchar_t delim);
+    // GetEnvironmentValue returns the environment variable value for the given
+    // name. Space is trimmed.
+    WSTRING GetEnvironmentValue(const WSTRING &name);
 
-// GetEnvironmentValues calls GetEnvironmentValues with a semicolon delimiter.
-std::vector<WSTRING> GetEnvironmentValues(const WSTRING &name);
+    // GetEnvironmentValues returns environment variable values for the given name
+    // split by the delimiter. Space is trimmed and empty values are ignored.
+    std::vector<WSTRING> GetEnvironmentValues(const WSTRING &name,
+        const wchar_t delim);
 
-//HexStr
-WSTRING HexStr(const unsigned char *data, int len);
+    // GetEnvironmentValues calls GetEnvironmentValues with a semicolon delimiter.
+    std::vector<WSTRING> GetEnvironmentValues(const WSTRING &name);
+
+    //HexStr
+    WSTRING HexStr(const unsigned char *data, int len);
+
 }  // namespace trace
-
 #endif  // CLR_PROFILER_UTIL_H_

@@ -491,7 +491,7 @@ namespace trace {
                 &assemblyLoadMemberRef);
 
             mdString profilerTraceDllNameTextToken;
-            auto clrProfilerTraceDllName = clrProfilerHomeEnvValue + "\\"_W + kClrProfilerDllName;
+            auto clrProfilerTraceDllName = clrProfilerHomeEnvValue + PathSeparator + kClrProfilerDllName;
             hr = pEmit->DefineUserString(clrProfilerTraceDllName.data(), (ULONG)clrProfilerTraceDllName.length(), &profilerTraceDllNameTextToken);
             RETURN_OK_IF_FAILED(hr);
 
