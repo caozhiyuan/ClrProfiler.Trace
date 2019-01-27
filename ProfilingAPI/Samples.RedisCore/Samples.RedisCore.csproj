@@ -6,6 +6,10 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
+  </PropertyGroup>
+  
   <ItemGroup>
     <PackageReference Include="Dapper" Version="1.50.5" />
     <PackageReference Include="MySql.Data" Version="8.0.14" />

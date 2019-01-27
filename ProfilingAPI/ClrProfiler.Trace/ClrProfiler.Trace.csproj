@@ -6,6 +6,10 @@
     <AssemblyOriginatorKeyFile>../../tools/clrprofiler.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+  </PropertyGroup>
+
   <ItemGroup>
     <Content Include="..\..\trace.json" Link="trace.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
