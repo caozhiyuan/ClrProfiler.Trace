@@ -24,12 +24,22 @@ Building
 
 powershell ./scripts/install-vcpkgs.ps1
 
-msbuild
+```batch
+cd "D:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build"
+d:
+vcvars64
+cd D:\ClrProfiler.Trace\ProfilingAPI\ClrProfiler
+SET BuildOS=Windows
+SET BuildArch=x64
+SET BuildType=Debug
+SET Output=ClrProfiler.dll
+SET CORECLR_PATH=../../../coreclr
+build
+```
 
 #### linux
 
 ```batch
-
 cd ~/vcpkg
 ./vcpkg install spdlog
 
@@ -56,6 +66,8 @@ SET COR_PROFILER_PATH=%~dp0\ProfilingAPI\ClrProfiler\x64\Debug\ClrProfiler.dll
 SET CLRPROFILER_HOME=%~dp0\ProfilingAPI\ClrProfiler.Trace\bin\Debug\netstandard2.0
 
 : net framework need add gac "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\gacutil.exe" /i %~dp0\ProfilingAPI\ClrProfiler.Trace\bin\Debug\net461\ClrProfiler.Trace.dll
+
+build ClrProfiler.Trace.dll
 
 run you program
 ```
