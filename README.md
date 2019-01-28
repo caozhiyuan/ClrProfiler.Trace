@@ -29,11 +29,8 @@ cd "D:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\
 d:
 vcvars64
 cd D:\ClrProfiler.Trace\ProfilingAPI\ClrProfiler
-SET BuildOS=Windows
 SET BuildArch=x64
 SET BuildType=Debug
-SET Output=ClrProfiler.dll
-SET CORECLR_PATH=../../../coreclr
 build
 ```
 
