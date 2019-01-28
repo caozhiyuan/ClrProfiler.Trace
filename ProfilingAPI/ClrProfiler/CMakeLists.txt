@@ -11,6 +11,7 @@ add_compile_options(-std=c++11 -fPIC -fms-extensions)
 add_compile_options(-DBIT64 -DPAL_STDCPP_COMPAT -DPLATFORM_UNIX -DUNICODE)
 add_compile_options(-Wno-invalid-noreturn -Wno-macro-redefined)
 
+find_package(spdlog CONFIG REQUIRED)
 
 include_directories("ClrProfiler"
     ~/coreclr/src/pal/inc/rt
@@ -34,3 +35,6 @@ add_library("ClrProfiler" SHARED
 )
 
 set_target_properties("ClrProfiler" PROPERTIES PREFIX "")
+
+target_link_libraries("ClrProfiler" PRIVATE spdlog::spdlog)
+

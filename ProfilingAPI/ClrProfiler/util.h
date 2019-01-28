@@ -41,12 +41,16 @@ namespace trace {
 
     static bool CheckDir(const char* dir)
     {
+#ifdef _WIN32  
         if (_access(dir, 0) == -1)
+#else 
+        if (access(dir, 0) == -1)
+#endif
         {
 #ifdef _WIN32  
             int flag = _mkdir(dir);
 #else 
-            int flag = mkdir(dir.c_str(), 0777);
+            int flag = mkdir(dir, 0777);
 #endif  
             return (flag == 0);
         }
