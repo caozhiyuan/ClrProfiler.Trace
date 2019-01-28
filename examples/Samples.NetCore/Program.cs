@@ -1,6 +1,8 @@
 using System;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using MySql.Data.MySqlClient;
@@ -14,7 +16,6 @@ namespace Samples.NetCore
 
         static void Main(string[] args)
         {
-
             Run().GetAwaiter().GetResult();
 
             Console.ReadLine();
@@ -22,23 +23,51 @@ namespace Samples.NetCore
 
         private static async Task Run()
         {
+            Console.WriteLine("Start");
+
             Program program = new Program();
 
-            await program.RunStackExchange("StackExchange");
+            await program.RunStackExchange();
 
             await program.RunGetBing();
 
             await program.RunSqlClient();
 
             await program.RunMySqlClient();
+
+            Console.WriteLine("End");
         }
 
-        private async Task<string> RunGetBing()
+        private async Task RunGetBing()
         {
-            return await HttpClient.GetStringAsync("https://cn.bing.com/").ConfigureAwait(false);
+            await HttpClient.GetStringAsync("https://cn.bing.com/");
         }
 
         private async Task RunSqlClient()
+        {
+            await RunSqlClientInner();
+
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            const int c = 10000;
+            CountdownEvent k = new CountdownEvent(c);
+            Parallel.For(0, c, (i) =>
+            {
+                var task = RunSqlClientInner();
+                task.ContinueWith(n =>
+                {
+                    if (n.IsFaulted)
+                    {
+                        Console.WriteLine($"{i} {n.Exception}");
+                    }
+                    k.Signal(1);
+                });
+            });
+            k.Wait();
+            Console.WriteLine("Sql ExecuteScalarAsync " + sw.ElapsedMilliseconds);
+        }
+
+        private static async Task RunSqlClientInner()
         {
             using (var connection = new SqlConnection($"Data Source=.;Initial Catalog=tempdb;Integrated Security=True"))
             {
@@ -70,11 +99,10 @@ namespace Samples.NetCore
             }
         }
 
-        private async Task RunStackExchange(string prefix)
+        private async Task RunStackExchange()
         {
-            prefix += "StackExchange.Redis.";
-
-            Console.WriteLine($"Testing StackExchange.Redis {prefix}");
+            var prefix = "StackExchange.Redis.";
+            
             using (var redis = ConnectionMultiplexer.Connect("localhost,allowAdmin=true"))
             {
                 var db = redis.GetDatabase(0);
@@ -83,9 +111,27 @@ namespace Samples.NetCore
 
                 db.StringSet($"{prefix}INCR", DateTime.Now.ToLongDateString());
 
-                var c = db.StringGet($"{prefix}INCR");
+                db.StringGet($"{prefix}INCR");
 
-                Console.WriteLine(c);
+
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                const int c = 10000;
+                CountdownEvent k = new CountdownEvent(c);
+                Parallel.For(0, c, (i) =>
+                {
+                    var task = db.StringSetAsync($"{prefix}INCR{i}", "0");
+                    task.ContinueWith(n =>
+                    {
+                        if (n.IsFaulted)
+                        {
+                            Console.WriteLine($"{i} {n.Exception}");
+                        }
+                        k.Signal(1);
+                    });
+                });
+                k.Wait();
+                Console.WriteLine("Redis StringSetAsync " + sw.ElapsedMilliseconds);
             }
         }
     }

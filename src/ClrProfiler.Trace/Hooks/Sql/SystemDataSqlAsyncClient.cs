@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Data.Common;
 using System.Linq;
+using ClrProfiler.Trace.Internal;
+using OpenTracing;
+using OpenTracing.Tag;
 
 namespace ClrProfiler.Trace.Hooks.Sql
 {
@@ -9,19 +13,30 @@ namespace ClrProfiler.Trace.Hooks.Sql
         private static readonly string[] AssemblyNames = {"System.Data", "System.Data.SqlClient"};
         private static readonly string[] TraceMethods = { "ExecuteReaderAsync", "ExecuteNonQueryAsync", "ExecuteScalarAsync", "ExecuteXmlReaderAsync" };
 
+        private const string TagMethod = "db.method";
+        private const string TagIsAsync = "db.async";
+
+        private readonly ITracer _tracer;
+
+        public SystemDataSqlAsyncClient(ITracer tracer)
+        {
+            _tracer = tracer;
+        }
+
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
-#if DEBUG
-            Console.WriteLine($"typeName;{traceMethodInfo.TypeName} methodName:{traceMethodInfo.MethodName}");
-            if (traceMethodInfo.MethodArguments != null)
-            {
-                Console.WriteLine("methodArguments:");
-                foreach (var methodArgument in traceMethodInfo.MethodArguments)
-                {
-                    Console.WriteLine(methodArgument);
-                }
-            }
-#endif
+            var dbCommand = (DbCommand)traceMethodInfo.InvocationTarget;
+            var scope = _tracer.BuildSpan("mssql.command")
+                .WithTag(Tags.SpanKind, Tags.SpanKindClient)
+                .WithTag(Tags.Component, "mssql")
+                .WithTag(Tags.DbInstance, dbCommand.Connection.ConnectionString)
+                .WithTag(Tags.DbStatement, dbCommand.CommandText)
+                .WithTag(TagMethod, traceMethodInfo.MethodName)
+                .WithTag(TagIsAsync, true)
+                .StartActive();
+
+            traceMethodInfo.TraceContext = scope;
+
             return delegate (object returnValue, Exception ex)
             {
                 TraceDelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
@@ -30,9 +45,12 @@ namespace ClrProfiler.Trace.Hooks.Sql
 
         private void Leave(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
         {
-#if DEBUG
-            Console.WriteLine($"returnValue:{ret},ex:{ex}");
-#endif
+            var scope = (IScope)traceMethodInfo.TraceContext;
+            if (ex != null)
+            {
+                scope.Span.SetException(ex);
+            }
+            scope.Span.Finish();
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)

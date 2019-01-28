@@ -64,7 +64,8 @@ SET CLRPROFILER_HOME=%~dp0\src\ClrProfiler.Trace\bin\Debug\netstandard2.0
 
 : net framework need add gac "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\gacutil.exe" /i %~dp0\src\ClrProfiler.Trace\bin\Debug\net461\ClrProfiler.Trace.dll
 
-build ClrProfiler.Trace.dll
+cd src/ClrProfiler.Trace
+dotnet publish -f netstandard2.0 -o bin\Debug\netstandard2.0
 
 run you program
 ```

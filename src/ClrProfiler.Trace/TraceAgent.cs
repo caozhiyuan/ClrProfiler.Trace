@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
+using ClrProfiler.Trace.DependencyInjection;
 
 namespace ClrProfiler.Trace
 {
@@ -9,12 +10,9 @@ namespace ClrProfiler.Trace
     public class TraceAgent
     {
         private static readonly TraceAgent Instance = new TraceAgent();
-        private readonly WrapperService _wrapperService;
 
         private TraceAgent()
         {
-            _wrapperService = new WrapperService();
-
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
         }
 
@@ -22,7 +20,6 @@ namespace ClrProfiler.Trace
         {
             if (args.RequestingAssembly.FullName.Contains("ClrProfiler.Trace"))
             {
-                Console.WriteLine(args.Name);
                 var home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
                 if (!string.IsNullOrEmpty(home))
                 {
@@ -46,7 +43,8 @@ namespace ClrProfiler.Trace
             try
             {
                 var args = methodArguments;
-                var endMethodDelegate = this._wrapperService.BeforeWrappedMethod(typeName, methodName, invocationTarget, args, functionToken);
+                var wrapperService = ServiceLocator.GetService<WrapperService>();
+                var endMethodDelegate = wrapperService.BeforeWrappedMethod(typeName, methodName, invocationTarget, args, functionToken);
                 return endMethodDelegate != null ? new MethodTrace(endMethodDelegate) : default(MethodTrace);
             }
             catch (Exception ex)

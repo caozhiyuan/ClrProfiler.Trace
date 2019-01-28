@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Data.Common;
 using System.Linq;
+using ClrProfiler.Trace.Internal;
+using OpenTracing;
+using OpenTracing.Tag;
 
 namespace ClrProfiler.Trace.Hooks.Sql
 {
@@ -9,19 +13,28 @@ namespace ClrProfiler.Trace.Hooks.Sql
         private static readonly string[] AssemblyNames = { "MySqlConnector" };
         private static readonly string[] TraceMethods = { "ExecuteReaderAsync", "ExecuteNonQueryAsync", "ExecuteScalarAsync" };
 
+        private const string TagMethod = "db.method";
+    
+        private readonly ITracer _tracer;
+
+        public MySqlConnectorClient(ITracer tracer)
+        {
+            _tracer = tracer;
+        }
+
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
-#if DEBUG
-            Console.WriteLine($"typeName;{traceMethodInfo.TypeName} methodName:{traceMethodInfo.MethodName}");
-            if (traceMethodInfo.MethodArguments != null)
-            {
-                Console.WriteLine("methodArguments:");
-                foreach (var methodArgument in traceMethodInfo.MethodArguments)
-                {
-                    Console.WriteLine(methodArgument);
-                }
-            }
-#endif
+            var dbCommand = (DbCommand)traceMethodInfo.InvocationTarget;
+            var scope = _tracer.BuildSpan("mysqlconnector.command")
+                .WithTag(Tags.SpanKind, Tags.SpanKindClient)
+                .WithTag(Tags.Component, "mySql")
+                .WithTag(Tags.DbInstance, dbCommand.Connection.ConnectionString)
+                .WithTag(Tags.DbStatement, dbCommand.CommandText)
+                .WithTag(TagMethod, traceMethodInfo.MethodName)
+                .StartActive();
+
+            traceMethodInfo.TraceContext = scope;
+
             return delegate (object returnValue, Exception ex)
             {
                 TraceDelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
@@ -30,9 +43,12 @@ namespace ClrProfiler.Trace.Hooks.Sql
 
         private void Leave(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
         {
-#if DEBUG
-            Console.WriteLine($"returnValue:{ret},ex:{ex}");
-#endif
+            var scope = (IScope)traceMethodInfo.TraceContext;
+            if (ex != null)
+            {
+                scope.Span.SetException(ex);
+            }
+            scope.Span.Finish();
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)

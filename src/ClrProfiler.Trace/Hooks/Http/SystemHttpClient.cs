@@ -1,4 +1,9 @@
 ﻿using System;
+using System.Net.Http;
+using ClrProfiler.Trace.Internal;
+using OpenTracing;
+using OpenTracing.Propagation;
+using OpenTracing.Tag;
 
 namespace ClrProfiler.Trace.Hooks.Http
 {
@@ -9,19 +14,30 @@ namespace ClrProfiler.Trace.Hooks.Http
 
         private const string SendAsync = "SendAsync";
 
+        private readonly ITracer _tracer;
+
+        public SystemHttpClient(ITracer tracer)
+        {
+            _tracer = tracer;
+        }
+
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
-#if DEBUG
-            Console.WriteLine($"typeName;{traceMethodInfo.TypeName} methodName:{traceMethodInfo.MethodName}");
-            if (traceMethodInfo.MethodArguments != null)
-            {
-                Console.WriteLine("methodArguments:");
-                foreach (var methodArgument in traceMethodInfo.MethodArguments)
-                {
-                    Console.WriteLine(methodArgument);
-                }
-            }
-#endif
+            var request = (HttpRequestMessage)traceMethodInfo.MethodArguments[0];
+
+            var scope = _tracer.BuildSpan("http.out")
+                .WithTag(Tags.SpanKind, Tags.SpanKindClient)
+                .WithTag(Tags.Component, "httpclient")
+                .WithTag(Tags.HttpMethod, request.Method.ToString())
+                .WithTag(Tags.HttpUrl, request.RequestUri.ToString())
+                .WithTag(Tags.PeerHostname, request.RequestUri.Host)
+                .WithTag(Tags.PeerPort, request.RequestUri.Port)
+                .StartActive();
+
+            _tracer.Inject(scope.Span.Context, BuiltinFormats.HttpHeaders, new HttpHeadersInjectAdapter(request.Headers));
+
+            traceMethodInfo.TraceContext = scope;
+
             return delegate(object returnValue, Exception ex)
             {
                 TraceDelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
@@ -30,9 +46,19 @@ namespace ClrProfiler.Trace.Hooks.Http
 
         private void Leave(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
         {
-#if DEBUG
-            Console.WriteLine($"returnValue:{ret},ex:{ex}");
-#endif
+            var scope = (IScope)traceMethodInfo.TraceContext;
+            if (ex != null)
+            {
+                scope.Span.SetException(ex);
+            }
+
+            var response = (HttpResponseMessage) ret;
+            if (response != null)
+            {
+                scope.Span.SetTag(Tags.HttpStatus, (int)response.StatusCode);
+            }
+
+            scope.Span.Finish();
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
