@@ -11,22 +11,19 @@
 
 namespace trace {
 
-    const size_t kNameMaxSize = 1024;
-    const ULONG kEnumeratorMax = 256;
-    const auto kProfilerAssemblyName = "ClrProfiler.Trace"_W;
-    const auto kTraceAgentTypeName = "ClrProfiler.Trace.TraceAgent"_W;
-    const auto kGetInstanceMethodName = "GetInstance"_W;
-    const auto kBeforeMethodName = "BeforeMethod"_W;
-    const auto kEndMethodName = "EndMethod"_W;
-    const auto kMethodTraceTypeName = "ClrProfiler.Trace.MethodTrace"_W;
+    const size_t NameMaxSize = 1024;
+    const ULONG EnumeratorMax = 256;
 
-    const auto kAssemblyTypeName = "System.Reflection.Assembly"_W;
-    const auto kAssemblyLoadMethodName = "LoadFrom"_W;
-    const auto kAssemblyCustomLoadMethodName = "CustomLoadFrom"_W;
+    const auto ProfilerAssemblyName = "ClrProfiler.Trace"_W;
+    const auto TraceAgentTypeName = "ClrProfiler.Trace.TraceAgent"_W;
+    const auto GetInstanceMethodName = "GetInstance"_W;
+    const auto BeforeMethodName = "BeforeMethod"_W;
+    const auto EndMethodName = "EndMethod"_W;
+    const auto MethodTraceTypeName = "ClrProfiler.Trace.MethodTrace"_W;
 
-    const auto kClrProfilerHomeEnv = "CLRPROFILER_HOME"_W;
-
-    const auto kClrProfilerDllName = "ClrProfiler.Trace.dll"_W;
+    const auto AssemblyTypeName = "System.Reflection.Assembly"_W;
+    const auto AssemblyLoadMethodName = "LoadFrom"_W;
+    const auto AssemblyCustomLoadMethodName = "CustomLoadFrom"_W;
 
     const auto SystemBoolean = "System.Boolean"_W;
     const auto SystemChar = "System.Char"_W;
@@ -85,7 +82,7 @@ namespace trace {
     private:
         const Enumerator<T>* enumerator_;
         HRESULT status_ = S_FALSE;
-        T arr_[kEnumeratorMax]{};
+        T arr_[EnumeratorMax]{};
         ULONG idx_ = 0;
         ULONG sz_ = 0;
 
@@ -93,7 +90,7 @@ namespace trace {
         EnumeratorIterator(const Enumerator<T>* enumerator, HRESULT status)
             : enumerator_(enumerator) {
             if (status == S_OK) {
-                status_ = enumerator_->Next(arr_, kEnumeratorMax, &sz_);
+                status_ = enumerator_->Next(arr_, EnumeratorMax, &sz_);
                 if (status_ == S_OK && sz_ == 0) {
                     status_ = S_FALSE;
                 }
@@ -116,7 +113,7 @@ namespace trace {
             }
             else {
                 idx_ = 0;
-                status_ = enumerator_->Next(arr_, kEnumeratorMax, &sz_);
+                status_ = enumerator_->Next(arr_, EnumeratorMax, &sz_);
                 if (status_ == S_OK && sz_ == 0) {
                     status_ = S_FALSE;
                 }

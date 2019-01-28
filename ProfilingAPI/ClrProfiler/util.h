@@ -5,13 +5,77 @@
 #include <vector>
 #include "string.h" // NOLINT
 
+#ifdef _WIN32
+
+#include <io.h>
+#include <direct.h>  
+#include <process.h>
+
+#else
+
+#include <unistd.h> 
+#include <sys/types.h>  
+#include <sys/stat.h>
+#include <fstream>
+
+#endif
+
 namespace trace {
+
+    const auto ClrProfilerHome = "CLRPROFILER_HOME"_W;
+    const auto ClrProfilerDllName = "ClrProfiler.Trace.dll"_W;
 
 #ifdef _WIN32
     const auto PathSeparator = "\\"_W;
 #else
     const auto PathSeparator = "/"_W;
 #endif
+
+    inline int GetPID() {
+#ifdef _WIN32
+        return _getpid();
+#else
+        return getpid();
+#endif
+    } 
+
+    static bool CheckDir(const char* dir)
+    {
+        if (_access(dir, 0) == -1)
+        {
+#ifdef _WIN32  
+            int flag = _mkdir(dir);
+#else 
+            int flag = mkdir(dir.c_str(), 0777);
+#endif  
+            return (flag == 0);
+        }
+        return true;
+    };
+
+    class UnCopyable
+    {
+    protected:
+        UnCopyable() {};
+        ~UnCopyable() {};
+
+    private:
+        UnCopyable(const UnCopyable&) = delete;
+        UnCopyable(const UnCopyable&&) = delete;
+        UnCopyable& operator = (const UnCopyable&) = delete;
+        UnCopyable& operator = (const UnCopyable&&) = delete;
+    };
+
+    template <typename T>
+    class Singleton : public UnCopyable
+    {
+    public:
+        static T* Instance()
+        {
+            static T instance_obj;
+            return &instance_obj;
+        }
+    };
 
     template <typename Out>
     void Split(const WSTRING &s, wchar_t delim, Out result);

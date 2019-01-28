@@ -651,9 +651,9 @@ namespace trace
 
     AssemblyInfo GetAssemblyInfo(ICorProfilerInfo3* info,
         const AssemblyID& assembly_id) {
-        WCHAR name[kNameMaxSize];
+        WCHAR name[NameMaxSize];
         DWORD name_len = 0;
-        auto hr = info->GetAssemblyInfo(assembly_id, kNameMaxSize, &name_len, name,
+        auto hr = info->GetAssemblyInfo(assembly_id, NameMaxSize, &name_len, name,
             nullptr, nullptr);
         if (FAILED(hr) || name_len == 0) {
             return {};
@@ -668,12 +668,12 @@ namespace trace
         if (FAILED(hr)) {
             return ""_W;
         }
-        WCHAR name[kNameMaxSize];
+        WCHAR name[NameMaxSize];
         DWORD name_len = 0;
         ASSEMBLYMETADATA assembly_metadata{};
         DWORD assembly_flags = 0;
         hr = assembly_import->GetAssemblyProps(current, nullptr, nullptr, nullptr,
-            name, kNameMaxSize, &name_len,
+            name, NameMaxSize, &name_len,
             &assembly_metadata, &assembly_flags);
         if (FAILED(hr) || name_len == 0) {
             return ""_W;
@@ -683,12 +683,12 @@ namespace trace
     
     WSTRING GetAssemblyName(const CComPtr<IMetaDataAssemblyImport>& assembly_import,
         const mdAssemblyRef& assembly_ref) {
-        WCHAR name[kNameMaxSize];
+        WCHAR name[NameMaxSize];
         DWORD name_len = 0;
         ASSEMBLYMETADATA assembly_metadata{};
         DWORD assembly_flags = 0;
         const auto hr = assembly_import->GetAssemblyRefProps(
-            assembly_ref, nullptr, nullptr, name, kNameMaxSize, &name_len,
+            assembly_ref, nullptr, nullptr, name, NameMaxSize, &name_len,
             &assembly_metadata, nullptr, nullptr, &assembly_flags);
         if (FAILED(hr) || name_len == 0) {
             return ""_W;
@@ -766,19 +766,19 @@ namespace trace
     TypeInfo GetTypeInfo(const CComPtr<IMetaDataImport2>& metadata_import,
         const mdToken& token) {
         mdToken parent_token = mdTokenNil;
-        WCHAR type_name[kNameMaxSize]{};
+        WCHAR type_name[NameMaxSize]{};
         DWORD type_name_len = 0;
 
         HRESULT hr = E_FAIL;
         const auto token_type = TypeFromToken(token);
         switch (token_type) {
         case mdtTypeDef:
-            hr = metadata_import->GetTypeDefProps(token, type_name, kNameMaxSize,
+            hr = metadata_import->GetTypeDefProps(token, type_name, NameMaxSize,
                 &type_name_len, nullptr, nullptr);
             break;
         case mdtTypeRef:
             hr = metadata_import->GetTypeRefProps(token, &parent_token, type_name,
-                kNameMaxSize, &type_name_len);
+                NameMaxSize, &type_name_len);
             break;
         case mdtTypeSpec: {
             PCCOR_SIGNATURE signature{};
@@ -798,7 +798,7 @@ namespace trace
             }
         } break;
         case mdtModuleRef:
-            metadata_import->GetModuleRefProps(token, type_name, kNameMaxSize,
+            metadata_import->GetModuleRefProps(token, type_name, NameMaxSize,
                 &type_name_len);
             break;
         case mdtMemberRef:
@@ -819,7 +819,7 @@ namespace trace
         const mdToken& token) {
 
         mdToken parent_token = mdTokenNil;
-        WCHAR function_name[kNameMaxSize]{};
+        WCHAR function_name[NameMaxSize]{};
         DWORD function_name_len = 0;
 
         PCCOR_SIGNATURE raw_signature;
@@ -830,12 +830,12 @@ namespace trace
         switch (token_type) {
         case mdtMemberRef:
             hr = metadata_import->GetMemberRefProps(
-                token, &parent_token, function_name, kNameMaxSize, &function_name_len,
+                token, &parent_token, function_name, NameMaxSize, &function_name_len,
                 &raw_signature, &raw_signature_len);
             break;
         case mdtMethodDef:
             hr = metadata_import->GetMemberProps(
-                token, &parent_token, function_name, kNameMaxSize, &function_name_len,
+                token, &parent_token, function_name, NameMaxSize, &function_name_len,
                 nullptr, &raw_signature, &raw_signature_len, nullptr, nullptr,
                 nullptr, nullptr, nullptr);
             break;
@@ -875,7 +875,7 @@ namespace trace
             return E_FAIL;
         }
 
-        const auto token = FindAssemblyRef(pAssemblyImport, kProfilerAssemblyName);
+        const auto token = FindAssemblyRef(pAssemblyImport, ProfilerAssemblyName);
         if (token != mdAssemblyRefNil) {
             assemblyRef = token;
             return S_OK;
@@ -892,7 +892,7 @@ namespace trace
         auto hr = pAssemblyEmit->DefineAssemblyRef(
             (void *)rgbPublicKeyToken,
             sizeof(rgbPublicKeyToken),
-            kProfilerAssemblyName.data(),
+            ProfilerAssemblyName.data(),
             &assemblyMetaData,
             NULL,
             NULL,

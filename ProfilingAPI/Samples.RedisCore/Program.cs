@@ -14,7 +14,6 @@ namespace Samples.RedisCore
 
         static void Main(string[] args)
         {
-            Console.WriteLine($"Is64BitProcess:{Environment.Is64BitProcess}");
 
             Run().GetAwaiter().GetResult();
 

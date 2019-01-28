@@ -12,14 +12,13 @@
 #include "il_rewriter_wrapper.h"
 #include <string>
 #include <vector>
-#include <iostream>
 #include <cassert>
 
 namespace trace {
 
     CorProfiler::CorProfiler() : refCount(0), corProfilerInfo(nullptr)
     {
-
+        Info("CorProfiler()");
     }
 
     CorProfiler::~CorProfiler()
@@ -48,7 +47,7 @@ namespace trace {
 
         this->corProfilerInfo->SetEventMask(eventMask);
 
-        this->clrProfilerHomeEnvValue = GetEnvironmentValue(kClrProfilerHomeEnv);
+        this->clrProfilerHomeEnvValue = GetEnvironmentValue(ClrProfilerHome);
 
         if(this->clrProfilerHomeEnvValue.empty()) {
             return E_FAIL;
@@ -58,6 +57,8 @@ namespace trace {
         if (this->traceAssemblies.empty()) {
             return E_FAIL;
         }
+
+        Info("CorProfiler Initialize Success");
 
         return S_OK;
     }
@@ -131,6 +132,11 @@ namespace trace {
             moduleMetaInfoMap[moduleId] = module_metadata;
         }
 
+        if (entryPointToken != mdTokenNil)
+        {
+            Info("Assembly:{} EntryPointToken:{}", ToString(module_info.assembly.name), std::to_string(entryPointToken));
+        }
+
         if (module_info.assembly.name == "mscorlib"_W || module_info.assembly.name == "System.Private.CoreLib"_W) {
                                   
             if(!corAssemblyProperty.szName.empty()) {
@@ -178,10 +184,10 @@ namespace trace {
             RETURN_OK_IF_FAILED(hr);
 
             mdTypeDef assemblyTypeDef;
-            hr = pImport->FindTypeDefByName(kAssemblyTypeName.data(), NULL, &assemblyTypeDef);
+            hr = pImport->FindTypeDefByName(AssemblyTypeName.data(), NULL, &assemblyTypeDef);
             RETURN_OK_IF_FAILED(hr);
          
-            auto enumerator = EnumMembersWithName(pImport, assemblyTypeDef, kAssemblyLoadMethodName.data());
+            auto enumerator = EnumMembersWithName(pImport, assemblyTypeDef, AssemblyLoadMethodName.data());
             for (auto assemblyLoadMethodDef : enumerator)
             {
                 PCCOR_SIGNATURE raw_signature;
@@ -219,7 +225,7 @@ namespace trace {
                     mdMethodDef customAssemblyLoadMethodDef;
                     hr = pEmit->DefineMethod(
                         assemblyTypeDef,
-                        kAssemblyCustomLoadMethodName.data(),
+                        AssemblyCustomLoadMethodName.data(),
                         pdwAttr,
                         customAssemblyLoadSig,
                         sizeof(customAssemblyLoadSig),
@@ -472,7 +478,7 @@ namespace trace {
             mdTypeRef assemblyTypeRef;
             hr = pEmit->DefineTypeRefByName(
                 corLibAssemblyRef,
-                kAssemblyTypeName.data(),
+                AssemblyTypeName.data(),
                 &assemblyTypeRef);
             RETURN_OK_IF_FAILED(hr);
             COR_SIGNATURE assemblyLoadSig[] =
@@ -485,13 +491,13 @@ namespace trace {
             mdMemberRef assemblyLoadMemberRef;
             hr = pEmit->DefineMemberRef(
                 assemblyTypeRef,
-                kAssemblyCustomLoadMethodName.data(),
+                AssemblyCustomLoadMethodName.data(),
                 assemblyLoadSig,
                 sizeof(assemblyLoadSig),
                 &assemblyLoadMemberRef);
 
             mdString profilerTraceDllNameTextToken;
-            auto clrProfilerTraceDllName = clrProfilerHomeEnvValue + PathSeparator + kClrProfilerDllName;
+            auto clrProfilerTraceDllName = clrProfilerHomeEnvValue + PathSeparator + ClrProfilerDllName;
             hr = pEmit->DefineUserString(clrProfilerTraceDllName.data(), (ULONG)clrProfilerTraceDllName.length(), &profilerTraceDllNameTextToken);
             RETURN_OK_IF_FAILED(hr);
 
@@ -534,7 +540,7 @@ namespace trace {
         mdTypeRef traceAgentTypeRef;
         hr = pEmit->DefineTypeRefByName(
             assemblyRef,
-            kTraceAgentTypeName.data(),
+            TraceAgentTypeName.data(),
             &traceAgentTypeRef);
         RETURN_OK_IF_FAILED(hr);
 
@@ -548,7 +554,7 @@ namespace trace {
         mdMemberRef getInstanceMemberRef;
         hr = pEmit->DefineMemberRef(
             traceAgentTypeRef,
-            kGetInstanceMethodName.data(),
+            GetInstanceMethodName.data(),
             traceInstanceSig,
             sizeof(traceInstanceSig),
             &getInstanceMemberRef);
@@ -557,7 +563,7 @@ namespace trace {
         mdTypeRef methodTraceTypeRef;
         hr = pEmit->DefineTypeRefByName(
             assemblyRef,
-            kMethodTraceTypeName.data(),
+            MethodTraceTypeName.data(),
             &methodTraceTypeRef);
         RETURN_OK_IF_FAILED(hr);
 
@@ -577,7 +583,7 @@ namespace trace {
         mdMemberRef beforeMemberRef;
         hr = pEmit->DefineMemberRef(
             traceAgentTypeRef,
-            kBeforeMethodName.data(),
+            BeforeMethodName.data(),
             traceBeforeSig,
             sizeof(traceBeforeSig),
             &beforeMemberRef);
@@ -594,7 +600,7 @@ namespace trace {
         mdMemberRef endMemberRef;
         hr = pEmit->DefineMemberRef(
             methodTraceTypeRef,
-            kEndMethodName.data(),
+            EndMethodName.data(),
             traceEndSig,
             sizeof(traceEndSig),
             &endMemberRef);
@@ -773,6 +779,9 @@ namespace trace {
             std::lock_guard<std::mutex> guard(mapLock);
             iLRewriteMap[function_token] = true;
         }
+
+        Info("TypeName:{} MethodName:{} IL ReWirte ", ToString(functionInfo.type.name), ToString(functionInfo.name));
+
         return  S_OK;
     }
 

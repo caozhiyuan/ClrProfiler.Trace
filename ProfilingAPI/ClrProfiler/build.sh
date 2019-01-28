@@ -18,6 +18,6 @@ INCLUDES="-I $CORECLR_PATH/src/pal/inc/rt -I $CORECLR_PATH/src/pal/prebuilt/inc 
 
 mkdir -p build
 
-clang++-3.9 -shared -o build/$Output $CXX_FLAGS $INCLUDES miniutf.cpp string.cpp util.cpp logging.cpp config_loader.cpp il_rewriter.cpp il_rewriter_wrapper.cpp clr_helpers.cpp CorProfiler.cpp ClassFactory.cpp dllmain.cpp
+clang++-3.9 -shared -o build/$Output $CXX_FLAGS $INCLUDES miniutf.cpp string.cpp util.cpp config_loader.cpp il_rewriter.cpp il_rewriter_wrapper.cpp clr_helpers.cpp CorProfiler.cpp ClassFactory.cpp dllmain.cpp
 
 printf 'Done.\n'

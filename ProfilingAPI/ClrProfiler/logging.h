@@ -1,35 +1,77 @@
 #ifndef CLR_PROFILER_LOGGING_H_
 #define CLR_PROFILER_LOGGING_H_
 
-#include "string.h"  // NOLINT
-#include <sstream>
+#include "util.h"
+#include <memory>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <iostream>
 
 namespace trace {
 
-void Log(const std::string &str);
+    class CLogger : public Singleton<CLogger>
+    {
+        friend class Singleton<CLogger>;
+    private:
+        static WSTRING GetLogPath()
+        {
+            WSTRING log_path;
+            auto home = GetEnvironmentValue(ClrProfilerHome);
+            if(!home.empty()) {
+                log_path = home + PathSeparator + "logs"_W;
+            }
+            else {
+                log_path = "logs"_W;
+            }
+            return log_path;
+        }
 
-template <typename Arg>
-inline std::string LogToString(Arg const &arg) {
-  return ToString(arg);
-}
+        CLogger() {
 
-template <typename... Args>
-inline std::string LogToString(Args const &... args) {
-  std::ostringstream oss;
-  int a[] = {0, ((void)(oss << LogToString(args)), 0)...};
-  return oss.str();
-}
+            spdlog::set_error_handler([](const std::string& msg)
+            {
+                std::cerr << "Logger Handler: " << msg << std::endl;
+            });
 
-template <typename... Args>
-inline void Info(const Args... args) {
-  Log("[info] " + LogToString(args...));
-}
+            spdlog::flush_every(std::chrono::seconds(5));
 
-template <typename... Args>
-inline void Warn(const Args... args) {
-  Log("[warn] " + LogToString(args...));
-}
+            const WSTRING log_path = GetLogPath();
 
+            CheckDir(ToString(log_path).c_str());
+
+            const auto log_name = log_path + PathSeparator + "trace"_W + ToWSTRING(std::to_string(GetPID())) + ".log"_W;
+            m_fileout = spdlog::rotating_logger_mt("Logger", ToString(log_name), 1024 * 1024 * 10, 3);
+
+            m_fileout->set_level(spdlog::level::info);
+
+            m_fileout->set_pattern("[%Y-%m-%d %T.%e] [%l] [thread %t] %v");
+
+            m_fileout->flush_on(spdlog::level::err);
+        };
+
+        ~CLogger()
+        {
+            spdlog::drop_all();
+        };
+
+    public:
+        std::shared_ptr<spdlog::logger> m_fileout;
+    };
+
+#define Info( ... )                               \
+    {                                                 \
+        CLogger::Instance()->m_fileout->info(__VA_ARGS__);  \
+    }
+
+#define Warn( ... )                               \
+    {                                                 \
+        CLogger::Instance()->m_fileout->warn(__VA_ARGS__);  \
+    }
+
+#define Error( ... )                               \
+    {                                                 \
+        CLogger::Instance()->m_fileout->error(__VA_ARGS__);   \
+    }
 }  // namespace trace
 
 #endif  // CLR_PROFILER_LOGGING_H_

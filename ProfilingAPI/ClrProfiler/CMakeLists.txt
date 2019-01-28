@@ -24,7 +24,6 @@ add_library("ClrProfiler" SHARED
     miniutf.cpp
     string.cpp 
     util.cpp
-    logging.cpp
     config_loader.cpp
     il_rewriter.cpp
     il_rewriter_wrapper.cpp 
