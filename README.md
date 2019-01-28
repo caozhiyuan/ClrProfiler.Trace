@@ -12,7 +12,8 @@ Prerequisites
 
 * CoreCLR Repository (build from source) Dependencies
 * Visual Studio 2017 (Windows)
-* CLang3.5 (Ubuntu)
+* CLang3.9 (Linux)
+* Vcpkg (Windows Linux)
 
 Building
 -------------------------
@@ -25,7 +26,18 @@ msbuild ClrProfiler.dll
 
 linux
 
-ClrProfiler/build.sh build ClrProfiler.so
+```batch
+
+cd ~/vcpkg
+./vcpkg install spdlog
+
+cd ~/ClrProfiler.Trace/ClrProfiler
+mkdir -p build
+cd build 
+cmake ..
+make
+
+```
 
 ### Setup
 
