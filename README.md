@@ -33,7 +33,7 @@ msbuild
 cd ~/vcpkg
 ./vcpkg install spdlog
 
-cd ~/ClrProfiler.Trace/ClrProfiler
+cd ~/ClrProfiler.Trace/ProfilingAPI/ClrProfiler
 mkdir -p build
 cd build 
 cmake ..
