@@ -20,7 +20,7 @@ Building
 ### Build
 
 windows 
-
+powershell ./scripts/install-vcpkgs.ps1
 msbuild ClrProfiler.dll
 
 linux
