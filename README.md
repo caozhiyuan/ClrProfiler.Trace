@@ -20,11 +20,13 @@ Building
 
 ### Build
 
-windows 
-powershell ./scripts/install-vcpkgs.ps1
-msbuild ClrProfiler.dll
+#### windows 
 
-linux
+powershell ./scripts/install-vcpkgs.ps1
+
+msbuild
+
+#### linux
 
 ```batch
 
