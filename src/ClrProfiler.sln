@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.27703.2042
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ClrProfiler", "ClrProfiler\ClrProfiler.vcxproj", "{91B6272F-5780-4C94-8071-DBBA7B4F67F3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Samples.RedisCore", "Samples.RedisCore\Samples.RedisCore.csproj", "{ED05D8AE-F48D-48B5-A1A4-E65089170F63}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Samples.NetCore", "Samples.NetCore\Samples.NetCore.csproj", "{ED05D8AE-F48D-48B5-A1A4-E65089170F63}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{12470FC6-9830-4448-BBEE-87807049796E}"
 	ProjectSection(SolutionItems) = preProject
