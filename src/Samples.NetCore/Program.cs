@@ -6,7 +6,7 @@ using Dapper;
 using MySql.Data.MySqlClient;
 using StackExchange.Redis;
 
-namespace Samples.RedisCore
+namespace Samples.NetCore
 {
     class Program
     {
