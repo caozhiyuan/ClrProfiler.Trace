@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Reflection;
 
-namespace ClrProfiler.Trace.Internal
+namespace ClrProfiler.Trace.Utils
 {
     internal class PropertyFetcher
     {

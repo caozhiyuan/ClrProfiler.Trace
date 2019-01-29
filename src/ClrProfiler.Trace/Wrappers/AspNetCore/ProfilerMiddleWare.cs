@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using ClrProfiler.Trace.DependencyInjection;
-using ClrProfiler.Trace.Internal;
+using ClrProfiler.Trace.Extensions;
 using OpenTracing;
 using OpenTracing.Tag;
 using OpenTracing.Propagation;

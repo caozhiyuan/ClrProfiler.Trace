@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using OpenTracing;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.Internal
+namespace ClrProfiler.Trace.Extensions
 {
     internal static class SpanExtensions
     {
