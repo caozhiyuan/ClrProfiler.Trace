@@ -7,6 +7,7 @@ using StackExchange.Redis;
 
 namespace Samples.WebApi.Controllers
 {
+    [Route("test")]
     public class TestController : Controller
     {
         private readonly ILogger _logger;
@@ -17,6 +18,7 @@ namespace Samples.WebApi.Controllers
         }
 
         [HttpGet]
+        [Route("index")]
         public async Task<IActionResult> Index()
         {
             var prefix = "StackExchange.Redis.";
@@ -29,7 +31,7 @@ namespace Samples.WebApi.Controllers
 
                 db.StringSet($"{prefix}INCR", DateTime.Now.ToLongDateString());
 
-                return Json(db.StringGet($"{prefix}INCR"));
+                return Json(db.StringGet($"{prefix}INCR").ToString());
             }
         }
     }
