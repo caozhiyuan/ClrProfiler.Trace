@@ -13,7 +13,8 @@ namespace Samples.WebApi
         public static IWebHostBuilder CreateWebHostBuilder(string[] args)
         {
             return WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>();
+                .UseStartup<Startup>()
+                .UseUrls("http://*:8787");
         }
     }
 }

@@ -23,16 +23,18 @@ namespace ClrProfiler.Trace.Wrappers.AspNetCore
         public async Task Invoke(HttpContext context)
         {
             var tracer = _serviceLocator.GetService<ITracer>();
+
+            var extractedSpanContext = tracer.Extract(BuiltinFormats.HttpHeaders, new RequestHeadersExtractAdapter(context.Request.Headers));
+
             var scope = tracer.BuildSpan("http.in")
+                .AsChildOf(extractedSpanContext)
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
                 .WithTag(Tags.Component, "AspNetCore")
                 .WithTag(Tags.HttpMethod, context.Request.Method.ToString())
                 .WithTag(Tags.HttpUrl, context.Request.Path.ToString())
                 .WithTag(Tags.PeerHostname, context.Request.Host.Host)
-                .WithTag(Tags.PeerPort, context.Request.Host.Port.GetValueOrDefault(80))
+                .WithTag(Tags.PeerPort, context.Request.Host.Port.GetValueOrDefault(0))
                 .StartActive();
-
-            tracer.Inject(scope.Span.Context, BuiltinFormats.HttpHeaders, new RequestHeadersExtractAdapter(context.Request.Headers));
 
             await Next(context, scope);
         }

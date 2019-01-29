@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.Net.Http;
 using Dapper;
 using MySql.Data.MySqlClient;
 using StackExchange.Redis;
@@ -13,6 +14,8 @@ namespace Samples.WebApi.Controllers
     [Route("home")]
     public class HomeController : Controller
     {
+        private static readonly HttpClient HttpClient = new HttpClient();
+
         private readonly ILogger _logger;
 
         public HomeController(ILogger<HomeController> logger)
@@ -22,15 +25,15 @@ namespace Samples.WebApi.Controllers
 
         [HttpGet]
         [Route("test1")]
-        public IActionResult Test1()
+        public async Task<IActionResult> Test1()
         {
-            return Json(DateTime.Now);
+            var str = await HttpClient.GetAsync("http://127.0.0.1:8787/home/Test2");
+            return Json(str);
         }
 
 
         [HttpGet]
         [Route("test2")]
-
         public async Task<IActionResult> Test2(string test)
         {
             Stopwatch sw = new Stopwatch();
