@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Linq;
-using ClrProfiler.Trace.Internal;
+using ClrProfiler.Trace.Extensions;
 using ClrProfiler.Trace.Utils;
 using OpenTracing;
 using OpenTracing.Tag;

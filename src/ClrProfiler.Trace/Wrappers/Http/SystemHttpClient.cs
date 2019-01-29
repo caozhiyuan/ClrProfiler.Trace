@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Net.Http;
-using ClrProfiler.Trace.Internal;
+using ClrProfiler.Trace.Extensions;
 using OpenTracing;
 using OpenTracing.Propagation;
 using OpenTracing.Tag;
