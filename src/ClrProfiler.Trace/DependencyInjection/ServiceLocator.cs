@@ -1,6 +1,11 @@
 ﻿using System;
+using System.Reflection;
+using Jaeger;
+using Jaeger.Samplers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenTracing;
 using OpenTracing.Util;
 
@@ -26,18 +31,37 @@ namespace ClrProfiler.Trace.DependencyInjection
             return (T)_serviceProvider.GetService(typeof(T));
         }
 
-        private void RegisterServices(ServiceCollection serviceCollection)
+        private void RegisterServices(ServiceCollection services)
         {
-            serviceCollection.Add(ServiceDescriptor.Singleton(typeof(ITracer), GlobalTracer.Instance));
-            serviceCollection.AddSingleton<WrapperService>();
+            services.AddSingleton<WrapperService>();
             var types = typeof(WrapperService).Assembly.GetTypes();
             foreach (var type in types)
             {
                 if (typeof(IWrapper).IsAssignableFrom(type) && type.IsClass && !type.IsAbstract)
                 {
-                    serviceCollection.Add(ServiceDescriptor.Singleton(typeof(IWrapper), type));
+                    services.Add(ServiceDescriptor.Singleton(typeof(IWrapper), type));
                 }
             }
+
+            services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
+
+            services.AddSingleton(serviceProvider =>
+            {
+                string serviceName = Assembly.GetEntryAssembly().GetName().Name;
+
+                ILoggerFactory loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+
+                ISampler sampler = new ConstSampler(sample: true);
+
+                ITracer tracer = new Tracer.Builder(serviceName)
+                    .WithLoggerFactory(loggerFactory)
+                    .WithSampler(sampler)
+                    .Build();
+
+                GlobalTracer.Register(tracer);
+
+                return tracer;
+            });
         }
     }
 }
