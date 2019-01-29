@@ -1,0 +1,13 @@
+{
+    "profiles": {
+        "Samples.WebApi": {
+            "commandName": "Project",
+            "nativeDebugging": true,
+            "launchBrowser": false,
+            "launchUrl": "http://localhost:5001",
+            "environmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        }
+    }
+}

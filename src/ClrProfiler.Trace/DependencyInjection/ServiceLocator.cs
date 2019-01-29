@@ -8,23 +8,25 @@ namespace ClrProfiler.Trace.DependencyInjection
 {
     public class ServiceLocator
     {
-        private static readonly IServiceProvider ServiceProvider;
+        private readonly IServiceProvider _serviceProvider;
 
-        static ServiceLocator()
+        public static readonly ServiceLocator Instance = new ServiceLocator();
+
+        private ServiceLocator()
         {
             var serviceCollection = new ServiceCollection();
 
             RegisterServices(serviceCollection);
 
-            ServiceProvider = serviceCollection.BuildServiceProvider();
+            _serviceProvider = serviceCollection.BuildServiceProvider();
         }
 
-        public static T GetService<T>()
+        public T GetService<T>()
         {
-            return (T)ServiceProvider.GetService(typeof(T));
+            return (T)_serviceProvider.GetService(typeof(T));
         }
 
-        private static void RegisterServices(ServiceCollection serviceCollection)
+        private void RegisterServices(ServiceCollection serviceCollection)
         {
             serviceCollection.Add(ServiceDescriptor.Singleton(typeof(ITracer), GlobalTracer.Instance));
             serviceCollection.AddSingleton<WrapperService>();

@@ -43,7 +43,7 @@ namespace ClrProfiler.Trace
             try
             {
                 var args = methodArguments;
-                var wrapperService = ServiceLocator.GetService<WrapperService>();
+                var wrapperService = ServiceLocator.Instance.GetService<WrapperService>();
                 var endMethodDelegate = wrapperService.BeforeWrappedMethod(typeName, methodName, invocationTarget, args, functionToken);
                 return endMethodDelegate != null ? new MethodTrace(endMethodDelegate) : default(MethodTrace);
             }

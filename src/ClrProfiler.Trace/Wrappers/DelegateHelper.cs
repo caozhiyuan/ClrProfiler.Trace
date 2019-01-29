@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace ClrProfiler.Trace.Hooks
+namespace ClrProfiler.Trace.Wrappers
 {
     public delegate void AsyncMethodEndDelegate(TraceMethodInfo traceMethodInfo, object returnValue, Exception ex);
 
-    public static class TraceDelegateHelper
+    public static class DelegateHelper
     {
         private static readonly TaskCanceledException CanceledException = new TaskCanceledException();
 

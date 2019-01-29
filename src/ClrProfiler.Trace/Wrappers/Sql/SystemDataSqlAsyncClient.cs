@@ -5,19 +5,20 @@ using ClrProfiler.Trace.Internal;
 using OpenTracing;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.Hooks.Sql
+namespace ClrProfiler.Trace.Wrappers.Sql
 {
-    public class MySqlDataClient : IWrapper
+    public class SystemDataSqlAsyncClient : IWrapper
     {
-        private const string TypeName = "MySql.Data.MySqlClient.MySqlCommand";
-        private static readonly string[] AssemblyNames = { "MySql.Data" };
-        private static readonly string[] TraceMethods = { "ExecuteReader", "ExecuteNonQuery", "ExecuteScalar" };
+        private const string TypeName = "System.Data.SqlClient.SqlCommand";
+        private static readonly string[] AssemblyNames = {"System.Data", "System.Data.SqlClient"};
+        private static readonly string[] TraceMethods = { "ExecuteReaderAsync", "ExecuteNonQueryAsync", "ExecuteScalarAsync", "ExecuteXmlReaderAsync" };
 
         private const string TagMethod = "db.method";
+        private const string TagIsAsync = "db.async";
 
         private readonly ITracer _tracer;
 
-        public MySqlDataClient(ITracer tracer)
+        public SystemDataSqlAsyncClient(ITracer tracer)
         {
             _tracer = tracer;
         }
@@ -25,19 +26,20 @@ namespace ClrProfiler.Trace.Hooks.Sql
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
             var dbCommand = (DbCommand)traceMethodInfo.InvocationTarget;
-            var scope = _tracer.BuildSpan("mysql.command")
+            var scope = _tracer.BuildSpan("mssql.command")
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
-                .WithTag(Tags.Component, "mysql")
+                .WithTag(Tags.Component, "SqlServer")
                 .WithTag(Tags.DbInstance, dbCommand.Connection.ConnectionString)
                 .WithTag(Tags.DbStatement, dbCommand.CommandText)
                 .WithTag(TagMethod, traceMethodInfo.MethodName)
+                .WithTag(TagIsAsync, true)
                 .StartActive();
 
             traceMethodInfo.TraceContext = scope;
 
             return delegate (object returnValue, Exception ex)
             {
-                Leave(traceMethodInfo,returnValue,ex);
+                DelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
             };
         }
 

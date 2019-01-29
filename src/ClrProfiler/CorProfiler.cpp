@@ -533,6 +533,13 @@ namespace trace {
             return S_OK;
         }
 
+        //return ref not support
+        unsigned elementType;
+        auto retTypeFlags = functionInfo.signature.GetRet().GetTypeFlags(elementType);
+        if (retTypeFlags & TypeFlagByRef) {
+            return S_OK;
+        }
+
         mdAssemblyRef assemblyRef;
         hr = GetProfilerAssemblyRef(metadata_interfaces, assemblyRef);
         RETURN_OK_IF_FAILED(hr);
@@ -667,7 +674,11 @@ namespace trace {
         for (unsigned i = 0; i < argNum; i++) {
             reWriterWrapper.BeginLoadValueIntoArray(i);
             reWriterWrapper.LoadArgument(i + 1);
-            if (arguments[i].IsBoxedType()) {
+            auto argTypeFlags = arguments[i].GetTypeFlags(elementType);
+            if(argTypeFlags & TypeFlagByRef) {
+                reWriterWrapper.LoadIND(elementType);
+            }
+            if (argTypeFlags & TypeFlagBoxedType) {
                 auto tok = arguments[i].GetTypeTok(pEmit, corLibAssemblyRef);
                 if (tok == mdTokenNil) {
                     return S_OK;
@@ -685,13 +696,13 @@ namespace trace {
         pRetInstr->m_opcode = CEE_RET;
         pReWriter->InsertAfter(pReWriter->GetILList()->m_pPrev, pRetInstr);
 
-        bool isVoidMethod = functionInfo.signature.IsVoidMethod();
+        bool isVoidMethod = (retTypeFlags & TypeFlagVoid) > 0;
         auto ret = functionInfo.signature.GetRet();
         bool retIsBoxedType = false;
         mdToken retTypeTok;
         if (!isVoidMethod) {
             retTypeTok = ret.GetTypeTok(pEmit, corLibAssemblyRef);
-            if (ret.IsBoxedType()) {
+            if (ret.GetTypeFlags(elementType) & TypeFlagBoxedType) {
                 retIsBoxedType = true;
             }
         }

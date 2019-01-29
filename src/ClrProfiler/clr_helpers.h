@@ -366,13 +366,20 @@ namespace trace {
         bool IsValid() const { return id != 0; }
     };
 
+    enum MethodArgumentTypeFlag
+    {
+        TypeFlagByRef = 0x01,
+        TypeFlagVoid = 0x02,
+        TypeFlagBoxedType = 0x04
+    };
+
     struct MethodArgument {
         ULONG offset;
         ULONG length;
         PCCOR_SIGNATURE pbBase;
         mdToken GetTypeTok(CComPtr<IMetaDataEmit2>& pEmit, mdAssemblyRef corLibRef) const;
         WSTRING GetTypeTokName(CComPtr<IMetaDataImport2>& pImport) const;
-        bool IsBoxedType() const;
+        int GetTypeFlags(unsigned& elementType) const;
     private:
         WSTRING GetTypeTokName(PCCOR_SIGNATURE& pbCur, CComPtr<IMetaDataImport2>& pImport) const;
     };
@@ -394,10 +401,6 @@ namespace trace {
         ULONG NumberOfTypeArguments() const { return numberOfTypeArguments; }
         ULONG NumberOfArguments() const { return numberOfArguments; }
         WSTRING str() const { return HexStr(pbBase, len); }
-        bool IsVoidMethod() const {
-            const auto pbCur = &ret.pbBase[ret.offset];
-            return *pbCur == ELEMENT_TYPE_VOID;
-        }
         MethodArgument GetRet() const { return  ret; }
         std::vector<MethodArgument> GetMethodArguments() const { return params; }
         HRESULT TryParse();

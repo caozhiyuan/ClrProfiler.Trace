@@ -1,6 +1,4 @@
-﻿// From https://github.com/dotnet/corefx/blob/master/src/System.Diagnostics.DiagnosticSource/src/System/Diagnostics/DiagnosticSourceEventSource.cs
-
-using System;
+﻿using System;
 using System.Reflection;
 
 namespace ClrProfiler.Trace.Internal
@@ -8,8 +6,10 @@ namespace ClrProfiler.Trace.Internal
     internal class PropertyFetcher
     {
         private readonly string _propertyName;
-        private Type _expectedType;
         private PropertyFetch _fetchForExpectedType;
+
+        private static readonly BindingFlags DefaultBindingFlags =
+            BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
         /// <summary>
         /// Make a new PropertyFetcher for a property named 'propertyName'.
@@ -25,14 +25,11 @@ namespace ClrProfiler.Trace.Internal
         public object Fetch(object obj)
         {
             Type objType = obj.GetType();
-            if (objType != _expectedType)
+            if (_fetchForExpectedType == null)
             {
                 TypeInfo typeInfo = objType.GetTypeInfo();
-                PropertyInfo propertyInfo = typeInfo.GetProperty(_propertyName,
-                    BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-
+                PropertyInfo propertyInfo = typeInfo.GetProperty(_propertyName, DefaultBindingFlags);
                 _fetchForExpectedType = PropertyFetch.FetcherForProperty(propertyInfo);
-                _expectedType = objType;
             }
             return _fetchForExpectedType.Fetch(obj);
         }

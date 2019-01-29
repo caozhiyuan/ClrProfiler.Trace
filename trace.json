@@ -71,6 +71,15 @@
                     "methodName": "ExecuteScalar"
                 }
             ]
+        },
+        {
+            "assemblyName": "Microsoft.AspNetCore.Hosting",
+            "className": "Microsoft.AspNetCore.Hosting.WebHostBuilder",
+            "methods": [
+                {
+                    "methodName": "BuildCommonServices"
+                }
+            ]
         }
     ]
 }

@@ -71,9 +71,6 @@ Number ::= 29-bit-encoded-integer
     if ((EXPR) == false) return E_FAIL; \
   } while (0)
 
-#undef _countof
-#define _countof(array) (sizeof(array) / sizeof(array[0]))
-
 namespace trace
 {
     bool ParseByte(PCCOR_SIGNATURE &pbCur, PCCOR_SIGNATURE pbEnd, unsigned char *pbOut)
@@ -298,7 +295,7 @@ namespace trace
     }
 
     // Param ::= CustomMod* ( TYPEDBYREF | [BYREF] Type ) 
-    // CustomMod* TYPEDBYREF ELEMENT_TYPE_BYREF we don't support
+    // CustomMod* TYPEDBYREF we don't support
     bool ParseParam(PCCOR_SIGNATURE &pbCur, PCCOR_SIGNATURE pbEnd)
     {
         if (*pbCur == ELEMENT_TYPE_CMOD_OPT || *pbCur == ELEMENT_TYPE_CMOD_REQD) {
@@ -315,7 +312,7 @@ namespace trace
 
         if (*pbCur == ELEMENT_TYPE_BYREF)
         {
-            return false;
+            pbCur++;
         }
 
         if (!ParseType(pbCur, pbEnd))
@@ -325,7 +322,7 @@ namespace trace
     }
 
     // RetType ::= CustomMod* ( VOID | TYPEDBYREF | [BYREF] Type ) 
-    // CustomMod* TYPEDBYREF ELEMENT_TYPE_BYREF we don't support
+    // CustomMod* TYPEDBYREF we don't support
     bool ParseRetType(PCCOR_SIGNATURE &pbCur, PCCOR_SIGNATURE pbEnd)
     {
         if (*pbCur == ELEMENT_TYPE_CMOD_OPT || *pbCur == ELEMENT_TYPE_CMOD_REQD) {
@@ -348,7 +345,7 @@ namespace trace
 
         if (*pbCur == ELEMENT_TYPE_BYREF)
         {
-            return false;
+            pbCur++;
         }
 
         if (!ParseType(pbCur, pbEnd))
@@ -409,11 +406,24 @@ namespace trace
         return S_OK;
     }
 
-    bool MethodArgument::IsBoxedType() const {
-       
-        bool flag = false;
+    int MethodArgument::GetTypeFlags(unsigned& elementType) const {
+
+        int flag = 0;
         PCCOR_SIGNATURE pbCur = &pbBase[offset];
 
+        if (*pbCur == ELEMENT_TYPE_VOID) {
+            elementType = ELEMENT_TYPE_VOID;
+            flag |= TypeFlagVoid;
+            return flag;
+        }
+
+        if (*pbCur == ELEMENT_TYPE_BYREF) {
+            pbCur++;
+            flag |= TypeFlagByRef;
+        }
+
+        elementType = *pbCur;
+        
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:
         case  ELEMENT_TYPE_CHAR:
@@ -432,12 +442,12 @@ namespace trace
         case  ELEMENT_TYPE_VALUETYPE:
         case  ELEMENT_TYPE_MVAR:
         case  ELEMENT_TYPE_VAR:
-            flag = true;
+            flag |= TypeFlagBoxedType;
             break;
         case  ELEMENT_TYPE_GENERICINST:
             pbCur++;
             if (*pbCur == ELEMENT_TYPE_VALUETYPE) {
-                flag = true;
+                flag |= TypeFlagBoxedType;
             }
             break;
         default:
@@ -452,6 +462,10 @@ namespace trace
         mdToken token = mdTokenNil;
         PCCOR_SIGNATURE pbCur = &pbBase[offset];
         const PCCOR_SIGNATURE pTemp = pbCur;
+
+        if (*pbCur == ELEMENT_TYPE_BYREF) {
+            pbCur++;
+        }
 
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:
@@ -531,6 +545,13 @@ namespace trace
     WSTRING MethodArgument::GetTypeTokName(PCCOR_SIGNATURE& pbCur, CComPtr<IMetaDataImport2>& pImport) const
     {
         WSTRING tokenName = ""_W;
+        bool ref_flag = false;
+        if (*pbCur == ELEMENT_TYPE_BYREF)
+        {
+            pbCur++;
+            ref_flag = true;
+        }
+
         switch (*pbCur) {
         case  ELEMENT_TYPE_BOOLEAN:
             tokenName = SystemBoolean;
@@ -646,6 +667,11 @@ namespace trace
         default:
             break;
         }
+
+        if(ref_flag){
+            tokenName += "&"_W;
+        }
+
         return tokenName;
     }
 

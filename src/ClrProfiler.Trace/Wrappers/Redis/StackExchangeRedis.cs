@@ -4,7 +4,7 @@ using ClrProfiler.Trace.Internal;
 using OpenTracing;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.Hooks.Redis
+namespace ClrProfiler.Trace.Wrappers.Redis
 {
     public class StackExchangeRedis : IWrapper
     {
@@ -34,7 +34,7 @@ namespace ClrProfiler.Trace.Hooks.Redis
 
             var scope = _tracer.BuildSpan("redis.command")
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
-                .WithTag(Tags.Component, "redis")
+                .WithTag(Tags.Component, "StackExchange.Redis")
                 .WithTag("redis.raw_command", rawCommand)
                 .WithTag("out.host", hostAndPort.Item1)
                 .WithTag("out.port", hostAndPort.Item2)
@@ -53,7 +53,7 @@ namespace ClrProfiler.Trace.Hooks.Redis
             {
                 return delegate (object returnValue, Exception ex)
                 {
-                    TraceDelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
+                    DelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
                 };
             }
         }

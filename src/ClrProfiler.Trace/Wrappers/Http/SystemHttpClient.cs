@@ -5,7 +5,7 @@ using OpenTracing;
 using OpenTracing.Propagation;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.Hooks.Http
+namespace ClrProfiler.Trace.Wrappers.Http
 {
     public class SystemHttpClient: IWrapper
     {
@@ -27,7 +27,7 @@ namespace ClrProfiler.Trace.Hooks.Http
 
             var scope = _tracer.BuildSpan("http.out")
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
-                .WithTag(Tags.Component, "httpclient")
+                .WithTag(Tags.Component, "HttpClient")
                 .WithTag(Tags.HttpMethod, request.Method.ToString())
                 .WithTag(Tags.HttpUrl, request.RequestUri.ToString())
                 .WithTag(Tags.PeerHostname, request.RequestUri.Host)
@@ -40,7 +40,7 @@ namespace ClrProfiler.Trace.Hooks.Http
 
             return delegate(object returnValue, Exception ex)
             {
-                TraceDelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
+                DelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
             };
         }
 
