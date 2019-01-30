@@ -24,11 +24,10 @@ namespace trace {
         //clrProfilerHomeEnvValue
         WSTRING clrProfilerHomeEnvValue;
 
-        //generic method has mutil funtionid
+        //iLRewriteMap ,because generic method has multi functionid
         std::unordered_map<mdMethodDef, bool> iLRewriteMap{};
 
         AssemblyProperty corAssemblyProperty{};
-        bool customLoadFromInit = false;
         bool entryPointReWrote = false;
 
         //moduleMetaInfoMap

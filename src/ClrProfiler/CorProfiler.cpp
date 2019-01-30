@@ -173,90 +173,6 @@ namespace trace {
 
             corAssemblyProperty.szName = module_info.assembly.name;
 
-            auto pImport = metadata_interfaces.As<IMetaDataImport2>(IID_IMetaDataImport);
-            auto pEmit = metadata_interfaces.As<IMetaDataEmit2>(IID_IMetaDataEmit);
-            if (pEmit.IsNull() || pImport.IsNull()) {
-                return S_OK;
-            }
-
-            mdModule module;
-            hr = pImport->GetModuleFromScope(&module);
-            RETURN_OK_IF_FAILED(hr);
-
-            mdTypeDef assemblyTypeDef;
-            hr = pImport->FindTypeDefByName(AssemblyTypeName.data(), NULL, &assemblyTypeDef);
-            RETURN_OK_IF_FAILED(hr);
-         
-            auto enumerator = EnumMembersWithName(pImport, assemblyTypeDef, AssemblyLoadMethodName.data());
-            for (auto assemblyLoadMethodDef : enumerator)
-            {
-                PCCOR_SIGNATURE raw_signature;
-                ULONG raw_signature_len;
-                DWORD       pdwAttr;
-                ULONG       pulCodeRVA;
-                DWORD       pdwImplFlags;
-                hr = pImport->GetMethodProps(
-                    assemblyLoadMethodDef,
-                    NULL,
-                    NULL,
-                    0,
-                    NULL,
-                    &pdwAttr,
-                    &raw_signature,
-                    &raw_signature_len,
-                    &pulCodeRVA,
-                    &pdwImplFlags);
-                RETURN_OK_IF_FAILED(hr);
-
-                auto signature = MethodSignature(raw_signature, raw_signature_len);
-                hr = signature.TryParse();
-                RETURN_OK_IF_FAILED(hr);
-
-                if (signature.NumberOfArguments() == 1 && !customLoadFromInit) {
-
-                    // if don't define a custom load from , will raise cor lib bad image load
-                    COR_SIGNATURE customAssemblyLoadSig[] =
-                    {
-                       IMAGE_CEE_CS_CALLCONV_DEFAULT ,
-                       0x01,
-                       ELEMENT_TYPE_VOID,
-                       ELEMENT_TYPE_STRING
-                    };
-                    mdMethodDef customAssemblyLoadMethodDef;
-                    hr = pEmit->DefineMethod(
-                        assemblyTypeDef,
-                        AssemblyCustomLoadMethodName.data(),
-                        pdwAttr,
-                        customAssemblyLoadSig,
-                        sizeof(customAssemblyLoadSig),
-                        pulCodeRVA,
-                        pdwImplFlags,
-                        &customAssemblyLoadMethodDef);
-                    RETURN_OK_IF_FAILED(hr);
-
-                    CComPtr<IMethodMalloc>  pIMethodMalloc;
-                    hr = corProfilerInfo->GetILFunctionBodyAllocator(moduleId, pIMethodMalloc.GetAddressOf());
-                    RETURN_OK_IF_FAILED(hr);
-
-                    auto pwMethodBytes = (LPBYTE)pIMethodMalloc->Alloc(9);
-                    const ULONG codeSize = 8;
-                    ULONG offset = 0;
-                    pwMethodBytes[offset++] = (BYTE)(CorILMethod_TinyFormat | codeSize << 2);
-                    pwMethodBytes[offset++] = CEE_LDARG_0;
-                    pwMethodBytes[offset++] = CEE_CALL;
-                    *(UNALIGNED INT32*)&(pwMethodBytes[offset]) = assemblyLoadMethodDef;
-                    offset += 4;
-                    pwMethodBytes[offset++] = (BYTE)CEE_POP;
-                    pwMethodBytes[offset] = (BYTE)CEE_RET;
-
-                    hr = corProfilerInfo->SetILFunctionBody(moduleId, customAssemblyLoadMethodDef, pwMethodBytes);
-                    RETURN_OK_IF_FAILED(hr);
-
-                    customLoadFromInit = true;
-                    break;
-                }
-            }
-
             return S_OK;
         }
         return S_OK;
@@ -273,7 +189,7 @@ namespace trace {
         {
             std::lock_guard<std::mutex> guard(mapLock);
             if (moduleMetaInfoMap.count(moduleId) > 0) {
-                auto moduleMetaInfo = moduleMetaInfoMap[moduleId];
+                const auto moduleMetaInfo = moduleMetaInfoMap[moduleId];
                 delete moduleMetaInfo;
                 moduleMetaInfoMap.erase(moduleId);
             }
@@ -503,17 +419,22 @@ namespace trace {
                 AssemblyTypeName.data(),
                 &assemblyTypeRef);
             RETURN_OK_IF_FAILED(hr);
-            COR_SIGNATURE assemblyLoadSig[] =
-            {
-                IMAGE_CEE_CS_CALLCONV_DEFAULT ,
-                0x01,
-                ELEMENT_TYPE_VOID,
-                ELEMENT_TYPE_STRING
-            };
+
+            unsigned buffer;
+            auto size = CorSigCompressToken(assemblyTypeRef, &buffer);
+            auto* assemblyLoadSig = new COR_SIGNATURE[size + 4];
+            unsigned offset = 0;
+            assemblyLoadSig[offset++] = IMAGE_CEE_CS_CALLCONV_DEFAULT;
+            assemblyLoadSig[offset++] = 0x01;
+            assemblyLoadSig[offset++] = ELEMENT_TYPE_CLASS;
+            memcpy(&assemblyLoadSig[offset], &buffer, size);
+            offset += size;
+            assemblyLoadSig[offset] = ELEMENT_TYPE_STRING;
+
             mdMemberRef assemblyLoadMemberRef;
             hr = pEmit->DefineMemberRef(
                 assemblyTypeRef,
-                AssemblyCustomLoadMethodName.data(),
+                AssemblyLoadMethodName.data(),
                 assemblyLoadSig,
                 sizeof(assemblyLoadSig),
                 &assemblyLoadMemberRef);
@@ -532,6 +453,7 @@ namespace trace {
             reWriterWrapper.SetILPosition(pFirstOriginalInstr);
             reWriterWrapper.LoadStr(profilerTraceDllNameTextToken);
             reWriterWrapper.CallMember(assemblyLoadMemberRef, false);
+            reWriterWrapper.Pop();
             hr = rewriter.Export();
             RETURN_OK_IF_FAILED(hr);
 

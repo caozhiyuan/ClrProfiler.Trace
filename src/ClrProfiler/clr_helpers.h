@@ -23,7 +23,6 @@ namespace trace {
 
     const auto AssemblyTypeName = "System.Reflection.Assembly"_W;
     const auto AssemblyLoadMethodName = "LoadFrom"_W;
-    const auto AssemblyCustomLoadMethodName = "CustomLoadFrom"_W;
 
     const auto SystemBoolean = "System.Boolean"_W;
     const auto SystemChar = "System.Char"_W;
