@@ -536,13 +536,7 @@ namespace trace
         return token;
     }
 
-    WSTRING MethodArgument::GetTypeTokName(CComPtr<IMetaDataImport2>& pImport) const
-    {
-        PCCOR_SIGNATURE pbCur = &pbBase[offset];
-        return GetTypeTokName(pbCur, pImport);
-    }
-
-    WSTRING MethodArgument::GetTypeTokName(PCCOR_SIGNATURE& pbCur, CComPtr<IMetaDataImport2>& pImport) const
+    WSTRING GetSigTypeTokName(PCCOR_SIGNATURE& pbCur, const CComPtr<IMetaDataImport2>& pImport)
     {
         WSTRING tokenName = ""_W;
         bool ref_flag = false;
@@ -629,18 +623,18 @@ namespace trace
         case  ELEMENT_TYPE_SZARRAY:
         {
             pbCur++;
-            tokenName = GetTypeTokName(pbCur, pImport) + "[]"_W;
+            tokenName = GetSigTypeTokName(pbCur, pImport) + "[]"_W;
             break;
         }
         case  ELEMENT_TYPE_GENERICINST:
         {
             pbCur++;
-            tokenName = GetTypeTokName(pbCur, pImport);
+            tokenName = GetSigTypeTokName(pbCur, pImport);
             tokenName += "["_W;
             ULONG num = 0;
             pbCur += CorSigUncompressData(pbCur, &num);
             for (ULONG i = 0; i < num; i++) {
-                tokenName += GetTypeTokName(pbCur, pImport);
+                tokenName += GetSigTypeTokName(pbCur, pImport);
                 if (i != num - 1) {
                     tokenName += ","_W;
                 }
@@ -668,11 +662,17 @@ namespace trace
             break;
         }
 
-        if(ref_flag){
+        if (ref_flag) {
             tokenName += "&"_W;
         }
 
         return tokenName;
+    }
+
+    WSTRING MethodArgument::GetTypeTokName(CComPtr<IMetaDataImport2>& pImport) const
+    {
+        PCCOR_SIGNATURE pbCur = &pbBase[offset];
+        return GetSigTypeTokName(pbCur, pImport);
     }
 
     AssemblyInfo GetAssemblyInfo(ICorProfilerInfo3* info,
@@ -817,11 +817,7 @@ namespace trace
                 return {};
             }
 
-            if (signature[0] & ELEMENT_TYPE_GENERICINST) {
-                mdToken type_token;
-                CorSigUncompressToken(&signature[2], &type_token);
-                return GetTypeInfo(metadata_import, type_token);
-            }
+            return { token, GetSigTypeTokName(signature, metadata_import) };
         } break;
         case mdtModuleRef:
             metadata_import->GetModuleRefProps(token, type_name, NameMaxSize,

@@ -20,12 +20,21 @@ namespace trace {
         std::atomic<int> refCount;
         ICorProfilerInfo8* corProfilerInfo;
         std::mutex mapLock;
-        std::unordered_map<mdMethodDef, bool> iLRewriteMap{};
-        bool entryPointReWrote = false;
+
+        //clrProfilerHomeEnvValue
         WSTRING clrProfilerHomeEnvValue;
+
+        //generic method has mutil funtionid
+        std::unordered_map<mdMethodDef, bool> iLRewriteMap{};
+
         AssemblyProperty corAssemblyProperty{};
         bool customLoadFromInit = false;
+        bool entryPointReWrote = false;
+
+        //moduleMetaInfoMap
         std::unordered_map<ModuleID, ModuleMetaInfo*> moduleMetaInfoMap{};
+
+        //config traceAssemblies
         std::vector<TraceAssembly> traceAssemblies;
     public:
         CorProfiler();

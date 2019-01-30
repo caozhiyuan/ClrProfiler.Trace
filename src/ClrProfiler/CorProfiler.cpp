@@ -134,7 +134,7 @@ namespace trace {
 
         if (entryPointToken != mdTokenNil)
         {
-            Info("Assembly:{} EntryPointToken:{}", ToString(module_info.assembly.name), std::to_string(entryPointToken));
+            Info("Assembly:{} EntryPointToken:{}", ToString(module_info.assembly.name), entryPointToken);
         }
 
         if (module_info.assembly.name == "mscorlib"_W || module_info.assembly.name == "System.Private.CoreLib"_W) {
@@ -269,6 +269,15 @@ namespace trace {
 
     HRESULT STDMETHODCALLTYPE CorProfiler::ModuleUnloadFinished(ModuleID moduleId, HRESULT hrStatus)
     {
+        Info("CorProfiler::ModuleUnloadFinished, ModuleID:{} ", moduleId);
+        {
+            std::lock_guard<std::mutex> guard(mapLock);
+            if (moduleMetaInfoMap.count(moduleId) > 0) {
+                auto moduleMetaInfo = moduleMetaInfoMap[moduleId];
+                delete moduleMetaInfo;
+                moduleMetaInfoMap.erase(moduleId);
+            }
+        }
         return S_OK;
     }
 
@@ -375,32 +384,46 @@ namespace trace {
         return S_OK;
     }
 
+    bool MethodParamsNameIsMatch(const WSTRING &paramsName, FunctionInfo &functionInfo, CComPtr<IMetaDataImport2> & pImport)
+    {
+        auto paramIsMatch = true;
+        if (!paramsName.empty())
+        {
+            auto paramNames = Split(paramsName, static_cast<wchar_t>(','));
+            auto arguments = functionInfo.signature.GetMethodArguments();
+            if (!arguments.empty())
+            {
+                for (unsigned i = 0; i < arguments.size(); i++)
+                {
+                    auto typeTokName = arguments[i].GetTypeTokName(pImport);
+                    if (typeTokName != paramNames[i])
+                    {
+                        paramIsMatch = false;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                paramIsMatch = false;
+            }
+        }
+        return paramIsMatch;
+    }
+
     bool CorProfiler::FunctionIsNeedTrace(CComPtr<IMetaDataImport2>& pImport, ModuleMetaInfo* moduleMetaInfo, FunctionInfo functionInfo)
     {
         auto isTrace = false;
-        for (const auto& assembly : traceAssemblies) {
-            if (assembly.assemblyName == moduleMetaInfo->assemblyName && functionInfo.type.name == assembly.className) {
-                for (const auto& method : assembly.methods) {
-                    if (method.methodName == functionInfo.name) {
-                        auto paramIsMatch = true;
-                        if (!method.paramsName.empty()) {
-                            auto paramNames = Split(method.paramsName, static_cast<wchar_t>(','));
-                            auto arguments = functionInfo.signature.GetMethodArguments();
-                            if(!arguments.empty()){
-                                for (unsigned i = 0; i < arguments.size(); i++) {
-                                    auto typeTokName = arguments[i].GetTypeTokName(pImport);
-                                    if (typeTokName != paramNames[i])
-                                    {
-                                        paramIsMatch = false;
-                                        break;
-                                    }
-                                }
-                            }
-                            else{
-                                paramIsMatch = false;
-                            }
-                        }
-                        if (paramIsMatch) {
+        for (const auto& assembly : traceAssemblies) 
+        {
+            if (assembly.assemblyName == moduleMetaInfo->assemblyName && assembly.className == functionInfo.type.name)
+            {
+                for (const auto& method : assembly.methods)
+                {
+                    if (method.methodName == functionInfo.name) 
+                    {
+                        if (MethodParamsNameIsMatch(method.paramsName, functionInfo, pImport))
+                        {
                             isTrace = true;
                             break;
                         }
@@ -438,7 +461,6 @@ namespace trace {
                 isiLRewrote = true;
             }
         }
-
         if (isiLRewrote) {
             return S_OK;
         }

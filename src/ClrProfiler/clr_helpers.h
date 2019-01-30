@@ -380,8 +380,6 @@ namespace trace {
         mdToken GetTypeTok(CComPtr<IMetaDataEmit2>& pEmit, mdAssemblyRef corLibRef) const;
         WSTRING GetTypeTokName(CComPtr<IMetaDataImport2>& pImport) const;
         int GetTypeFlags(unsigned& elementType) const;
-    private:
-        WSTRING GetTypeTokName(PCCOR_SIGNATURE& pbCur, CComPtr<IMetaDataImport2>& pImport) const;
     };
 
     struct MethodSignature {
