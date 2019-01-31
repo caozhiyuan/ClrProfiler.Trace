@@ -5,9 +5,9 @@ using ClrProfiler.Trace.Utils;
 using OpenTracing;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.Wrappers.Redis
+namespace ClrProfiler.Trace.MethodWrappers.Redis
 {
-    public class StackExchangeRedis : IWrapper
+    public class StackExchangeRedis : IMethodWrapper
     {
         private const string TypeName = "StackExchange.Redis.ConnectionMultiplexer";
         private static readonly string[] AssemblyNames = new[] { "StackExchange.Redis", "StackExchange.Redis.StrongName" };
@@ -43,7 +43,7 @@ namespace ClrProfiler.Trace.Wrappers.Redis
 
             traceMethodInfo.TraceContext = scope;
 
-            if (traceMethodInfo.MethodName == ExecuteSyncImpl)
+            if (traceMethodInfo.MethodBase.Name == ExecuteSyncImpl)
             {
                 return delegate (object returnValue, Exception ex)
                 {
@@ -54,7 +54,7 @@ namespace ClrProfiler.Trace.Wrappers.Redis
             {
                 return delegate (object returnValue, Exception ex)
                 {
-                    DelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
+                    DelegateHelper.AsyncMethodEnd(Leave, traceMethodInfo, ex, returnValue);
                 };
             }
         }
@@ -106,15 +106,11 @@ namespace ClrProfiler.Trace.Wrappers.Redis
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
         {
-            if (traceMethodInfo.InvocationTarget == null)
-            {
-                return false;
-            }
-            var invocationTargetType = traceMethodInfo.InvocationTarget.GetType();
+            var invocationTargetType = traceMethodInfo.InvocationTargetType;
             var assemblyName = invocationTargetType.Assembly.GetName().Name;
-            if (AssemblyNames.Contains(assemblyName) && TypeName == traceMethodInfo.TypeName)
+            if (AssemblyNames.Contains(assemblyName) && TypeName == invocationTargetType.FullName)
             {
-                if (traceMethodInfo.MethodName == ExecuteAsyncImpl || traceMethodInfo.MethodName == ExecuteSyncImpl)
+                if (traceMethodInfo.MethodBase.Name == ExecuteAsyncImpl || traceMethodInfo.MethodBase.Name == ExecuteSyncImpl)
                 {
                     return true;
                 }

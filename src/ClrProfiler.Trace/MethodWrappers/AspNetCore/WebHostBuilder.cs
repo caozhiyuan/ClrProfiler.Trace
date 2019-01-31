@@ -3,13 +3,13 @@ using ClrProfiler.Trace.DependencyInjection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace ClrProfiler.Trace.Wrappers.AspNetCore
+namespace ClrProfiler.Trace.MethodWrappers.AspNetCore
 {
-    public class WebHostBuilder : IWrapper
+    public class WebHostBuilder : IMethodWrapper
     {
         private const string TypeName = "Microsoft.AspNetCore.Hosting.WebHostBuilder";
         private const string AssemblyName = "Microsoft.AspNetCore.Hosting";
-        private const string SendAsync = "BuildCommonServices";
+        private const string MethodName = "BuildCommonServices";
 
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
@@ -27,15 +27,11 @@ namespace ClrProfiler.Trace.Wrappers.AspNetCore
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
         {
-            if (traceMethodInfo.InvocationTarget == null)
-            {
-                return false;
-            }
-            var invocationTargetType = traceMethodInfo.InvocationTarget.GetType();
+            var invocationTargetType = traceMethodInfo.InvocationTargetType;
             var assemblyName = invocationTargetType.Assembly.GetName().Name;
-            if (assemblyName == AssemblyName && TypeName == traceMethodInfo.TypeName)
+            if (assemblyName == AssemblyName && TypeName == invocationTargetType.FullName)
             {
-                if (traceMethodInfo.MethodName == SendAsync)
+                if (traceMethodInfo.MethodBase.Name == MethodName)
                 {
                     return true;
                 }

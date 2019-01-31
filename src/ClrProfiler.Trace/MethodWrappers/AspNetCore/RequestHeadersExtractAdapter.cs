@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Http;
 using OpenTracing.Propagation;
 
-namespace ClrProfiler.Trace.Wrappers.AspNetCore
+namespace ClrProfiler.Trace.MethodWrappers.AspNetCore
 {
     internal sealed class RequestHeadersExtractAdapter : ITextMap
     {

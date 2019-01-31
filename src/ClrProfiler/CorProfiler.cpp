@@ -50,11 +50,13 @@ namespace trace {
         this->clrProfilerHomeEnvValue = GetEnvironmentValue(ClrProfilerHome);
 
         if(this->clrProfilerHomeEnvValue.empty()) {
+            Warn("ClrProfilerHome Not Found");
             return E_FAIL;
         }
 
         this->traceAssemblies = LoadTraceAssemblies(this->clrProfilerHomeEnvValue);
         if (this->traceAssemblies.empty()) {
+            Warn("TraceAssemblies Not Found");
             return E_FAIL;
         }
 
@@ -65,6 +67,8 @@ namespace trace {
 
     HRESULT STDMETHODCALLTYPE CorProfiler::Shutdown()
     {
+        Info("CorProfiler Shutdown");
+
         if (this->corProfilerInfo != nullptr)
         {
             this->corProfilerInfo->Release();
@@ -521,10 +525,8 @@ namespace trace {
         COR_SIGNATURE traceBeforeSig[] =
         {
             IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS ,
-            0x05 ,
+            0x03 ,
             ELEMENT_TYPE_OBJECT,
-            ELEMENT_TYPE_STRING ,
-            ELEMENT_TYPE_STRING,
             ELEMENT_TYPE_OBJECT,
             ELEMENT_TYPE_SZARRAY,
             ELEMENT_TYPE_OBJECT,
@@ -585,19 +587,10 @@ namespace trace {
             &objectTypeRef);
         RETURN_OK_IF_FAILED(hr);
 
-        mdString typeNameTextToken;
-        auto typeName = functionInfo.type.name.data();
-        hr = pEmit->DefineUserString(typeName, (ULONG)functionInfo.type.name.size(), &typeNameTextToken);
-        RETURN_OK_IF_FAILED(hr);
-
         auto indexRet = rewriter.cNewLocals - 3;
         auto indexEx = rewriter.cNewLocals - 2;
         auto indexMethodTrace = rewriter.cNewLocals - 1;
 
-        mdString methodNameTextToken;
-        auto methodName = functionInfo.name.data();
-        hr = pEmit->DefineUserString(methodName, (ULONG)functionInfo.name.size(), &methodNameTextToken);
-        RETURN_OK_IF_FAILED(hr);
         ILRewriterWrapper reWriterWrapper(pReWriter);
         ILInstr * pFirstOriginalInstr = pReWriter->GetILList()->m_pNext;
         reWriterWrapper.SetILPosition(pFirstOriginalInstr);
@@ -609,8 +602,6 @@ namespace trace {
         reWriterWrapper.StLocal(indexRet);
         ILInstr* pTryStartInstr = reWriterWrapper.CallMember0(getInstanceMemberRef, false);
         reWriterWrapper.Cast(traceAgentTypeRef);
-        reWriterWrapper.LoadStr(typeNameTextToken);
-        reWriterWrapper.LoadStr(methodNameTextToken);
         reWriterWrapper.LoadArgument(0);
         auto argNum = functionInfo.signature.NumberOfArguments();
         reWriterWrapper.CreateArray(objectTypeRef, argNum);

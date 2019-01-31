@@ -7,7 +7,7 @@ using OpenTracing;
 using OpenTracing.Tag;
 using OpenTracing.Propagation;
 
-namespace ClrProfiler.Trace.Wrappers.AspNetCore
+namespace ClrProfiler.Trace.MethodWrappers.AspNetCore
 {
     public class ProfilerMiddleWare
     {

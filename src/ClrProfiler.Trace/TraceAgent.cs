@@ -13,24 +13,7 @@ namespace ClrProfiler.Trace
 
         private TraceAgent()
         {
-            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
-        }
-
-        private Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
-        {
-            if (args.RequestingAssembly.FullName.Contains("ClrProfiler.Trace"))
-            {
-                var home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
-                if (!string.IsNullOrEmpty(home))
-                {
-                    var filepath = Path.Combine(home, $"{new AssemblyName(args.Name).Name}.dll");
-                    if (File.Exists(filepath))
-                    {
-                        return Assembly.LoadFrom(filepath);
-                    }
-                }
-            }
-            return null;
+            AssemblyResolver.Instance.Init();
         }
 
         public static object GetInstance()
@@ -38,13 +21,13 @@ namespace ClrProfiler.Trace
             return Instance;
         }
 
-        public object BeforeMethod(string typeName, string methodName, object invocationTarget, object[] methodArguments, UInt32 functionToken)
+        public object BeforeMethod(object invocationTarget, object[] methodArguments, uint functionToken)
         {
             try
             {
                 var args = methodArguments;
-                var wrapperService = ServiceLocator.Instance.GetService<WrapperService>();
-                var endMethodDelegate = wrapperService.BeforeWrappedMethod(typeName, methodName, invocationTarget, args, functionToken);
+                var wrapperService = ServiceLocator.Instance.GetService<MethodWrapperService>();
+                var endMethodDelegate = wrapperService.BeforeWrappedMethod(invocationTarget, args, functionToken);
                 return endMethodDelegate != null ? new MethodTrace(endMethodDelegate) : default(MethodTrace);
             }
             catch (Exception ex)
@@ -53,21 +36,6 @@ namespace ClrProfiler.Trace
                 return default(MethodTrace);
             }
         }
-    }
-
-    public class TraceMethodInfo
-    {
-        public string TypeName { get; set; }
-
-        public string MethodName { get; set; }
-
-        public object InvocationTarget { get; set; }
-
-        public object[] MethodArguments { get; set; }
-
-        public UInt32 FunctionToken { get; set; }
-
-        public object TraceContext { get; set; }
     }
 
     public class MethodTrace

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Net.Http.Headers;
 using OpenTracing.Propagation;
 
-namespace ClrProfiler.Trace.Wrappers.Http
+namespace ClrProfiler.Trace.MethodWrappers.Http
 {
     internal sealed class HttpHeadersInjectAdapter : ITextMap
     {

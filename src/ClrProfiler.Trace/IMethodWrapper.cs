@@ -1,6 +1,6 @@
 ﻿namespace ClrProfiler.Trace
 {
-    public interface IWrapper
+    public interface IMethodWrapper
     {
         EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo);
 

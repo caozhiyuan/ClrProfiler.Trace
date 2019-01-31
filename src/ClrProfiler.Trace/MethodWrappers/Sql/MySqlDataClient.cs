@@ -5,9 +5,9 @@ using ClrProfiler.Trace.Extensions;
 using OpenTracing;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.Wrappers.Sql
+namespace ClrProfiler.Trace.MethodWrappers.Sql
 {
-    public class MySqlDataClient : IWrapper
+    public class MySqlDataClient : IMethodWrapper
     {
         private const string TypeName = "MySql.Data.MySqlClient.MySqlCommand";
         private static readonly string[] AssemblyNames = { "MySql.Data" };
@@ -30,7 +30,7 @@ namespace ClrProfiler.Trace.Wrappers.Sql
                 .WithTag(Tags.Component, "MySql.Data")
                 .WithTag(Tags.DbInstance, dbCommand.Connection.ConnectionString)
                 .WithTag(Tags.DbStatement, dbCommand.CommandText)
-                .WithTag(TagMethod, traceMethodInfo.MethodName)
+                .WithTag(TagMethod, traceMethodInfo.MethodBase.Name)
                 .StartActive();
 
             traceMethodInfo.TraceContext = scope;
@@ -53,15 +53,11 @@ namespace ClrProfiler.Trace.Wrappers.Sql
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
         {
-            if (traceMethodInfo.InvocationTarget == null)
-            {
-                return false;
-            }
-            var invocationTargetType = traceMethodInfo.InvocationTarget.GetType();
+            var invocationTargetType = traceMethodInfo.InvocationTargetType;
             var assemblyName = invocationTargetType.Assembly.GetName().Name;
-            if (AssemblyNames.Contains(assemblyName) && TypeName == traceMethodInfo.TypeName)
+            if (AssemblyNames.Contains(assemblyName) && TypeName == invocationTargetType.FullName)
             {
-                if (TraceMethods.Contains(traceMethodInfo.MethodName))
+                if (TraceMethods.Contains(traceMethodInfo.MethodBase.Name))
                 {
                     return true;
                 }

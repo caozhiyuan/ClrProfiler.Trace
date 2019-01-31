@@ -2,23 +2,23 @@
 using System.Data.Common;
 using System.Linq;
 using ClrProfiler.Trace.Extensions;
+using ClrProfiler.Trace.Utils;
 using OpenTracing;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.Wrappers.Sql
+namespace ClrProfiler.Trace.MethodWrappers.Sql
 {
-    public class SystemDataSqlAsyncClient : IWrapper
+    public class MySqlConnectorClient: IMethodWrapper
     {
-        private const string TypeName = "System.Data.SqlClient.SqlCommand";
-        private static readonly string[] AssemblyNames = {"System.Data", "System.Data.SqlClient"};
-        private static readonly string[] TraceMethods = { "ExecuteReaderAsync", "ExecuteNonQueryAsync", "ExecuteScalarAsync", "ExecuteXmlReaderAsync" };
+        private const string TypeName = "MySql.Data.MySqlClient.SqlCommand";
+        private static readonly string[] AssemblyNames = { "MySqlConnector" };
+        private static readonly string[] TraceMethods = { "ExecuteReaderAsync", "ExecuteNonQueryAsync", "ExecuteScalarAsync" };
 
         private const string TagMethod = "db.method";
-        private const string TagIsAsync = "db.async";
-
+    
         private readonly ITracer _tracer;
 
-        public SystemDataSqlAsyncClient(ITracer tracer)
+        public MySqlConnectorClient(ITracer tracer)
         {
             _tracer = tracer;
         }
@@ -26,20 +26,19 @@ namespace ClrProfiler.Trace.Wrappers.Sql
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
             var dbCommand = (DbCommand)traceMethodInfo.InvocationTarget;
-            var scope = _tracer.BuildSpan("mssql.command")
+            var scope = _tracer.BuildSpan("mysql.command")
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
-                .WithTag(Tags.Component, "SqlServer")
+                .WithTag(Tags.Component, "MySqlConnector")
                 .WithTag(Tags.DbInstance, dbCommand.Connection.ConnectionString)
                 .WithTag(Tags.DbStatement, dbCommand.CommandText)
-                .WithTag(TagMethod, traceMethodInfo.MethodName)
-                .WithTag(TagIsAsync, true)
+                .WithTag(TagMethod, traceMethodInfo.MethodBase.Name)
                 .StartActive();
 
             traceMethodInfo.TraceContext = scope;
 
             return delegate (object returnValue, Exception ex)
             {
-                DelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
+                DelegateHelper.AsyncMethodEnd(Leave, traceMethodInfo, ex, returnValue);
             };
         }
 
@@ -55,15 +54,11 @@ namespace ClrProfiler.Trace.Wrappers.Sql
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
         {
-            if (traceMethodInfo.InvocationTarget == null)
-            {
-                return false;
-            }
-            var invocationTargetType = traceMethodInfo.InvocationTarget.GetType();
+            var invocationTargetType = traceMethodInfo.InvocationTargetType;
             var assemblyName = invocationTargetType.Assembly.GetName().Name;
-            if (AssemblyNames.Contains(assemblyName) && TypeName == traceMethodInfo.TypeName)
+            if (AssemblyNames.Contains(assemblyName) && TypeName == invocationTargetType.FullName)
             {
-                if (TraceMethods.Contains(traceMethodInfo.MethodName))
+                if (TraceMethods.Contains(traceMethodInfo.MethodBase.Name))
                 {
                     return true;
                 }

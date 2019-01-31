@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using Dapper;
 using MySql.Data.MySqlClient;
@@ -31,6 +32,13 @@ namespace Samples.WebApi.Controllers
             return Json(str);
         }
 
+        [HttpGet]
+        [Route("test5")]
+        public IActionResult Test5()
+        {
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            return Json(assemblies.ToList().Select(n => new {Name = n.FullName}));
+        }
 
         [HttpGet]
         [Route("test2")]

@@ -33,13 +33,13 @@ namespace ClrProfiler.Trace.DependencyInjection
 
         private void RegisterServices(ServiceCollection services)
         {
-            services.AddSingleton<WrapperService>();
-            var types = typeof(WrapperService).Assembly.GetTypes();
+            services.AddSingleton<MethodWrapperService>();
+            var types = typeof(MethodWrapperService).Assembly.GetTypes();
             foreach (var type in types)
             {
-                if (typeof(IWrapper).IsAssignableFrom(type) && type.IsClass && !type.IsAbstract)
+                if (typeof(IMethodWrapper).IsAssignableFrom(type) && type.IsClass && !type.IsAbstract)
                 {
-                    services.Add(ServiceDescriptor.Singleton(typeof(IWrapper), type));
+                    services.Add(ServiceDescriptor.Singleton(typeof(IMethodWrapper), type));
                 }
             }
 

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Builder;
 using ClrProfiler.Trace.DependencyInjection;
 
-namespace ClrProfiler.Trace.Wrappers.AspNetCore
+namespace ClrProfiler.Trace.MethodWrappers.AspNetCore
 {
     public class ProfilerStartupFilter: IStartupFilter
     {

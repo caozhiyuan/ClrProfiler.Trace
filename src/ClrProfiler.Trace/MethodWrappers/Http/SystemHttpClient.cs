@@ -1,18 +1,19 @@
 ﻿using System;
 using System.Net.Http;
 using ClrProfiler.Trace.Extensions;
+using ClrProfiler.Trace.Utils;
 using OpenTracing;
 using OpenTracing.Propagation;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.Wrappers.Http
+namespace ClrProfiler.Trace.MethodWrappers.Http
 {
-    public class SystemHttpClient: IWrapper
+    public class SystemHttpClient: IMethodWrapper
     {
         private const string TypeName = "System.Net.Http.HttpClient";
         private const string AssemblyName = "System.Net.Http";
 
-        private const string SendAsync = "SendAsync";
+        private const string MethodName = "SendAsync";
 
         private readonly ITracer _tracer;
 
@@ -40,7 +41,7 @@ namespace ClrProfiler.Trace.Wrappers.Http
 
             return delegate(object returnValue, Exception ex)
             {
-                DelegateHelper.AsyncTaskResultMethodEnd(Leave, traceMethodInfo, ex, returnValue);
+                DelegateHelper.AsyncMethodEnd(Leave, traceMethodInfo, ex, returnValue);
             };
         }
 
@@ -63,15 +64,11 @@ namespace ClrProfiler.Trace.Wrappers.Http
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
         {
-            if (traceMethodInfo.InvocationTarget == null)
-            {
-                return false;
-            }
-            var invocationTargetType = traceMethodInfo.InvocationTarget.GetType();
+            var invocationTargetType = traceMethodInfo.InvocationTargetType;
             var assemblyName = invocationTargetType.Assembly.GetName().Name;
-            if (assemblyName == AssemblyName && TypeName == traceMethodInfo.TypeName)
+            if (assemblyName == AssemblyName && TypeName == invocationTargetType.FullName)
             {
-                if (traceMethodInfo.MethodName == SendAsync)
+                if (traceMethodInfo.MethodBase.Name == MethodName)
                 {
                     return true;
                 }

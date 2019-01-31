@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 
-namespace ClrProfiler.Trace.Wrappers
+namespace ClrProfiler.Trace.Utils
 {
     public delegate void AsyncMethodEndDelegate(TraceMethodInfo traceMethodInfo, object returnValue, Exception ex);
 
@@ -9,27 +10,10 @@ namespace ClrProfiler.Trace.Wrappers
     {
         private static readonly TaskCanceledException CanceledException = new TaskCanceledException();
 
-        public static void AsyncTaskResultMethodEnd(AsyncMethodEndDelegate leave,
-            TraceMethodInfo traceMethodInfo,
-            Exception ex, 
-            object returnValue)
-        {
-            AsyncMethodEnd(leave, traceMethodInfo, ex, returnValue);
-        }
-
-        public static void AsyncTaskMethodEnd(AsyncMethodEndDelegate leave,
-            TraceMethodInfo traceMethodInfo,
-            Exception ex, 
-            object returnValue)
-        {
-            AsyncMethodEnd(leave, traceMethodInfo, ex, returnValue, false);
-        }
-
-        private static void AsyncMethodEnd(AsyncMethodEndDelegate endMethodDelegate, 
+        public static void AsyncMethodEnd(AsyncMethodEndDelegate endMethodDelegate, 
             TraceMethodInfo traceMethodInfo, 
             Exception ex,
-            object returnValue,
-            bool hasResult = true)
+            object returnValue)
         {
             if (ex != null)
             {
@@ -57,16 +41,17 @@ namespace ClrProfiler.Trace.Wrappers
                         }
                         else
                         {
-                            if (hasResult)
+                            var methodInfo = traceMethodInfo.MethodBase as MethodInfo;
+                            if (methodInfo != null && methodInfo.ReturnType == typeof(Task))
+                            {
+                                endMethodDelegate(traceMethodInfo, null, null);
+                                tcs.SetResult(1);
+                            }
+                            else
                             {
                                 var ret = ((dynamic)n).Result;
                                 endMethodDelegate(traceMethodInfo, ret, null);
                                 tcs.SetResult(ret);
-                            }
-                            else
-                            {
-                                endMethodDelegate(traceMethodInfo, null, null);
-                                tcs.SetResult(1);
                             }
                         }
                     }
