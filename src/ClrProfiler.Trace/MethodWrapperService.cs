@@ -14,8 +14,8 @@ namespace ClrProfiler.Trace
             public MethodBase MethodBase { get; set; }
         }
 
-        private static readonly ConcurrentDictionary<uint, Lazy<FunctionInfoCache>> FunctionInfosCache =
-            new ConcurrentDictionary<uint, Lazy<FunctionInfoCache>>();
+        private static readonly ConcurrentDictionary<uint, FunctionInfoCache> FunctionInfosCache =
+            new ConcurrentDictionary<uint, FunctionInfoCache>();
 
         private readonly IEnumerable<IMethodWrapper> _wrappers;
 
@@ -38,31 +38,26 @@ namespace ClrProfiler.Trace
                 InvocationTarget = invocationTarget,
                 MethodArguments = methodArguments
             };
-            var lazyInfo = FunctionInfosCache.GetOrAdd(functionToken, (token) =>
+            var functionInfo = FunctionInfosCache.GetOrAdd(functionToken, (token) =>
             {
-                return new Lazy<FunctionInfoCache>(() =>
+                var functionInfoCache = new FunctionInfoCache();
+                var invocationTargetType = traceMethodInfo.InvocationTargetType;
+                functionInfoCache.MethodBase = invocationTargetType.Module.ResolveMethod((int)token);
+
+                traceMethodInfo.MethodBase = functionInfoCache.MethodBase;
+                foreach (var wrapper in _wrappers)
                 {
-                    var functionInfoCache = new FunctionInfoCache();
-
-                    var invocationTargetType = traceMethodInfo.InvocationTargetType;
-                    functionInfoCache.MethodBase = invocationTargetType.Module.ResolveMethod((int)functionToken);
-
-                    traceMethodInfo.MethodBase = functionInfoCache.MethodBase;
-
-                    foreach (var wrapper in _wrappers)
+                    if (wrapper.CanWrap(traceMethodInfo))
                     {
-                        if (wrapper.CanWrap(traceMethodInfo))
-                        {
-                            functionInfoCache.Wrapper = wrapper;
-                            break;
-                        }
-                    }       
-                    return functionInfoCache;
-                });
+                        functionInfoCache.Wrapper = wrapper;
+                        break;
+                    }
+                }
+                return functionInfoCache;
             });
 
-            traceMethodInfo.MethodBase = lazyInfo.Value.MethodBase;
-            return lazyInfo.Value.Wrapper?.BeforeWrappedMethod(traceMethodInfo);
+            traceMethodInfo.MethodBase = functionInfo.MethodBase;
+            return functionInfo.Wrapper?.BeforeWrappedMethod(traceMethodInfo);
         }
     }
 }

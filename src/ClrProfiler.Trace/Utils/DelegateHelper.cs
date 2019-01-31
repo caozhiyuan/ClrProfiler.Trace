@@ -55,7 +55,7 @@ namespace ClrProfiler.Trace.Utils
                             }
                         }
                     }
-                }, TaskScheduler.Default);
+                }, TaskContinuationOptions.ExecuteSynchronously);
                 returnValue = tcs.Task;
             }
         }
