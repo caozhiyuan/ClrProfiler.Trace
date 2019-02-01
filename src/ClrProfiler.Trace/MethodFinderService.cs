@@ -25,6 +25,31 @@ namespace ClrProfiler.Trace
             PrepareAssemblyInfoCache();
         }
 
+        public EndMethodDelegate BeforeWrappedMethod(object invocationTarget,
+            object[] methodArguments,
+            uint functionToken)
+        {
+            if (invocationTarget == null)
+            {
+                throw new ArgumentException(nameof(invocationTarget));
+            }
+
+            var traceMethodInfo = new TraceMethodInfo
+            {
+                InvocationTarget = invocationTarget,
+                MethodArguments = methodArguments
+            };
+
+            var functionInfo = GetFunctionInfoFromCache(functionToken, traceMethodInfo);
+            traceMethodInfo.MethodBase = functionInfo.MethodBase;
+
+            if (functionInfo.Wrapper == null)
+            {
+                PrepareMethodWrapper(functionInfo, traceMethodInfo);
+            }
+            return functionInfo.Wrapper?.BeforeWrappedMethod(traceMethodInfo);
+        }
+
         private void PrepareAssemblyInfoCache()
         {
             var home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
@@ -55,31 +80,6 @@ namespace ClrProfiler.Trace
             }
         }
 
-        public EndMethodDelegate BeforeWrappedMethod(object invocationTarget,
-            object[] methodArguments,
-            uint functionToken)
-        {
-            if (invocationTarget == null)
-            {
-                throw new ArgumentException(nameof(invocationTarget));
-            }
-
-            var traceMethodInfo = new TraceMethodInfo
-            {
-                InvocationTarget = invocationTarget,
-                MethodArguments = methodArguments
-            };
-
-            var functionInfo = GetFunctionInfoFromCache(functionToken, traceMethodInfo);
-            traceMethodInfo.MethodBase = functionInfo.MethodBase;
-
-            if (functionInfo.Wrapper == null)
-            {
-                PrepareMethodWrapper(functionInfo, traceMethodInfo);
-            }
-            return functionInfo.Wrapper?.BeforeWrappedMethod(traceMethodInfo);
-        }
-
         private void PrepareMethodWrapper(FunctionInfoCache functionInfo, TraceMethodInfo traceMethodInfo)
         {
             var assemblyName = traceMethodInfo.InvocationTargetType.Assembly.GetName().Name;
@@ -87,7 +87,7 @@ namespace ClrProfiler.Trace
             {
                 if (assemblyInfoCache.MethodWrappers == null)
                 {
-                    lock (this)
+                    lock (assemblyInfoCache)
                     {
                         assemblyInfoCache.MethodWrappers = GetMethodWrappers(assemblyInfoCache.Assembly);
                     }
@@ -102,19 +102,22 @@ namespace ClrProfiler.Trace
                     }
                 }
             }
-            else
+
+            if (functionInfo.Wrapper == null)
             {
                 functionInfo.Wrapper = new NoopMethodWrapper();
             }
         }
 
-        private static FunctionInfoCache GetFunctionInfoFromCache(uint functionToken, TraceMethodInfo traceMethodInfo)
+        private FunctionInfoCache GetFunctionInfoFromCache(uint functionToken, TraceMethodInfo traceMethodInfo)
         {
-            var functionInfo = FunctionInfosCache.GetOrAdd(functionToken, (token) =>
+            var functionInfo = FunctionInfosCache.GetOrAdd(functionToken, token =>
             {
+                var type = traceMethodInfo.InvocationTargetType;
+                var methodBase = type.Module.ResolveMethod((int) token);
                 var functionInfoCache = new FunctionInfoCache
                 {
-                    MethodBase = traceMethodInfo.InvocationTargetType.Module.ResolveMethod((int) token)
+                    MethodBase = methodBase
                 };
                 return functionInfoCache;
             });
@@ -123,18 +126,17 @@ namespace ClrProfiler.Trace
 
         private List<IMethodWrapper> GetMethodWrappers(Assembly assembly)
         {
-            List<IMethodWrapper> methodWrappers = new List<IMethodWrapper>();
-            List<Type> wrapperTypes = GetWrapperTypes(assembly);
-            foreach (var wrapperType in wrapperTypes)
+            var methodWrappers = new List<IMethodWrapper>();
+            var methodWrapperTypes = GetMethodWrapperTypes(assembly);
+            foreach (var methodWrapperType in methodWrapperTypes)
             {
-                var wrapper = (IMethodWrapper) Activator.CreateInstance(wrapperType, _tracer);
+                var wrapper = (IMethodWrapper) Activator.CreateInstance(methodWrapperType, _tracer);
                 methodWrappers.Add(wrapper);
             }
-
             return methodWrappers;
         }
 
-        private static List<Type> GetWrapperTypes(Assembly assembly)
+        private List<Type> GetMethodWrapperTypes(Assembly assembly)
         {
             List<Type> wrapperTypes = new List<Type>();
             try
