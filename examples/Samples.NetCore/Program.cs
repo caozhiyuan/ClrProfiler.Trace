@@ -45,30 +45,6 @@ namespace Samples.NetCore
 
         private async Task RunSqlClient()
         {
-            await RunSqlClientInner();
-
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
-            const int c = 10000;
-            CountdownEvent k = new CountdownEvent(c);
-            Parallel.For(0, c, (i) =>
-            {
-                var task = RunSqlClientInner();
-                task.ContinueWith(n =>
-                {
-                    if (n.IsFaulted)
-                    {
-                        Console.WriteLine($"{i} {n.Exception}");
-                    }
-                    k.Signal(1);
-                });
-            });
-            k.Wait();
-            Console.WriteLine("Sql ExecuteScalarAsync " + sw.ElapsedMilliseconds);
-        }
-
-        private static async Task RunSqlClientInner()
-        {
             using (var connection = new SqlConnection($"Data Source=.;Initial Catalog=tempdb;Integrated Security=True"))
             {
                 await connection.OpenAsync();

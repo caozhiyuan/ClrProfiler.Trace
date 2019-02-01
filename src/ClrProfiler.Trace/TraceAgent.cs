@@ -2,6 +2,13 @@
 using System.IO;
 using System.Reflection;
 using ClrProfiler.Trace.DependencyInjection;
+using Jaeger;
+using Jaeger.Samplers;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using OpenTracing;
+using OpenTracing.Util;
 
 namespace ClrProfiler.Trace
 {
@@ -13,7 +20,48 @@ namespace ClrProfiler.Trace
 
         private TraceAgent()
         {
-            AssemblyResolver.Instance.Init();
+            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
+
+            ServiceLocator.Instance.RegisterServices(RegisterServices);
+        }
+
+        private Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            var home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
+            if (!string.IsNullOrEmpty(home))
+            {
+                var filepath = Path.Combine(home, $"{new AssemblyName(args.Name).Name}.dll");
+                if (File.Exists(filepath))
+                {
+                    return Assembly.LoadFrom(filepath);
+                }
+            }
+            return null;
+        }
+
+        private void RegisterServices(ServiceCollection services)
+        {
+            services.AddSingleton<MethodFinderService>();
+
+            services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
+
+            services.AddSingleton(serviceProvider =>
+            {
+                string serviceName = Assembly.GetEntryAssembly().GetName().Name;
+
+                ILoggerFactory loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+
+                ISampler sampler = new ConstSampler(sample: true);
+
+                ITracer tracer = new Tracer.Builder(serviceName)
+                    .WithLoggerFactory(loggerFactory)
+                    .WithSampler(sampler)
+                    .Build();
+
+                GlobalTracer.Register(tracer);
+
+                return tracer;
+            });
         }
 
         public static object GetInstance()
@@ -26,7 +74,7 @@ namespace ClrProfiler.Trace
             try
             {
                 var args = methodArguments;
-                var wrapperService = ServiceLocator.Instance.GetService<MethodWrapperService>();
+                var wrapperService = ServiceLocator.Instance.GetService<MethodFinderService>();
                 var endMethodDelegate = wrapperService.BeforeWrappedMethod(invocationTarget, args, functionToken);
                 return endMethodDelegate != null ? new MethodTrace(endMethodDelegate) : default(MethodTrace);
             }

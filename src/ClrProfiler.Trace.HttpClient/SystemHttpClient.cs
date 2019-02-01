@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Net.Http;
+using ClrProfiler.Trace.Attributes;
 using ClrProfiler.Trace.Extensions;
 using ClrProfiler.Trace.Utils;
 using OpenTracing;
 using OpenTracing.Propagation;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.MethodWrappers.Http
+[assembly: TargetAssembly(Names = new []{ "System.Net.Http" })]
+
+namespace ClrProfiler.Trace.HttpClient
 {
-    public class SystemHttpClient: IMethodWrapper
+    public class SystemHttpClient : IMethodWrapper
     {
         private const string TypeName = "System.Net.Http.HttpClient";
         private const string AssemblyName = "System.Net.Http";

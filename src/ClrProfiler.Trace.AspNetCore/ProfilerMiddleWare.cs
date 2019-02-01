@@ -1,28 +1,29 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using ClrProfiler.Trace.DependencyInjection;
 using ClrProfiler.Trace.Extensions;
+using Microsoft.AspNetCore.Http;
 using OpenTracing;
-using OpenTracing.Tag;
 using OpenTracing.Propagation;
+using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.MethodWrappers.AspNetCore
+namespace ClrProfiler.Trace.AspNetCore
 {
     public class ProfilerMiddleWare
     {
-        private readonly ServiceLocator _serviceLocator;
         private readonly RequestDelegate _next;
 
-        public ProfilerMiddleWare(RequestDelegate next, ServiceLocator serviceLocator)
+        private readonly ITracer _tracer;
+
+        public ProfilerMiddleWare(RequestDelegate next, ITracer tracer)
         {
-            _serviceLocator = serviceLocator;
+
+            _tracer = tracer;
             _next = next;
         }
 
         public async Task Invoke(HttpContext context)
         {
-            var tracer = _serviceLocator.GetService<ITracer>();
+            var tracer = _tracer;
 
             var extractedSpanContext = tracer.Extract(BuiltinFormats.HttpHeaders, new RequestHeadersExtractAdapter(context.Request.Headers));
 

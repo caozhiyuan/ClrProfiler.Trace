@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace ClrProfiler.Trace.Utils
 {
-    internal class PropertyFetcher
+    public class PropertyFetcher
     {
         private readonly string _propertyName;
         private PropertyFetch _fetchForExpectedType;

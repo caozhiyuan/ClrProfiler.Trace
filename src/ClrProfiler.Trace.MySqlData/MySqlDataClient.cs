@@ -1,24 +1,26 @@
 ﻿using System;
 using System.Data.Common;
 using System.Linq;
+using ClrProfiler.Trace.Attributes;
 using ClrProfiler.Trace.Extensions;
-using ClrProfiler.Trace.Utils;
 using OpenTracing;
 using OpenTracing.Tag;
 
-namespace ClrProfiler.Trace.MethodWrappers.Sql
+[assembly: TargetAssembly(Names = new[] { "MySql.Data" })]
+
+namespace ClrProfiler.Trace.MySqlData
 {
-    public class MySqlConnectorClient: IMethodWrapper
+    public class MySqlDataClient : IMethodWrapper
     {
-        private const string TypeName = "MySql.Data.MySqlClient.SqlCommand";
-        private static readonly string[] AssemblyNames = { "MySqlConnector" };
-        private static readonly string[] TraceMethods = { "ExecuteReaderAsync", "ExecuteNonQueryAsync", "ExecuteScalarAsync" };
+        private const string TypeName = "MySql.Data.MySqlClient.MySqlCommand";
+        private static readonly string[] AssemblyNames = { "MySql.Data" };
+        private static readonly string[] TraceMethods = { "ExecuteReader", "ExecuteNonQuery", "ExecuteScalar" };
 
         private const string TagMethod = "db.method";
-    
+
         private readonly ITracer _tracer;
 
-        public MySqlConnectorClient(ITracer tracer)
+        public MySqlDataClient(ITracer tracer)
         {
             _tracer = tracer;
         }
@@ -28,7 +30,7 @@ namespace ClrProfiler.Trace.MethodWrappers.Sql
             var dbCommand = (DbCommand)traceMethodInfo.InvocationTarget;
             var scope = _tracer.BuildSpan("mysql.command")
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
-                .WithTag(Tags.Component, "MySqlConnector")
+                .WithTag(Tags.Component, "MySql.Data")
                 .WithTag(Tags.DbInstance, dbCommand.Connection.ConnectionString)
                 .WithTag(Tags.DbStatement, dbCommand.CommandText)
                 .WithTag(TagMethod, traceMethodInfo.MethodBase.Name)
@@ -38,7 +40,7 @@ namespace ClrProfiler.Trace.MethodWrappers.Sql
 
             return delegate (object returnValue, Exception ex)
             {
-                DelegateHelper.AsyncMethodEnd(Leave, traceMethodInfo, ex, returnValue);
+                Leave(traceMethodInfo,returnValue,ex);
             };
         }
 

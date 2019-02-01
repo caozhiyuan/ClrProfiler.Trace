@@ -1,15 +1,25 @@
 ﻿using System;
-using ClrProfiler.Trace.DependencyInjection;
+using ClrProfiler.Trace.Attributes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTracing;
 
-namespace ClrProfiler.Trace.MethodWrappers.AspNetCore
+[assembly: TargetAssembly(Names = new[] { "Microsoft.AspNetCore.Hosting" })]
+
+namespace ClrProfiler.Trace.AspNetCore
 {
     public class WebHostBuilder : IMethodWrapper
     {
         private const string TypeName = "Microsoft.AspNetCore.Hosting.WebHostBuilder";
         private const string AssemblyName = "Microsoft.AspNetCore.Hosting";
         private const string MethodName = "BuildCommonServices";
+
+        private readonly ITracer _tracer;
+
+        public WebHostBuilder(ITracer tracer)
+        {
+            _tracer = tracer;
+        }
 
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
@@ -22,7 +32,7 @@ namespace ClrProfiler.Trace.MethodWrappers.AspNetCore
         private void Leave(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
         {
             var serviceCollection = (ServiceCollection) ret;
-            serviceCollection.AddSingleton<IStartupFilter>(n => new ProfilerStartupFilter(ServiceLocator.Instance));
+            serviceCollection.AddSingleton<IStartupFilter>(n => new ProfilerStartupFilter(_tracer));
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
