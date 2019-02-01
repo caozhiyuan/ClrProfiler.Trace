@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Net.Http;
-using ClrProfiler.Trace.Attributes;
 using ClrProfiler.Trace.Extensions;
 using ClrProfiler.Trace.Utils;
 using OpenTracing;
 using OpenTracing.Propagation;
 using OpenTracing.Tag;
-
-[assembly: TargetAssembly(Names = new []{ "System.Net.Http" })]
 
 namespace ClrProfiler.Trace.HttpClient
 {

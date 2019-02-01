@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Data.Common;
 using System.Linq;
-using ClrProfiler.Trace.Attributes;
 using ClrProfiler.Trace.Extensions;
 using ClrProfiler.Trace.Utils;
 using OpenTracing;
 using OpenTracing.Tag;
-
-[assembly: TargetAssembly(Names = new[] { "System.Data", "System.Data.SqlClient" })]
 
 namespace ClrProfiler.Trace.SystemDataSqlClient
 {

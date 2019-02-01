@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Data.Common;
 using System.Linq;
-using ClrProfiler.Trace.Attributes;
 using ClrProfiler.Trace.Extensions;
 using OpenTracing;
 using OpenTracing.Tag;
-
-[assembly: TargetAssembly(Names = new[] { "MySql.Data" })]
 
 namespace ClrProfiler.Trace.MySqlData
 {

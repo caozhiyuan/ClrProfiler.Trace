@@ -3,7 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using ClrProfiler.Trace.Attributes;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using OpenTracing;
 
 namespace ClrProfiler.Trace
@@ -16,13 +17,31 @@ namespace ClrProfiler.Trace
         private readonly ConcurrentDictionary<string, AssemblyInfoCache> _assemblies = 
             new ConcurrentDictionary<string, AssemblyInfoCache>();
 
+        private readonly string _home;
         private readonly ITracer _tracer;
 
         public MethodFinderService(ITracer tracer)
         {
             _tracer = tracer;
+            _home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
+            if (string.IsNullOrEmpty(_home))
+            {
+                throw new ArgumentException("CLR PROFILER HOME IsNullOrEmpty");
+            }
 
-            PrepareAssemblyInfoCache();
+            var path = Path.Combine(_home, "trace.json");
+            if (File.Exists(path))
+            {
+                var text = File.ReadAllText(path);
+                var jObject = (JObject)JsonConvert.DeserializeObject(text);
+                foreach (var jToken in jObject["instrumentation"])
+                {
+                    _assemblies.TryAdd(jToken["assemblyName"].ToString(), new AssemblyInfoCache
+                    {
+                        AssemblyName = jToken["targetAssemblyName"].ToString()
+                    });
+                }
+            }
         }
 
         public EndMethodDelegate BeforeWrappedMethod(object invocationTarget,
@@ -43,72 +62,90 @@ namespace ClrProfiler.Trace
             var functionInfo = GetFunctionInfoFromCache(functionToken, traceMethodInfo);
             traceMethodInfo.MethodBase = functionInfo.MethodBase;
 
-            if (functionInfo.Wrapper == null)
+            if (functionInfo.MethodWrapper == null)
             {
                 PrepareMethodWrapper(functionInfo, traceMethodInfo);
             }
-            return functionInfo.Wrapper?.BeforeWrappedMethod(traceMethodInfo);
+
+            return functionInfo.MethodWrapper?.BeforeWrappedMethod(traceMethodInfo);
         }
 
-        private void PrepareAssemblyInfoCache()
+        /// <summary>
+        /// Prepare FunctionInfoCache MethodWrapperInfo
+        /// </summary>
+        /// <param name="functionInfo"></param>
+        /// <param name="traceMethodInfo"></param>
+        private void PrepareMethodWrapper(FunctionInfoCache functionInfo, TraceMethodInfo traceMethodInfo)
         {
-            var home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
-            if (!string.IsNullOrEmpty(home))
+            try
             {
-                foreach (string dllPath in Directory.GetFiles(home, "*.dll"))
+                var assemblyName = traceMethodInfo.InvocationTargetType.Assembly.GetName().Name;
+                if (_assemblies.TryGetValue(assemblyName, out var assemblyInfoCache))
                 {
-                    try
+                    if (assemblyInfoCache.Assembly == null)
                     {
-                        var assembly = Assembly.LoadFile(dllPath);
-                        var attr = assembly.GetCustomAttribute<TargetAssemblyAttribute>();
-                        if (attr != null)
+                        lock (assemblyInfoCache)
                         {
-                            foreach (var name in attr.Names)
+                            if (assemblyInfoCache.Assembly == null)
                             {
-                                _assemblies.TryAdd(name, new AssemblyInfoCache()
+                                var path = Path.Combine(_home, $"{assemblyInfoCache.AssemblyName}.dll");
+                                if (File.Exists(path))
                                 {
-                                    Assembly = assembly
-                                });
+                                    var assembly = Assembly.LoadFile(path);
+#if !NETSTANDARD
+                                    AppDomain.CurrentDomain.Load(assembly.GetName());
+#endif
+                                    assemblyInfoCache.Assembly = assembly;
+                                }
+                                else
+                                {
+                                    throw new FileNotFoundException($"FileNotFound Path:{path}");
+                                }
                             }
                         }
                     }
-                    catch (BadImageFormatException ex)
+
+                    if (assemblyInfoCache.MethodWrappers == null)
                     {
-                        System.Diagnostics.Trace.WriteLine(ex);
+                        lock (assemblyInfoCache)
+                        {
+                            if (assemblyInfoCache.MethodWrappers == null)
+                            {
+                                assemblyInfoCache.MethodWrappers = GetMethodWrappers(assemblyInfoCache.Assembly);
+                            }
+                        }
+                    }
+
+                    foreach (var methodWrapper in assemblyInfoCache.MethodWrappers)
+                    {
+                        if (methodWrapper.CanWrap(traceMethodInfo))
+                        {
+                            functionInfo.MethodWrapper = methodWrapper;
+                            break;
+                        }
                     }
                 }
+                if (functionInfo.MethodWrapper == null)
+                {
+                    functionInfo.MethodWrapper = new NoopMethodWrapper();
+                }
+            }
+            catch (BadImageFormatException)
+            {
+                functionInfo.MethodWrapper = new NoopMethodWrapper();
+            }
+            catch (FileNotFoundException)
+            {
+                functionInfo.MethodWrapper = new NoopMethodWrapper();
             }
         }
 
-        private void PrepareMethodWrapper(FunctionInfoCache functionInfo, TraceMethodInfo traceMethodInfo)
-        {
-            var assemblyName = traceMethodInfo.InvocationTargetType.Assembly.GetName().Name;
-            if (_assemblies.TryGetValue(assemblyName, out var assemblyInfoCache))
-            {
-                if (assemblyInfoCache.MethodWrappers == null)
-                {
-                    lock (assemblyInfoCache)
-                    {
-                        assemblyInfoCache.MethodWrappers = GetMethodWrappers(assemblyInfoCache.Assembly);
-                    }
-                }
-
-                foreach (var methodWrapper in assemblyInfoCache.MethodWrappers)
-                {
-                    if (methodWrapper.CanWrap(traceMethodInfo))
-                    {
-                        functionInfo.Wrapper = methodWrapper;
-                        break;
-                    }
-                }
-            }
-
-            if (functionInfo.Wrapper == null)
-            {
-                functionInfo.Wrapper = new NoopMethodWrapper();
-            }
-        }
-
+        /// <summary>
+        /// GetFunctionInfo MethodBase FromCache
+        /// </summary>
+        /// <param name="functionToken"></param>
+        /// <param name="traceMethodInfo"></param>
+        /// <returns></returns>
         private FunctionInfoCache GetFunctionInfoFromCache(uint functionToken, TraceMethodInfo traceMethodInfo)
         {
             var functionInfo = FunctionInfosCache.GetOrAdd(functionToken, token =>
@@ -124,6 +161,11 @@ namespace ClrProfiler.Trace
             return functionInfo;
         }
 
+        /// <summary>
+        /// GetMethodWrappers
+        /// </summary>
+        /// <param name="assembly"></param>
+        /// <returns></returns>
         private List<IMethodWrapper> GetMethodWrappers(Assembly assembly)
         {
             var methodWrappers = new List<IMethodWrapper>();
@@ -136,6 +178,11 @@ namespace ClrProfiler.Trace
             return methodWrappers;
         }
 
+        /// <summary>
+        /// GetMethodWrapperTypes
+        /// </summary>
+        /// <param name="assembly"></param>
+        /// <returns></returns>
         private List<Type> GetMethodWrapperTypes(Assembly assembly)
         {
             List<Type> wrapperTypes = new List<Type>();
@@ -159,7 +206,7 @@ namespace ClrProfiler.Trace
 
         private class FunctionInfoCache
         {
-            public IMethodWrapper Wrapper { get; set; }
+            public IMethodWrapper MethodWrapper { get; set; }
 
             public MethodBase MethodBase { get; set; }
         }
@@ -167,6 +214,8 @@ namespace ClrProfiler.Trace
         private class AssemblyInfoCache
         {
             public Assembly Assembly { get; set; }
+
+            public string AssemblyName { get; set; }
 
             public List<IMethodWrapper> MethodWrappers { get; set; }
         }

@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Linq;
-using ClrProfiler.Trace.Attributes;
 using ClrProfiler.Trace.Extensions;
 using ClrProfiler.Trace.Utils;
 using OpenTracing;
 using OpenTracing.Tag;
-
-[assembly: TargetAssembly(Names = new[] { "StackExchange.Redis", "StackExchange.Redis.StrongName" })]
 
 namespace ClrProfiler.Trace.StackExchangeRedis
 {

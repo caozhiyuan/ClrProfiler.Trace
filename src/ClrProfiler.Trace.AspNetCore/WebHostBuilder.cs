@@ -1,10 +1,7 @@
 ﻿using System;
-using ClrProfiler.Trace.Attributes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTracing;
-
-[assembly: TargetAssembly(Names = new[] { "Microsoft.AspNetCore.Hosting" })]
 
 namespace ClrProfiler.Trace.AspNetCore
 {

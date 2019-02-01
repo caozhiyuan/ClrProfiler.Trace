@@ -2,6 +2,7 @@
     "instrumentation": [
         {
             "assemblyName": "StackExchange.Redis",
+            "targetAssemblyName": "ClrProfiler.Trace.StackExchangeRedis",
             "className": "StackExchange.Redis.ConnectionMultiplexer",
             "methods": [
                 {
@@ -14,6 +15,7 @@
         },
         {
             "assemblyName": "StackExchange.Redis.StrongName",
+            "targetAssemblyName": "ClrProfiler.Trace.StackExchangeRedis",
             "className": "StackExchange.Redis.ConnectionMultiplexer",
             "methods": [
                 {
@@ -26,6 +28,7 @@
         },
         {
             "assemblyName": "System.Net.Http",
+            "targetAssemblyName": "ClrProfiler.Trace.HttpClient",
             "className": "System.Net.Http.HttpClient",
             "methods": [
                 {
@@ -36,6 +39,7 @@
         },
         {
             "assemblyName": "System.Data.SqlClient",
+            "targetAssemblyName": "ClrProfiler.Trace.SystemDataSqlClient",
             "className": "System.Data.SqlClient.SqlCommand",
             "methods": [
                 {
@@ -58,6 +62,7 @@
         },
         {
             "assemblyName": "MySql.Data",
+            "targetAssemblyName": "ClrProfiler.Trace.MySqlData",
             "className": "MySql.Data.MySqlClient.MySqlCommand",
             "methods": [
                 {
@@ -74,6 +79,7 @@
         },
         {
             "assemblyName": "Microsoft.AspNetCore.Hosting",
+            "targetAssemblyName": "ClrProfiler.Trace.AspNetCore",
             "className": "Microsoft.AspNetCore.Hosting.WebHostBuilder",
             "methods": [
                 {

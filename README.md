@@ -64,15 +64,16 @@ SET CLRPROFILER_HOME=%~dp0\src\ClrProfiler.Trace\bin\Debug\netstandard2.0
 
 : net framework need add gac "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\gacutil.exe" /i %~dp0\src\ClrProfiler.Trace\bin\Debug\net461\ClrProfiler.Trace.dll
 
-cd src/ClrProfiler.Trace
-dotnet publish -f netstandard2.0 -o bin\Debug\netstandard2.0
+cd src
+dotnet build
 
-as sample 
+cd ClrProfiler.Trace
+dotnet publish -f netstandard2.0 -o bin\Debug\netstandard2.0
 
 download https://github.com/jaegertracing/jaeger/releases/download/v1.9.0/jaeger-1.9.0-windows-amd64.tar.gz
 run jaeger-all-in-one.exe
 
-run Samples.WebApi
+run examples Samples.WebApi
 
 open http://localhost:16686
 
