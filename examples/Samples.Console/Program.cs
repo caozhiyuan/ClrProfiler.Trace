@@ -8,7 +8,7 @@ using Dapper;
 using MySql.Data.MySqlClient;
 using StackExchange.Redis;
 
-namespace Samples.NetCore
+namespace Samples.Console
 {
     class Program
     {
@@ -18,12 +18,12 @@ namespace Samples.NetCore
         {
             Run().GetAwaiter().GetResult();
 
-            Console.ReadLine();
+            System.Console.ReadLine();
         }
 
         private static async Task Run()
         {
-            Console.WriteLine("Start");
+            System.Console.WriteLine("Start");
 
             Program program = new Program();
 
@@ -35,7 +35,7 @@ namespace Samples.NetCore
 
             await program.RunMySqlClient();
 
-            Console.WriteLine("End");
+            System.Console.WriteLine("End");
         }
 
         private async Task RunGetBing()
@@ -70,7 +70,7 @@ namespace Samples.NetCore
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                System.Console.WriteLine(e);
                 throw;
             }
         }
@@ -101,13 +101,13 @@ namespace Samples.NetCore
                     {
                         if (n.IsFaulted)
                         {
-                            Console.WriteLine($"{i} {n.Exception}");
+                            System.Console.WriteLine($"{i} {n.Exception}");
                         }
                         k.Signal(1);
                     });
                 });
                 k.Wait();
-                Console.WriteLine("Redis StringSetAsync " + sw.ElapsedMilliseconds);
+                System.Console.WriteLine("Redis StringSetAsync " + sw.ElapsedMilliseconds);
             }
         }
     }

@@ -55,20 +55,17 @@ SET CORECLR_PROFILER={cf0d821e-299b-5307-a3d8-b283c03916dd}
 SET CORECLR_ENABLE_PROFILING=1
 SET CORECLR_PROFILER_PATH=%~dp0\src\ClrProfiler\x64\Debug\ClrProfiler.dll
 
-: SET COR_PROFILER={cf0d821e-299b-5307-a3d8-b283c03916dd}
-: SET COR_ENABLE_PROFILING=1
-: SET COR_PROFILER_PATH=%~dp0\src\ClrProfiler\x64\Debug\ClrProfiler.dll
+SET COR_PROFILER={cf0d821e-299b-5307-a3d8-b283c03916dd}
+SET COR_ENABLE_PROFILING=1
+SET COR_PROFILER_PATH=%~dp0\src\ClrProfiler\x64\Debug\ClrProfiler.dll
 
 : just a sample because ClrProfiler.Trace.dll in this path
 SET CLRPROFILER_HOME=%~dp0\src\ClrProfiler.Trace\bin\Debug\netstandard2.0
 
-: net framework need add gac "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\gacutil.exe" /i %~dp0\src\ClrProfiler.Trace\bin\Debug\net461\ClrProfiler.Trace.dll
+cd tools
+Dll.Repack.cmd Debug netstandard2.0
 
-cd src
-dotnet build
-
-cd ClrProfiler.Trace
-dotnet publish -f netstandard2.0 -o bin\Debug\netstandard2.0
+: BuildType(Debug Release) BuildFramework(netstandard2.0 net461) , net framework need run admin cmd for GAC
 
 download https://github.com/jaegertracing/jaeger/releases/download/v1.9.0/jaeger-1.9.0-windows-amd64.tar.gz
 run jaeger-all-in-one.exe

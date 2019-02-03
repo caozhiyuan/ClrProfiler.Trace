@@ -1,17 +1,16 @@
-@echo off
+cd /d %~dp0
+
+SET WorkDir=%~dp0
 
 SET CORECLR_PROFILER={cf0d821e-299b-5307-a3d8-b283c03916dd}
 SET CORECLR_ENABLE_PROFILING=1
-SET CORECLR_PROFILER_PATH=%~dp0\src\ClrProfiler\x64\Debug\ClrProfiler.dll
+SET CORECLR_PROFILER_PATH=%WorkDir%src\ClrProfiler\x64\Debug\ClrProfiler.dll
 
-: SET COR_PROFILER={cf0d821e-299b-5307-a3d8-b283c03916dd}
-: SET COR_ENABLE_PROFILING=1
-: SET COR_PROFILER_PATH=%~dp0\src\ClrProfiler\x64\Debug\ClrProfiler.dll
+SET COR_PROFILER={cf0d821e-299b-5307-a3d8-b283c03916dd}
+SET COR_ENABLE_PROFILING=1
+SET COR_PROFILER_PATH=%WorkDir%src\ClrProfiler\x64\Debug\ClrProfiler.dll
 
-: net framework need add gac "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\gacutil.exe" /i %~dp0\src\ClrProfiler.Trace\bin\Debug\net461\ClrProfiler.Trace.dll
-
-: just a sample because ClrProfiler.Trace.dll in this path
-SET CLRPROFILER_HOME=%~dp0\src\ClrProfiler.Trace\bin\Debug\netstandard2.0
+SET CLRPROFILER_HOME=%WorkDir%src\ClrProfiler.Trace\bin\Debug\netstandard2.0
 
 echo Starting Visual Studio...
 IF EXIST "D:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\devenv.exe" (

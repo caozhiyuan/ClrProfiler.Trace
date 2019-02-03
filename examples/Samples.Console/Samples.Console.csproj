@@ -2,12 +2,12 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp2.2;net461</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
-    <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <TargetFrameworks>netcoreapp2.2;net461</TargetFrameworks>
   </PropertyGroup>
   
   <ItemGroup>
