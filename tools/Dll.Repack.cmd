@@ -14,7 +14,7 @@ SET DLLS=%DLLS% Microsoft.Extensions.DependencyInjection.Abstractions.dll Micros
 SET DLLS=%DLLS% Microsoft.Extensions.Logging.Abstractions.dll
 
 cd ../src
-dotnet build
+dotnet build -c %BuildType%
 
 cd ClrProfiler.Trace
 dotnet publish -c %BuildType% -f %BuildFramework% -o bin\%BuildType%\%BuildFramework%

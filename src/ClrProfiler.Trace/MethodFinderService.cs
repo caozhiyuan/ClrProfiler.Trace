@@ -44,10 +44,11 @@ namespace ClrProfiler.Trace
             }
         }
 
-        public EndMethodDelegate BeforeWrappedMethod(object invocationTarget,
+        public EndMethodDelegate BeforeWrappedMethod(object type,
+            object invocationTarget,
             object[] methodArguments,
             uint functionToken)
-        {
+        {      
             if (invocationTarget == null)
             {
                 throw new ArgumentException(nameof(invocationTarget));
@@ -56,7 +57,8 @@ namespace ClrProfiler.Trace
             var traceMethodInfo = new TraceMethodInfo
             {
                 InvocationTarget = invocationTarget,
-                MethodArguments = methodArguments
+                MethodArguments = methodArguments,
+                Type = (Type) type
             };
 
             var functionInfo = GetFunctionInfoFromCache(functionToken, traceMethodInfo);
@@ -66,7 +68,7 @@ namespace ClrProfiler.Trace
             {
                 PrepareMethodWrapper(functionInfo, traceMethodInfo);
             }
-
+            
             return functionInfo.MethodWrapper?.BeforeWrappedMethod(traceMethodInfo);
         }
 
@@ -79,7 +81,7 @@ namespace ClrProfiler.Trace
         {
             try
             {
-                var assemblyName = traceMethodInfo.InvocationTargetType.Assembly.GetName().Name;
+                var assemblyName = traceMethodInfo.Type.Assembly.GetName().Name;
                 if (_assemblies.TryGetValue(assemblyName, out var assemblyInfoCache))
                 {
                     if (assemblyInfoCache.Assembly == null)
@@ -150,8 +152,7 @@ namespace ClrProfiler.Trace
         {
             var functionInfo = FunctionInfosCache.GetOrAdd(functionToken, token =>
             {
-                var type = traceMethodInfo.InvocationTargetType;
-                var methodBase = type.Module.ResolveMethod((int) token);
+                var methodBase = traceMethodInfo.Type.Module.ResolveMethod((int) token);
                 var functionInfoCache = new FunctionInfoCache
                 {
                     MethodBase = methodBase

@@ -33,8 +33,8 @@ namespace trace {
         //moduleMetaInfoMap
         std::unordered_map<ModuleID, ModuleMetaInfo*> moduleMetaInfoMap{};
 
-        //config traceAssemblies
-        std::vector<TraceAssembly> traceAssemblies;
+        //TraceConfig
+        TraceConfig traceConfig;
     public:
         CorProfiler();
         virtual ~CorProfiler();

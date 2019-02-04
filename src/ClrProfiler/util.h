@@ -23,7 +23,6 @@
 namespace trace {
 
     const auto ClrProfilerHome = "CLRPROFILER_HOME"_W;
-    const auto ClrProfilerDllName = "ClrProfiler.Trace.dll"_W;
 
 #ifdef _WIN32
     const auto PathSeparator = "\\"_W;
@@ -105,5 +104,7 @@ namespace trace {
     //HexStr
     WSTRING HexStr(const unsigned char *data, int len);
 
+    //HexToBytes
+    std::vector<BYTE> HexToBytes(const std::string& hex);
 }  // namespace trace
 #endif  // CLR_PROFILER_UTIL_H_

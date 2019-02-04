@@ -69,13 +69,13 @@ namespace ClrProfiler.Trace
             return Instance;
         }
 
-        public object BeforeMethod(object invocationTarget, object[] methodArguments, uint functionToken)
+        public object BeforeMethod(object type, object invocationTarget, object[] methodArguments, uint functionToken)
         {
             try
             {
                 var args = methodArguments;
                 var wrapperService = ServiceLocator.Instance.GetService<MethodFinderService>();
-                var endMethodDelegate = wrapperService.BeforeWrappedMethod(invocationTarget, args, functionToken);
+                var endMethodDelegate = wrapperService.BeforeWrappedMethod(type, invocationTarget, args, functionToken);
                 return endMethodDelegate != null ? new MethodTrace(endMethodDelegate) : default(MethodTrace);
             }
             catch (Exception ex)

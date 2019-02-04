@@ -24,6 +24,10 @@ namespace trace {
     const auto AssemblyTypeName = "System.Reflection.Assembly"_W;
     const auto AssemblyLoadMethodName = "LoadFrom"_W;
 
+    const auto SystemTypeName = "System.Type"_W;
+    const auto GetTypeFromHandleMethodName = "GetTypeFromHandle"_W;
+    const auto RuntimeTypeHandleTypeName = "System.RuntimeTypeHandle"_W;
+
     const auto SystemBoolean = "System.Boolean"_W;
     const auto SystemChar = "System.Char"_W;
     const auto SystemByte = "System.Byte"_W;
@@ -270,12 +274,15 @@ namespace trace {
     };
 
     class ModuleMetaInfo {
+    private:
     public:
         const mdToken entryPointToken;
         const WSTRING assemblyName;
         ModuleMetaInfo(mdToken entry_point_token, WSTRING assembly_name)
             : entryPointToken(entry_point_token),
               assemblyName(assembly_name){}
+
+        mdToken getTypeFromHandleToken = 0;
     };
 
     struct ModuleInfo {
@@ -447,8 +454,10 @@ namespace trace {
     FunctionInfo GetFunctionInfo(const CComPtr<IMetaDataImport2>& metadata_import,
         const mdToken& token);
 
-    HRESULT GetProfilerAssemblyRef(CComPtr<IUnknown>& metadata_interfaces, 
-        mdAssemblyRef& assemblyRef);
+    mdAssemblyRef GetProfilerAssemblyRef(CComPtr<IUnknown>& metadata_interfaces,
+        ASSEMBLYMETADATA assembly_metadata, 
+        std::vector<BYTE> public_key);
+
 }
 
 #endif  // CLR_PROFILER_CLRHELPER_H_

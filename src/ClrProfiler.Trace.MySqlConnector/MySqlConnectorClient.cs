@@ -54,7 +54,7 @@ namespace ClrProfiler.Trace.MySqlConnector
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
         {
-            var invocationTargetType = traceMethodInfo.InvocationTargetType;
+            var invocationTargetType = traceMethodInfo.Type;
             var assemblyName = invocationTargetType.Assembly.GetName().Name;
             if (AssemblyNames.Contains(assemblyName) && TypeName == invocationTargetType.FullName)
             {

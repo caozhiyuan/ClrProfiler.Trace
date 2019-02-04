@@ -37,8 +37,29 @@ namespace trace
         return std::make_pair<TraceAssembly, bool>({ assemblyName, className, traceMethods }, true);
     }
 
-    std::vector<TraceAssembly> LoadTraceAssembliesFromStream(std::istream& stream) {
+    ManagedAssembly LoadManagedAssembly(const json::value_type& src)
+    {
+        ManagedAssembly managedAssembly;
+        const auto publicKey = src.value("publicKey", "");
+        const auto version = ToWSTRING(src.value("version", "1.0.0.0"));
+        managedAssembly.publicKey = HexToBytes(publicKey);
+
+        const auto assembly_version = Version(Split(version, static_cast<wchar_t>('.')));
+
+        ASSEMBLYMETADATA assemblyMetaData;
+        ZeroMemory(&assemblyMetaData, sizeof(assemblyMetaData));
+        assemblyMetaData.usMajorVersion = assembly_version.major;
+        assemblyMetaData.usMinorVersion = assembly_version.minor;
+        assemblyMetaData.usBuildNumber = assembly_version.build;
+        assemblyMetaData.usRevisionNumber = assembly_version.revision;
+        managedAssembly.assemblyMetaData = assemblyMetaData;
+        return managedAssembly;
+    }
+
+    TraceConfig LoadTraceConfigFromStream(std::istream& stream) {
+        TraceConfig traceConfig;
         std::vector<TraceAssembly> traceAssemblies;
+        ManagedAssembly managedAssembly;
         try {
             json j;
             // parse the stream
@@ -50,6 +71,7 @@ namespace trace
                     traceAssemblies.push_back(std::get<0>(i));
                 }
             }
+            managedAssembly = LoadManagedAssembly(j["managedAssembly"]);
         }
         catch (const json::parse_error& e) {
             Warn("Invalid TraceAssemblies: {}", e.what());
@@ -68,17 +90,19 @@ namespace trace
                 Warn("Failed to load TraceAssemblies: {}", ex0.what());
             }
         }
-        return traceAssemblies;
+        traceConfig.traceAssemblies = traceAssemblies;
+        traceConfig.managedAssembly = managedAssembly;
+        return traceConfig;
     }
 
-    std::vector<TraceAssembly> LoadTraceAssemblies(const WSTRING& traceHomePath) {
-
+    TraceConfig LoadTraceConfig(const WSTRING& traceHomePath)
+    {
         const auto traceJsonFilePath = traceHomePath + PathSeparator + "trace.json"_W;
-        std::vector<TraceAssembly> traceAssemblies;
+        TraceConfig config;
         try {
             std::ifstream stream;
             stream.open(ToString(traceJsonFilePath));
-            traceAssemblies = LoadTraceAssembliesFromStream(stream);
+            config = LoadTraceConfigFromStream(stream);
             stream.close();
         }
         catch (...) {
@@ -92,6 +116,6 @@ namespace trace
                 Warn("Failed to load TraceAssemblies:{}", ex0.what());
             }
         }
-        return traceAssemblies;
+        return config;
     }
 }

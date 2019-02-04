@@ -54,8 +54,8 @@ namespace trace {
             return E_FAIL;
         }
 
-        this->traceAssemblies = LoadTraceAssemblies(this->clrProfilerHomeEnvValue);
-        if (this->traceAssemblies.empty()) {
+        this->traceConfig = LoadTraceConfig(this->clrProfilerHomeEnvValue);
+        if (this->traceConfig.traceAssemblies.empty()) {
             Warn("TraceAssemblies Not Found");
             return E_FAIL;
         }
@@ -128,7 +128,14 @@ namespace trace {
         auto module_info = GetModuleInfo(this->corProfilerInfo, moduleId);
         if (!module_info.IsValid() || module_info.IsWindowsRuntime()) {
             return S_OK;
-        }        
+        }
+
+        if (module_info.assembly.name == "dotnet"_W ||
+            module_info.assembly.name == "MSBuild"_W)
+        {
+            return S_OK;
+        }
+
         const auto entryPointToken = module_info.GetEntryPointToken();
         ModuleMetaInfo* module_metadata = new ModuleMetaInfo(entryPointToken, module_info.assembly.name);
         {
@@ -334,7 +341,7 @@ namespace trace {
     bool CorProfiler::FunctionIsNeedTrace(CComPtr<IMetaDataImport2>& pImport, ModuleMetaInfo* moduleMetaInfo, FunctionInfo functionInfo)
     {
         auto isTrace = false;
-        for (const auto& assembly : traceAssemblies) 
+        for (const auto& assembly : this->traceConfig.traceAssemblies)
         {
             if (assembly.assemblyName == moduleMetaInfo->assemblyName && assembly.className == functionInfo.type.name)
             {
@@ -444,7 +451,7 @@ namespace trace {
                 &assemblyLoadMemberRef);
 
             mdString profilerTraceDllNameTextToken;
-            auto clrProfilerTraceDllName = clrProfilerHomeEnvValue + PathSeparator + ClrProfilerDllName;
+            auto clrProfilerTraceDllName = clrProfilerHomeEnvValue + PathSeparator + ProfilerAssemblyName + ".dll"_W;
             hr = pEmit->DefineUserString(clrProfilerTraceDllName.data(), (ULONG)clrProfilerTraceDllName.length(), &profilerTraceDllNameTextToken);
             RETURN_OK_IF_FAILED(hr);
 
@@ -488,9 +495,13 @@ namespace trace {
             return S_OK;
         }
 
-        mdAssemblyRef assemblyRef;
-        hr = GetProfilerAssemblyRef(metadata_interfaces, assemblyRef);
-        RETURN_OK_IF_FAILED(hr);
+        mdAssemblyRef assemblyRef = GetProfilerAssemblyRef(metadata_interfaces,
+            traceConfig.managedAssembly.assemblyMetaData,
+            traceConfig.managedAssembly.publicKey);
+
+        if (assemblyRef == mdAssemblyRefNil) {
+            return S_OK;
+        }
 
         mdTypeRef traceAgentTypeRef;
         hr = pEmit->DefineTypeRefByName(
@@ -505,7 +516,6 @@ namespace trace {
             0x00,
             ELEMENT_TYPE_OBJECT
         };
-
         mdMemberRef getInstanceMemberRef;
         hr = pEmit->DefineMemberRef(
             traceAgentTypeRef,
@@ -525,7 +535,8 @@ namespace trace {
         COR_SIGNATURE traceBeforeSig[] =
         {
             IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS ,
-            0x03 ,
+            0x04,
+            ELEMENT_TYPE_OBJECT,
             ELEMENT_TYPE_OBJECT,
             ELEMENT_TYPE_OBJECT,
             ELEMENT_TYPE_SZARRAY,
@@ -571,6 +582,46 @@ namespace trace {
             &exTypeRef);
         RETURN_OK_IF_FAILED(hr);
 
+        if (moduleMetaInfo->getTypeFromHandleToken == 0)
+        {
+            mdTypeRef typeRef;
+            hr = pEmit->DefineTypeRefByName(
+                corLibAssemblyRef,
+                SystemTypeName.data(),
+                &typeRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            mdTypeRef runtimeTypeHandleRef;
+            hr = pEmit->DefineTypeRefByName(
+                corLibAssemblyRef,
+                RuntimeTypeHandleTypeName.data(),
+                &runtimeTypeHandleRef);
+            RETURN_OK_IF_FAILED(hr);
+
+            unsigned runtimeTypeHandle_buffer;
+            unsigned type_buffer;
+            auto runtimeTypeHandle_size = CorSigCompressToken(runtimeTypeHandleRef, &runtimeTypeHandle_buffer);
+            auto type_size = CorSigCompressToken(typeRef, &type_buffer);
+            auto* getTypeFromHandleSig = new COR_SIGNATURE[runtimeTypeHandle_size + type_size + 4];
+            unsigned offset = 0;
+            getTypeFromHandleSig[offset++] = IMAGE_CEE_CS_CALLCONV_DEFAULT;
+            getTypeFromHandleSig[offset++] = 0x01;
+            getTypeFromHandleSig[offset++] = ELEMENT_TYPE_CLASS;
+            memcpy(&getTypeFromHandleSig[offset], &type_buffer, type_size);
+            offset += type_size;
+            getTypeFromHandleSig[offset++] = ELEMENT_TYPE_VALUETYPE;
+            memcpy(&getTypeFromHandleSig[offset], &runtimeTypeHandle_buffer, runtimeTypeHandle_size);
+            offset += runtimeTypeHandle_size;
+
+            hr = pEmit->DefineMemberRef(
+                typeRef,
+                GetTypeFromHandleMethodName.data(),
+                getTypeFromHandleSig,
+                sizeof(getTypeFromHandleSig),
+                &moduleMetaInfo->getTypeFromHandleToken);
+            RETURN_OK_IF_FAILED(hr);
+        }
+
         ILRewriter rewriter(corProfilerInfo, NULL, moduleId, function_token);
         RETURN_OK_IF_FAILED(rewriter.Import());
 
@@ -602,6 +653,8 @@ namespace trace {
         reWriterWrapper.StLocal(indexRet);
         ILInstr* pTryStartInstr = reWriterWrapper.CallMember0(getInstanceMemberRef, false);
         reWriterWrapper.Cast(traceAgentTypeRef);
+        reWriterWrapper.LoadToken(functionInfo.type.id);
+        reWriterWrapper.CallMember(moduleMetaInfo->getTypeFromHandleToken, false);
         reWriterWrapper.LoadArgument(0);
         auto argNum = functionInfo.signature.NumberOfArguments();
         reWriterWrapper.CreateArray(objectTypeRef, argNum);

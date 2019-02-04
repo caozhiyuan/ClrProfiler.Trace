@@ -21,6 +21,7 @@ class ILRewriterWrapper {
   void LoadInt32(INT32 value) const;
   void LoadArgument(UINT16 index) const;
   void LoadIND(unsigned elementType) const;
+  void LoadToken(mdToken token) const;
   void StLocal(unsigned index) const;
   void LoadLocal(unsigned index) const;
   void Cast(mdTypeRef type_ref) const;

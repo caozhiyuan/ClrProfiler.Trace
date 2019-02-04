@@ -5,19 +5,7 @@ namespace ClrProfiler.Trace
 {
     public class TraceMethodInfo
     {
-        private Type _invocationTargetType;
-
-        public Type InvocationTargetType
-        {
-            get
-            {
-                if (_invocationTargetType != null)
-                    return _invocationTargetType;
-
-                _invocationTargetType = InvocationTarget.GetType();
-                return _invocationTargetType;
-            }
-        }
+        public Type Type { get; set; }
 
         public object InvocationTarget { get; set; }
 
