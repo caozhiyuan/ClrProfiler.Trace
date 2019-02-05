@@ -13,8 +13,8 @@ SET COR_PROFILER_PATH=%WorkDir%src\ClrProfiler\x64\Debug\ClrProfiler.dll
 SET CLRPROFILER_HOME=%WorkDir%src\ClrProfiler.Trace\bin\Debug\netstandard2.0
 
 echo Starting Visual Studio...
-IF EXIST "D:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\devenv.exe" (
-    START "Visual Studio" "D:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\devenv.exe" "%~dp0\src\ClrProfiler.sln"
-) ELSE (
-    START "Visual Studio" "D:\Program Files (x86)\Microsoft Visual Studio\Preview\Enterprise\Common7\IDE\devenv.exe" "%~dp0\src\ClrProfiler.sln"
+set _VSWHERE="%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if exist %_VSWHERE% (
+  for /f "usebackq tokens=*" %%i in (`%_VSWHERE% -latest -prerelease -property installationPath`) do set _VSPATH=%%i
 )
+START "Visual Studio" "%_VSPATH%\Common7\IDE\devenv.exe" "%~dp0\src\ClrProfiler.sln"
