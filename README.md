@@ -11,7 +11,7 @@ Prerequisites
 -------------
 
 * CoreCLR Repository (build from source) Dependencies
-* Visual Studio 2017 (Windows)
+* Visual Studio 2017 (C++ Required) 
 * CLang3.9 (Linux)
 * Vcpkg (Windows Linux)
 
@@ -22,9 +22,12 @@ Building
 
 #### windows 
 
+```batch
+
+git clone https://github.com/dotnet/coreclr.git
+git clone https://github.com/caozhiyuan/ClrProfiler.Trace.git
 powershell ./scripts/install-vcpkgs.ps1
 
-```batch
 cd "D:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build"
 d:
 vcvars64
@@ -37,6 +40,10 @@ build
 #### linux
 
 ```batch
+
+git clone https://github.com/dotnet/coreclr.git
+git clone https://github.com/caozhiyuan/ClrProfiler.Trace.git
+
 cd ~/vcpkg
 ./vcpkg install spdlog
 
