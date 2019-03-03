@@ -26,12 +26,15 @@ Building
 
 git clone https://github.com/dotnet/coreclr.git
 git clone https://github.com/caozhiyuan/ClrProfiler.Trace.git
+
+cd ClrProfiler.Trace
 powershell ./scripts/install-vcpkgs.ps1
 
-cd "D:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build"
-d:
-vcvars64
-cd D:\ClrProfiler.Trace\src\ClrProfiler
+set _VSWHERE="%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if exist %_VSWHERE% ( for /f "usebackq tokens=*" %i in (`%_VSWHERE% -latest -prerelease -property installationPath`) do set _VSPATH=%i)
+call "%_VSPATH%\VC\Auxiliary\Build\vcvars64.bat" 
+
+cd src\ClrProfiler
 SET BuildArch=x64
 SET BuildType=Debug
 build
