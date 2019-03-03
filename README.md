@@ -53,7 +53,7 @@ cd ~/vcpkg
 ./vcpkg install spdlog
 
 cd ~/ClrProfiler.Trace/src/ClrProfiler
-mkdir -p build
+mkdir build
 cd build 
 cmake ..
 make
