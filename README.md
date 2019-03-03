@@ -47,7 +47,9 @@ build
 git clone https://github.com/dotnet/coreclr.git
 git clone https://github.com/caozhiyuan/ClrProfiler.Trace.git
 
+git clone https://github.com/Microsoft/vcpkg.git
 cd ~/vcpkg
+./bootstrap-vcpkg.sh
 ./vcpkg install spdlog
 
 cd ~/ClrProfiler.Trace/src/ClrProfiler
