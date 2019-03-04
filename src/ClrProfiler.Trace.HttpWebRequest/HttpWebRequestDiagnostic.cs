@@ -4,9 +4,11 @@
 
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using OpenTracing;
 using OpenTracing.Tag;
 using OpenTracing.Propagation;
@@ -35,8 +37,31 @@ namespace ClrProfiler.Trace.HttpWebRequest
         private static Type s_coreResponseDataType;
 
         private ITracer _tracer;
+        static readonly ConditionalWeakTable<object, GCNotice> gcNotificationMap = new ConditionalWeakTable<object, GCNotice>();
 
-        public void Initialize(ITracer tracer)
+        class GCNotice
+        {
+            private readonly System.Net.HttpWebRequest _request;
+            private readonly ISpan _span;
+
+            public GCNotice(System.Net.HttpWebRequest request, ISpan span)
+            {
+                _request = request;
+                _span = span;
+            }
+
+            public ISpan GetSpan()
+            {
+                return _span;
+            }
+
+            ~GCNotice()
+            {
+                gcNotificationMap.Remove(_request);
+            }
+        }
+
+        public void Initialize(ITracer tracer, System.Net.HttpWebRequest request)
         {
             if (!this.initialized)
             {
@@ -62,6 +87,8 @@ namespace ClrProfiler.Trace.HttpWebRequest
                     }
                 }
             }
+
+            gcNotificationMap.Add(request, new GCNotice(request, tracer.ActiveSpan));
         }
 
         #region private methods
@@ -77,17 +104,28 @@ namespace ClrProfiler.Trace.HttpWebRequest
             }
             request.Headers[RequestIdHeaderName] = string.Empty;
 
-            var scope = _tracer.BuildSpan("http.out")
+            gcNotificationMap.TryGetValue(request, out var gcNotice);
+            if (gcNotice == null)
+            {
+                return;
+            }
+
+            var span = _tracer.BuildSpan("http.out")
+                .AsChildOf(gcNotice.GetSpan())
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
                 .WithTag(Tags.Component, "HttpClient")
                 .WithTag(Tags.HttpMethod, request.Method)
                 .WithTag(Tags.HttpUrl, request.RequestUri.ToString())
                 .WithTag(Tags.PeerHostname, request.RequestUri.Host)
                 .WithTag(Tags.PeerPort, request.RequestUri.Port)
-                .StartActive();
+                .Start();
 
-            _tracer.Inject(scope.Span.Context, BuiltinFormats.HttpHeaders, new HttpHeadersInjectAdapter(request.Headers));
+            _tracer.Inject(span.Context, BuiltinFormats.HttpHeaders, new HttpHeadersInjectAdapter(request.Headers));
+
+            Spans.TryAdd(request.GetHashCode(), span);
         }
+
+        private static readonly ConcurrentDictionary<int, ISpan> Spans = new ConcurrentDictionary<int, ISpan>();
 
         private void RaiseResponseEvent(System.Net.HttpWebRequest request, HttpWebResponse response)
         {
@@ -96,14 +134,14 @@ namespace ClrProfiler.Trace.HttpWebRequest
             // based on response StatusCode and number or redirects done so far
             if (request.Headers[RequestIdHeaderName] != null && IsLastResponse(request, response.StatusCode))
             {
-                var scope = _tracer?.ScopeManager?.Active;
-                if (scope == null)
+                Spans.TryGetValue(request.GetHashCode(), out var span);
+                if (span == null)
                 {
                     return;
                 }
 
-                scope.Span.SetTag(Tags.HttpStatus, (int)response.StatusCode);
-                scope.Dispose();
+                span.SetTag(Tags.HttpStatus, (int)response.StatusCode);
+                span.Finish();
             }
         }
 
@@ -114,14 +152,14 @@ namespace ClrProfiler.Trace.HttpWebRequest
             // based on response StatusCode and number or redirects done so far
             if (request.Headers[RequestIdHeaderName] != null && IsLastResponse(request, statusCode))
             {
-                var scope = _tracer?.ScopeManager?.Active;
-                if (scope == null)
+                Spans.TryGetValue(request.GetHashCode(), out var span);
+                if (span == null)
                 {
                     return;
                 }
 
-                scope.Span.SetTag(Tags.HttpStatus, (int)statusCode);
-                scope.Dispose();
+                span.SetTag(Tags.HttpStatus, (int)statusCode);
+                span.Finish();
             }
         }
 

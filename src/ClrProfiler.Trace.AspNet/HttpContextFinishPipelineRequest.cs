@@ -22,7 +22,8 @@ namespace ClrProfiler.Trace.AspNet
             {
                 HttpContext context = traceMethodInfo.InvocationTarget as HttpContext;
                 var scope = context?.Items["ClrProfiler.Trace.AspNet.TraceScope"] as IScope;
-                scope?.Span.Finish();
+                context?.Items.Remove("ClrProfiler.Trace.AspNet.TraceScope");
+                scope?.Dispose();
             }
             return null;
         }

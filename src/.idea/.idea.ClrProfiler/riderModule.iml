@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="RIDER_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$/../../../.editorconfig" />
+    <content url="file://$MODULE_DIR$/../../../LICENSE" />
+    <content url="file://$MODULE_DIR$/../../../README.md" />
+    <content url="file://$MODULE_DIR$/../../../dev.cmd" />
+    <content url="file://$MODULE_DIR$/../../../examples/Samples.AspNet" />
+    <content url="file://$MODULE_DIR$/../../../examples/Samples.Console" />
+    <content url="file://$MODULE_DIR$/../../../examples/Samples.WebApi" />
+    <content url="file://$MODULE_DIR$/../.." />
+    <content url="file://$MODULE_DIR$/../../../tools/Dll.Repack.cmd" />
+    <content url="file://$MODULE_DIR$/../../../trace.json" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
