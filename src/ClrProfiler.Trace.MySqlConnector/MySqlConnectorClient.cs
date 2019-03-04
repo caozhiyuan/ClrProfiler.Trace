@@ -49,7 +49,7 @@ namespace ClrProfiler.Trace.MySqlConnector
             {
                 scope.Span.SetException(ex);
             }
-            scope.Span.Finish();
+            scope.Dispose();
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)

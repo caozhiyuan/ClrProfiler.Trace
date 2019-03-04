@@ -80,7 +80,7 @@ namespace ClrProfiler.Trace.HttpWebRequest
             var scope = _tracer.BuildSpan("http.out")
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
                 .WithTag(Tags.Component, "HttpClient")
-                .WithTag(Tags.HttpMethod, request.Method.ToString())
+                .WithTag(Tags.HttpMethod, request.Method)
                 .WithTag(Tags.HttpUrl, request.RequestUri.ToString())
                 .WithTag(Tags.PeerHostname, request.RequestUri.Host)
                 .WithTag(Tags.PeerPort, request.RequestUri.Port)
@@ -96,16 +96,14 @@ namespace ClrProfiler.Trace.HttpWebRequest
             // based on response StatusCode and number or redirects done so far
             if (request.Headers[RequestIdHeaderName] != null && IsLastResponse(request, response.StatusCode))
             {
-                if (_tracer.ActiveSpan == null)
+                var scope = _tracer?.ScopeManager?.Active;
+                if (scope == null)
                 {
                     return;
                 }
 
-                if (response != null)
-                {
-                    _tracer.ActiveSpan.SetTag(Tags.HttpStatus, (int)response.StatusCode);
-                }
-                _tracer.ActiveSpan.Finish();
+                scope.Span.SetTag(Tags.HttpStatus, (int)response.StatusCode);
+                scope.Dispose();
             }
         }
 
@@ -116,13 +114,14 @@ namespace ClrProfiler.Trace.HttpWebRequest
             // based on response StatusCode and number or redirects done so far
             if (request.Headers[RequestIdHeaderName] != null && IsLastResponse(request, statusCode))
             {
-                if (_tracer.ActiveSpan == null)
+                var scope = _tracer?.ScopeManager?.Active;
+                if (scope == null)
                 {
                     return;
                 }
 
-                _tracer.ActiveSpan.SetTag(Tags.HttpStatus, (int)statusCode);
-                _tracer.ActiveSpan.Finish();
+                scope.Span.SetTag(Tags.HttpStatus, (int)statusCode);
+                scope.Dispose();
             }
         }
 

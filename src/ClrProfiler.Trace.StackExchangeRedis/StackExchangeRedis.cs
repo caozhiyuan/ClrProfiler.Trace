@@ -66,7 +66,7 @@ namespace ClrProfiler.Trace.StackExchangeRedis
             {
                 scope.Span.SetException(ex);
             }
-            scope.Span.Finish();
+            scope.Dispose();
         }
 
 

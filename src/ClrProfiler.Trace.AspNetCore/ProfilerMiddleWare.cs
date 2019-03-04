@@ -53,7 +53,7 @@ namespace ClrProfiler.Trace.AspNetCore
                 scope.Span.SetException(ex);
             }
 
-            scope.Span.Finish();
+            scope.Dispose();
         }
     }
 }

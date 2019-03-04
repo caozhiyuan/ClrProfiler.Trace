@@ -25,18 +25,21 @@ namespace ClrProfiler.Trace.AspNet
                 HttpContext context = (traceMethodInfo.InvocationTarget as HttpApplication)?.Context;
                 if (context != null)
                 {
-                    var extractedSpanContext = _tracer.Extract(BuiltinFormats.HttpHeaders, new RequestHeadersExtractAdapter(context.Request.Headers));
+                    if (context.Items["ClrProfiler.Trace.AspNet.TraceScope"] == null)
+                    {
+                        var extractedSpanContext = _tracer.Extract(BuiltinFormats.HttpHeaders, new RequestHeadersExtractAdapter(context.Request.Headers));
 
-                    var scope = _tracer.BuildSpan("http.in")
-                        .AsChildOf(extractedSpanContext)
-                        .WithTag(Tags.SpanKind, Tags.SpanKindClient)
-                        .WithTag(Tags.Component, "AspNet")
-                        .WithTag(Tags.HttpMethod, context.Request.HttpMethod)
-                        .WithTag(Tags.HttpUrl, context.Request.Path.ToString())
-                        .WithTag(Tags.PeerHostname, context.Request.UserHostName)
-                        .StartActive();
+                        var scope = _tracer.BuildSpan("http.in")
+                            .AsChildOf(extractedSpanContext)
+                            .WithTag(Tags.SpanKind, Tags.SpanKindClient)
+                            .WithTag(Tags.Component, "AspNet")
+                            .WithTag(Tags.HttpMethod, context.Request.HttpMethod)
+                            .WithTag(Tags.HttpUrl, context.Request.Path.ToString())
+                            .WithTag(Tags.PeerHostname, context.Request.UserHostName)
+                            .StartActive();
 
-                    context.Items["ClrProfiler.Trace.AspNet.TraceScope"] = scope;
+                        context.Items["ClrProfiler.Trace.AspNet.TraceScope"] = scope;
+                    }
                 }
             }
             return null;

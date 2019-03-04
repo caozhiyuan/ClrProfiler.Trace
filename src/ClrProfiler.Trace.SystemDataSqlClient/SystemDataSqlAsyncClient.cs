@@ -51,7 +51,7 @@ namespace ClrProfiler.Trace.SystemDataSqlClient
             {
                 scope.Span.SetException(ex);
             }
-            scope.Span.Finish();
+            scope.Dispose();
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)

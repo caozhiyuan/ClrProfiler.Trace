@@ -59,7 +59,7 @@ namespace ClrProfiler.Trace.HttpClient
                 scope.Span.SetTag(Tags.HttpStatus, (int)response.StatusCode);
             }
 
-            scope.Span.Finish();
+            scope.Dispose();
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)
