@@ -140,10 +140,7 @@
             "className": "System.Net.HttpWebRequest",
             "methods": [
                 {
-                    "methodName": "SerializeHeaders"
-                },
-                {
-                    "methodName": "GetResponse"
+                    "methodName": ".ctor"
                 }
             ]
         }
