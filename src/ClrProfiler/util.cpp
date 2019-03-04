@@ -99,4 +99,13 @@ std::vector<BYTE> HexToBytes(const std::string& hex) {
     }
     return bytes;
 }
+
+static bool PROFILER_FLAG;
+void SetClrProfilerFlag(bool flag) {
+    PROFILER_FLAG = flag;
+}
+
+WSTRING GetClrProfilerHome() {
+    return  PROFILER_FLAG ? CORECLR_PROFILER_HOME : COR_PROFILER_HOME;
+}
 }  // namespace trace

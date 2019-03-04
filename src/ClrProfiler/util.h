@@ -25,12 +25,8 @@ namespace trace {
     const WSTRING CORECLR_PROFILER_HOME = "CORECLR_PROFILER_HOME"_W;
     const WSTRING COR_PROFILER_HOME = "COR_PROFILER_HOME"_W;
 
-    static bool PROFILER_FLAG;
-
-    inline WSTRING GetClrProfilerHome()
-    {
-        return  PROFILER_FLAG ? CORECLR_PROFILER_HOME : COR_PROFILER_HOME;
-    }
+    void SetClrProfilerFlag(bool flag);
+    WSTRING GetClrProfilerHome();
 
 #ifdef _WIN32
     const auto PathSeparator = "\\"_W;

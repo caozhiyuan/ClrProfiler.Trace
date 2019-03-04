@@ -32,7 +32,7 @@ extern "C" HRESULT STDMETHODCALLTYPE DllGetClassObject(REFCLSID rclsid, REFIID r
         return E_FAIL;
     }
 
-    trace::PROFILER_FLAG = (rclsid == CLSID_CorProfiler);
+    trace::SetClrProfilerFlag(rclsid == CLSID_CorProfiler);
 
     return factory->QueryInterface(riid, ppv);
 }
