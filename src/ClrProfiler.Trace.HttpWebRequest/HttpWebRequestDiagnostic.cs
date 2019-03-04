@@ -122,6 +122,8 @@ namespace ClrProfiler.Trace.HttpWebRequest
 
             _tracer.Inject(span.Context, BuiltinFormats.HttpHeaders, new HttpHeadersInjectAdapter(request.Headers));
 
+            gcNotificationMap.Remove(request);
+
             Spans.TryAdd(request.GetHashCode(), span);
         }
 
