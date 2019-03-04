@@ -65,6 +65,29 @@
             ]
         },
         {
+            "assemblyName": "System.Data",
+            "targetAssemblyName": "ClrProfiler.Trace.SystemDataSqlClient",
+            "className": "System.Data.SqlClient.SqlCommand",
+            "methods": [
+                {
+                    "methodName": "ExecuteNonQueryAsync",
+                    "paramsName": "System.Threading.CancellationToken"
+                },
+                {
+                    "methodName": "ExecuteReaderAsync",
+                    "paramsName": "System.Data.CommandBehavior,System.Threading.CancellationToken"
+                },
+                {
+                    "methodName": "ExecuteScalarAsync",
+                    "paramsName": "System.Threading.CancellationToken"
+                },
+                {
+                    "methodName": "ExecuteXmlReaderAsync",
+                    "paramsName": "System.Threading.CancellationToken"
+                }
+            ]
+        },
+        {
             "assemblyName": "MySql.Data",
             "targetAssemblyName": "ClrProfiler.Trace.MySqlData",
             "className": "MySql.Data.MySqlClient.MySqlCommand",
@@ -88,6 +111,16 @@
             "methods": [
                 {
                     "methodName": "BuildCommonServices"
+                }
+            ]
+        },
+        {
+            "assemblyName": "System.Web",
+            "targetAssemblyName": "ClrProfiler.Trace.AspNet",
+            "className": "System.Web.HttpApplication",
+            "methods": [
+                {
+                    "methodName": "InitModulesCommon"
                 }
             ]
         }

@@ -9,11 +9,19 @@
   <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
   </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net461'">
+     <DefineConstants>$(DefineConstants);NETFramework</DefineConstants>
+  </PropertyGroup>
 
   <ItemGroup>
     <Content Include="..\..\trace.json" Link="trace.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Web" Condition="'$(TargetFramework)' == 'net461'" />
   </ItemGroup>
 
   <ItemGroup>

@@ -47,7 +47,11 @@ namespace ClrProfiler.Trace
 
             services.AddSingleton(serviceProvider =>
             {
-                string serviceName = Assembly.GetEntryAssembly().GetName().Name;
+#if NETFramework
+               string serviceName = System.Web.Hosting.HostingEnvironment.SiteName ?? "Unknown";
+#else
+                string serviceName = Assembly.GetEntryAssembly()?.GetName()?.Name ?? "Unknown";
+#endif
 
                 ILoggerFactory loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
 

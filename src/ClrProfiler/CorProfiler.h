@@ -18,7 +18,7 @@ namespace trace {
     {
     private:
         std::atomic<int> refCount;
-        ICorProfilerInfo8* corProfilerInfo;
+        ICorProfilerInfo3* corProfilerInfo;
         std::mutex mapLock;
 
         //clrProfilerHomeEnvValue

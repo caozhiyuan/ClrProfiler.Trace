@@ -22,7 +22,12 @@
 
 namespace trace {
 
-    const auto ClrProfilerHome = "CLRPROFILER_HOME"_W;
+    static auto ClrProfilerHome = "CORECLR_PROFILER_HOME"_W;
+   
+    static void SetClrProfilerNetFrameWorkHome()
+    {
+        ClrProfilerHome = "COR_PROFILER_HOME"_W;
+    }
 
 #ifdef _WIN32
     const auto PathSeparator = "\\"_W;

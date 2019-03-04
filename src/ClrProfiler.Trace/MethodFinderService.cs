@@ -94,7 +94,7 @@ namespace ClrProfiler.Trace
                                 if (File.Exists(path))
                                 {
                                     var assembly = Assembly.LoadFile(path);
-#if !NETSTANDARD
+#if NETFramework
                                     AppDomain.CurrentDomain.Load(assembly.GetName());
 #endif
                                     assemblyInfoCache.Assembly = assembly;
