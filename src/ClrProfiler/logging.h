@@ -16,7 +16,7 @@ namespace trace {
         static WSTRING GetLogPath()
         {
             WSTRING log_path;
-            auto home = GetEnvironmentValue(ClrProfilerHome);
+            auto home = GetEnvironmentValue(GetClrProfilerHome());
             if(!home.empty()) {
                 log_path = home + PathSeparator + "logs"_W;
             }

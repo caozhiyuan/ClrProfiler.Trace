@@ -1,23 +1,28 @@
-﻿using System;
-using OpenTracing;
+﻿using OpenTracing;
 
-namespace ClrProfiler.Trace.AspNet
+namespace ClrProfiler.Trace.HttpWebRequest
 {
-    public class SystemHttpApplication
+    public class HttpWebRequestSerializeHeaders: IMethodWrapper
     {
-        private const string TypeName = "System.Web.HttpApplication";
-        private const string AssemblyName = "System.Web";
-        private const string MethodName = "InitModulesCommon";
+        private const string TypeName = "System.Net.HttpWebRequest";
+        private const string AssemblyName = "System";
+        private const string MethodName = "SerializeHeaders";
 
         private readonly ITracer _tracer;
 
-        public SystemHttpApplication(ITracer tracer)
+        public HttpWebRequestSerializeHeaders(ITracer tracer)
         {
             _tracer = tracer;
         }
 
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
+            var request = traceMethodInfo.InvocationTarget as System.Net.HttpWebRequest;
+            if (request == null)
+                return null;
+
+            // how to add header?
+
 
             return null;
         }

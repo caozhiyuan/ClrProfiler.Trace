@@ -23,7 +23,12 @@ namespace ClrProfiler.Trace
         public MethodFinderService(ITracer tracer)
         {
             _tracer = tracer;
-            _home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
+
+#if NETFramework
+            _home = Environment.GetEnvironmentVariable("COR_PROFILER_HOME");
+#else
+            _home = Environment.GetEnvironmentVariable("CORECLR_PROFILER_HOME");
+#endif
             if (string.IsNullOrEmpty(_home))
             {
                 throw new ArgumentException("CLR PROFILER HOME IsNullOrEmpty");

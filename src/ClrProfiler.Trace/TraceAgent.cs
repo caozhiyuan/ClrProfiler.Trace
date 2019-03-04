@@ -27,7 +27,11 @@ namespace ClrProfiler.Trace
 
         private Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
         {
-            var home = Environment.GetEnvironmentVariable("CLRPROFILER_HOME");
+#if NETFramework
+            var home = Environment.GetEnvironmentVariable("COR_PROFILER_HOME");
+#else
+            var home = Environment.GetEnvironmentVariable("CORECLR_PROFILER_HOME");
+#endif
             if (!string.IsNullOrEmpty(home))
             {
                 var filepath = Path.Combine(home, $"{new AssemblyName(args.Name).Name}.dll");

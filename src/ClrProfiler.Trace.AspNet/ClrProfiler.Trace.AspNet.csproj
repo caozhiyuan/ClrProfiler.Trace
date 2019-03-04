@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="System.Web" Condition="'$(TargetFramework)' == 'net461'" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ClrProfiler.Trace\ClrProfiler.Trace.csproj" />
   </ItemGroup>
 </Project>

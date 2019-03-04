@@ -22,11 +22,14 @@
 
 namespace trace {
 
-    static auto ClrProfilerHome = "CORECLR_PROFILER_HOME"_W;
-   
-    static void SetClrProfilerNetFrameWorkHome()
+    const WSTRING CORECLR_PROFILER_HOME = "CORECLR_PROFILER_HOME"_W;
+    const WSTRING COR_PROFILER_HOME = "COR_PROFILER_HOME"_W;
+
+    static bool PROFILER_FLAG;
+
+    inline WSTRING GetClrProfilerHome()
     {
-        ClrProfilerHome = "COR_PROFILER_HOME"_W;
+        return  PROFILER_FLAG ? CORECLR_PROFILER_HOME : COR_PROFILER_HOME;
     }
 
 #ifdef _WIN32

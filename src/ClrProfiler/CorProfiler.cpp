@@ -47,7 +47,7 @@ namespace trace {
 
         this->corProfilerInfo->SetEventMask(eventMask);
 
-        this->clrProfilerHomeEnvValue = GetEnvironmentValue(ClrProfilerHome);
+        this->clrProfilerHomeEnvValue = GetEnvironmentValue(GetClrProfilerHome());
 
         if(this->clrProfilerHomeEnvValue.empty()) {
             Warn("ClrProfilerHome Not Found");
