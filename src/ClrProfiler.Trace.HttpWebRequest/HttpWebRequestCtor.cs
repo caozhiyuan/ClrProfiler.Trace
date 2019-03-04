@@ -2,28 +2,22 @@
 
 namespace ClrProfiler.Trace.HttpWebRequest
 {
-    public class HttpWebRequestSerializeHeaders: IMethodWrapper
+    public class HttpWebRequestCtor: IMethodWrapper
     {
         private const string TypeName = "System.Net.HttpWebRequest";
         private const string AssemblyName = "System";
-        private const string MethodName = "SerializeHeaders";
+        private const string MethodName = ".ctor";
 
         private readonly ITracer _tracer;
 
-        public HttpWebRequestSerializeHeaders(ITracer tracer)
+        public HttpWebRequestCtor(ITracer tracer)
         {
             _tracer = tracer;
         }
 
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
-            var request = traceMethodInfo.InvocationTarget as System.Net.HttpWebRequest;
-            if (request == null)
-                return null;
-
-            // how to add header?
-
-
+            HttpWebRequestDiagnostic.Instance.Initialize(_tracer);
             return null;
         }
 
