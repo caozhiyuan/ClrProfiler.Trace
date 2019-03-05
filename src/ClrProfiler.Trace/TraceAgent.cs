@@ -27,7 +27,7 @@ namespace ClrProfiler.Trace
 
         private Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
         {
-#if NETFramework
+#if NET
             var home = Environment.GetEnvironmentVariable("COR_PROFILER_HOME");
 #else
             var home = Environment.GetEnvironmentVariable("CORECLR_PROFILER_HOME");
@@ -51,8 +51,8 @@ namespace ClrProfiler.Trace
 
             services.AddSingleton(serviceProvider =>
             {
-#if NETFramework
-               string serviceName = System.Web.Hosting.HostingEnvironment.SiteName ?? "Unknown";
+#if NET
+                string serviceName = System.Web.Hosting.HostingEnvironment.SiteName ?? "Unknown";
 #else
                 string serviceName = Assembly.GetEntryAssembly()?.GetName()?.Name ?? "Unknown";
 #endif
@@ -64,6 +64,7 @@ namespace ClrProfiler.Trace
                 ITracer tracer = new Tracer.Builder(serviceName)
                     .WithLoggerFactory(loggerFactory)
                     .WithSampler(sampler)
+                    .WithScopeManager(new TraceScopeManager())
                     .Build();
 
                 GlobalTracer.Register(tracer);

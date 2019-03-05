@@ -24,7 +24,7 @@ namespace ClrProfiler.Trace
         {
             _tracer = tracer;
 
-#if NETFramework
+#if NET
             _home = Environment.GetEnvironmentVariable("COR_PROFILER_HOME");
 #else
             _home = Environment.GetEnvironmentVariable("CORECLR_PROFILER_HOME");
@@ -99,7 +99,7 @@ namespace ClrProfiler.Trace
                                 if (File.Exists(path))
                                 {
                                     var assembly = Assembly.LoadFile(path);
-#if NETFramework
+#if NET
                                     AppDomain.CurrentDomain.Load(assembly.GetName());
 #endif
                                     assemblyInfoCache.Assembly = assembly;

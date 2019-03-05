@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ClrProfiler.Trace.Utils
@@ -23,40 +24,59 @@ namespace ClrProfiler.Trace.Utils
 
             if (returnValue != null)
             {
+                var oldReturnValue = returnValue;
                 var tcs = new TaskCompletionSource<dynamic>();
-                ((Task)returnValue).ContinueWith(n =>
+                if (SynchronizationContext.Current != null)
                 {
-                    if (n.IsFaulted)
+                    ((Task) oldReturnValue).ContinueWith(n =>
                     {
-                        var ex0 = n.Exception?.InnerException ?? new Exception("unknown exception");
-                        endMethodDelegate(traceMethodInfo, null, ex0);
-                        tcs.SetException(ex0);
+                        TraceEnd(endMethodDelegate, traceMethodInfo, n, tcs);
+                    }, TaskScheduler.FromCurrentSynchronizationContext());
+                }
+                else
+                {
+                    ((Task)oldReturnValue).ContinueWith(n =>
+                    {
+                        TraceEnd(endMethodDelegate, traceMethodInfo, n, tcs);
+                    }, TaskContinuationOptions.ExecuteSynchronously);
+                }
+                returnValue = tcs.Task;
+            }
+        }
+
+        private static void TraceEnd(AsyncMethodEndDelegate endMethodDelegate, 
+            TraceMethodInfo traceMethodInfo,
+            Task n,
+            TaskCompletionSource<dynamic> tcs)
+        {
+            if (n.IsFaulted)
+            {
+                var ex0 = n.Exception?.InnerException ?? new Exception("unknown exception");
+                endMethodDelegate(traceMethodInfo, null, ex0);
+                tcs.SetException(ex0);
+            }
+            else
+            {
+                if (n.IsCanceled)
+                {
+                    endMethodDelegate(traceMethodInfo, null, CanceledException);
+                    tcs.SetCanceled();
+                }
+                else
+                {
+                    var methodInfo = traceMethodInfo.MethodBase as MethodInfo;
+                    if (methodInfo != null && methodInfo.ReturnType == typeof(Task))
+                    {
+                        endMethodDelegate(traceMethodInfo, null, null);
+                        tcs.SetResult(1);
                     }
                     else
                     {
-                        if (n.IsCanceled)
-                        {
-                            endMethodDelegate(traceMethodInfo, null, CanceledException);
-                            tcs.SetCanceled();
-                        }
-                        else
-                        {
-                            var methodInfo = traceMethodInfo.MethodBase as MethodInfo;
-                            if (methodInfo != null && methodInfo.ReturnType == typeof(Task))
-                            {
-                                endMethodDelegate(traceMethodInfo, null, null);
-                                tcs.SetResult(1);
-                            }
-                            else
-                            {
-                                var ret = ((dynamic)n).Result;
-                                endMethodDelegate(traceMethodInfo, ret, null);
-                                tcs.SetResult(ret);
-                            }
-                        }
+                        var ret = ((dynamic) n).Result;
+                        endMethodDelegate(traceMethodInfo, ret, null);
+                        tcs.SetResult(ret);
                     }
-                }, TaskContinuationOptions.ExecuteSynchronously);
-                returnValue = tcs.Task;
+                }
             }
         }
     }
