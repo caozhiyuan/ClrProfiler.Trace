@@ -21,7 +21,7 @@ namespace Samples.AspNet.Controllers
         public async Task<IHttpActionResult> Index()
         {
             await HttpClient.GetAsync("https://www.bing.com");
-            return Json("1");
+            return Json(await HttpClient.GetStringAsync("http://localhost:40965/test5"));
         }
 
         [HttpGet]
@@ -29,6 +29,10 @@ namespace Samples.AspNet.Controllers
         public async Task<IHttpActionResult> Test1()
         {
             var str = await HttpClient.GetAsync("http://localhost:40965/test2?test=1");
+
+
+            await HttpClient.GetAsync("http://localhost:40965/test5");
+
             return Json(str);
         }
 
@@ -53,6 +57,8 @@ namespace Samples.AspNet.Controllers
 
                 await connection.ExecuteScalarAsync("SELECT 1");
 
+                await HttpClient.GetAsync("http://localhost:40965/test5");
+
                 await connection.ExecuteReaderAsync("SELECT 1");
             }
 
@@ -73,6 +79,8 @@ namespace Samples.AspNet.Controllers
                 connection.Open();
 
                 connection.ExecuteScalar("SELECT 1");
+
+                await HttpClient.GetAsync("http://localhost:40965/test5");
 
                 await connection.ExecuteReaderAsync("SELECT 1");
             }
@@ -100,6 +108,8 @@ namespace Samples.AspNet.Controllers
             var prefix = "StackExchange.Redis.";
 
             await RedisDb.Value.StringSetAsync($"{prefix}INCR", "0");
+
+            await HttpClient.GetAsync("http://localhost:40965/test5");
 
             await RedisDb.Value.StringGetAsync($"{prefix}INCR");
 

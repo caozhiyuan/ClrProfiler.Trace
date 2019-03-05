@@ -33,15 +33,16 @@ namespace ClrProfiler.Trace.StackExchangeRedis
             var hostAndPort = GetHostAndPort(config);
             var rawCommand = (string)CommandAndKeyPropertyFetcher.Fetch(message);
 
-            var scope = _tracer.BuildSpan("redis.command")
+            var span = _tracer.BuildSpan("redis.command")
+                .AsChildOf(_tracer.ActiveSpan)
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
                 .WithTag(Tags.Component, "StackExchange.Redis")
                 .WithTag("redis.raw_command", rawCommand)
                 .WithTag("out.host", hostAndPort.Item1)
                 .WithTag("out.port", hostAndPort.Item2)
-                .StartActive();
+                .Start();
 
-            traceMethodInfo.TraceContext = scope;
+            traceMethodInfo.TraceContext = span;
 
             if (traceMethodInfo.MethodBase.Name == ExecuteSyncImpl)
             {
@@ -61,12 +62,12 @@ namespace ClrProfiler.Trace.StackExchangeRedis
 
         private void Leave(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
         {
-            var scope = (IScope)traceMethodInfo.TraceContext;
+            var span = (ISpan)traceMethodInfo.TraceContext;
             if (ex != null)
             {
-                scope.Span.SetException(ex);
+                span.SetException(ex);
             }
-            scope.Dispose();
+            span.Finish();
         }
 
 

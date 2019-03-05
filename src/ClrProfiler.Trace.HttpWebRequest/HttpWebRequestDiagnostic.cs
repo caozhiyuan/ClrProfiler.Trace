@@ -88,7 +88,10 @@ namespace ClrProfiler.Trace.HttpWebRequest
                 }
             }
 
-            gcNotificationMap.Add(request, new GCNotice(request, tracer.ActiveSpan));
+            if (!gcNotificationMap.TryGetValue(request, out var gcNotice))
+            {
+                gcNotificationMap.Add(request, new GCNotice(request, tracer.ActiveSpan));
+            }
         }
 
         #region private methods
