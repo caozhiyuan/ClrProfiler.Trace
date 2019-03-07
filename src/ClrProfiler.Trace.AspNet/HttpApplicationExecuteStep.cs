@@ -31,7 +31,7 @@ namespace ClrProfiler.Trace.AspNet
 
                         var scope = _tracer.BuildSpan("http.in")
                             .AsChildOf(extractedSpanContext)
-                            .WithTag(Tags.SpanKind, Tags.SpanKindClient)
+                            .WithTag(Tags.SpanKind, Tags.SpanKindServer)
                             .WithTag(Tags.Component, "AspNet")
                             .WithTag(Tags.HttpMethod, context.Request.HttpMethod)
                             .WithTag(Tags.HttpUrl, context.Request.Path.ToString())

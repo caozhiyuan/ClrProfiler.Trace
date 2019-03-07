@@ -29,7 +29,7 @@ namespace ClrProfiler.Trace.AspNetCore
 
             var scope = tracer.BuildSpan("http.in")
                 .AsChildOf(extractedSpanContext)
-                .WithTag(Tags.SpanKind, Tags.SpanKindClient)
+                .WithTag(Tags.SpanKind, Tags.SpanKindServer)
                 .WithTag(Tags.Component, "AspNetCore")
                 .WithTag(Tags.HttpMethod, context.Request.Method.ToString())
                 .WithTag(Tags.HttpUrl, context.Request.Path.ToString())

@@ -21,6 +21,10 @@ namespace Samples.AspNet.Controllers
         public async Task<IHttpActionResult> Index()
         {
             await HttpClient.GetAsync("https://www.bing.com");
+            _ = Task.Run(async () =>
+            {
+                await HttpClient.GetAsync("http://localhost:40965/test5");
+            });
             return Json(await HttpClient.GetStringAsync("http://localhost:40965/test5"));
         }
 

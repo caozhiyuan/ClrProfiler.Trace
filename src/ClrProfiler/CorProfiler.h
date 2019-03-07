@@ -18,7 +18,8 @@ namespace trace {
     {
     private:
         std::atomic<int> refCount;
-        ICorProfilerInfo3* corProfilerInfo;
+        // this project agent support net461+ , if support net45 use ICorProfilerInfo4
+        ICorProfilerInfo8* corProfilerInfo;
         std::mutex mapLock;
 
         //clrProfilerHomeEnvValue

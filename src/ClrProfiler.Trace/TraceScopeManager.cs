@@ -47,6 +47,7 @@ namespace ClrProfiler.Trace
             private readonly ISpan _wrappedSpan;
             private readonly bool _finishOnDispose;
             private readonly IScope _scopeToRestore;
+            private bool disposed;
 
             public AsyncLocalScope(
                 TraceScopeManager scopeManager,
@@ -60,16 +61,17 @@ namespace ClrProfiler.Trace
                 scopeManager.Active = this;
             }
 
-            public ISpan Span => this._wrappedSpan;
+            public ISpan Span => disposed ? this._scopeToRestore?.Span : this._wrappedSpan;
 
             public void Dispose()
             {
-                // no check sometimes AsyncLocal not work
-                //if (this._scopeManager.Active != this)
-                //    return;
+                //when task continue restore scope will fail , so no check this._scopeManager.Active == this
+
+                disposed = true;
 
                 if (this._finishOnDispose)
                     this._wrappedSpan.Finish();
+
                 this._scopeManager.Active = this._scopeToRestore;
             }
         }
