@@ -139,7 +139,7 @@ namespace ClrProfiler.Trace.HttpWebRequest
             // based on response StatusCode and number or redirects done so far
             if (request.Headers[RequestIdHeaderName] != null && IsLastResponse(request, response.StatusCode))
             {
-                Spans.TryGetValue(request.GetHashCode(), out var span);
+                Spans.TryRemove(request.GetHashCode(), out var span);
                 if (span == null)
                 {
                     return;
@@ -157,7 +157,7 @@ namespace ClrProfiler.Trace.HttpWebRequest
             // based on response StatusCode and number or redirects done so far
             if (request.Headers[RequestIdHeaderName] != null && IsLastResponse(request, statusCode))
             {
-                Spans.TryGetValue(request.GetHashCode(), out var span);
+                Spans.TryRemove(request.GetHashCode(), out var span);
                 if (span == null)
                 {
                     return;
