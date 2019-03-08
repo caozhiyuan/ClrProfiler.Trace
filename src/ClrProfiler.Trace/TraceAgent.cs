@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
+using ClrProfiler.Trace.Constants;
 using ClrProfiler.Trace.DependencyInjection;
 using Jaeger;
 using Jaeger.Samplers;
@@ -27,11 +28,7 @@ namespace ClrProfiler.Trace
 
         private Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
         {
-#if NET
-            var home = Environment.GetEnvironmentVariable("COR_PROFILER_HOME");
-#else
-            var home = Environment.GetEnvironmentVariable("CORECLR_PROFILER_HOME");
-#endif
+            var home = Environment.GetEnvironmentVariable(TraceConstant.PROFILER_HOME);
             if (!string.IsNullOrEmpty(home))
             {
                 var filepath = Path.Combine(home, $"{new AssemblyName(args.Name).Name}.dll");
@@ -52,9 +49,10 @@ namespace ClrProfiler.Trace
             services.AddSingleton(serviceProvider =>
             {
 #if NET
-                string serviceName = System.Web.Hosting.HostingEnvironment.SiteName ?? "Unknown";
+                string serviceName = System.Web.Hosting.HostingEnvironment.SiteName 
+                                     ?? Assembly.GetEntryAssembly()?.GetName().Name ??  "Unknown";
 #else
-                string serviceName = Assembly.GetEntryAssembly()?.GetName()?.Name ?? "Unknown";
+                string serviceName = Assembly.GetEntryAssembly()?.GetName().Name ?? "Unknown";
 #endif
 
                 ILoggerFactory loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();

@@ -17,8 +17,7 @@ namespace ClrProfiler.Trace.HttpWebRequest
 
         public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
         {
-            HttpWebRequestDiagnostic.Instance.Initialize(_tracer,
-                (System.Net.HttpWebRequest) traceMethodInfo.InvocationTarget);
+            HttpWebRequestDiagnostic.Instance.Initialize(_tracer);
             return null;
         }
 

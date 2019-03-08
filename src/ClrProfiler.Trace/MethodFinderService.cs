@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using ClrProfiler.Trace.Constants;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OpenTracing;
@@ -11,41 +12,49 @@ namespace ClrProfiler.Trace
 {
     public class MethodFinderService
     {
-        private static readonly ConcurrentDictionary<uint, FunctionInfoCache> FunctionInfosCache =
+        private readonly ConcurrentDictionary<uint, FunctionInfoCache> _functionInfosCache =
             new ConcurrentDictionary<uint, FunctionInfoCache>();
 
         private readonly ConcurrentDictionary<string, AssemblyInfoCache> _assemblies = 
             new ConcurrentDictionary<string, AssemblyInfoCache>();
 
-        private readonly string _home;
+        private string _home;
         private readonly ITracer _tracer;
 
         public MethodFinderService(ITracer tracer)
         {
             _tracer = tracer;
 
-#if NET
-            _home = Environment.GetEnvironmentVariable("COR_PROFILER_HOME");
-#else
-            _home = Environment.GetEnvironmentVariable("CORECLR_PROFILER_HOME");
-#endif
-            if (string.IsNullOrEmpty(_home))
-            {
-                throw new ArgumentException("CLR PROFILER HOME IsNullOrEmpty");
-            }
+            InitAssemblyConfig();
+        }
 
-            var path = Path.Combine(_home, "trace.json");
-            if (File.Exists(path))
+        private void InitAssemblyConfig()
+        {
+            try
             {
-                var text = File.ReadAllText(path);
-                var jObject = (JObject)JsonConvert.DeserializeObject(text);
-                foreach (var jToken in jObject["instrumentation"])
+                _home = Environment.GetEnvironmentVariable(TraceConstant.PROFILER_HOME);
+                if (string.IsNullOrEmpty(_home))
                 {
-                    _assemblies.TryAdd(jToken["assemblyName"].ToString(), new AssemblyInfoCache
-                    {
-                        AssemblyName = jToken["targetAssemblyName"].ToString()
-                    });
+                    throw new ArgumentException("CLR PROFILER HOME IsNullOrEmpty");
                 }
+
+                var path = Path.Combine(_home, "trace.json");
+                if (File.Exists(path))
+                {
+                    var text = File.ReadAllText(path);
+                    var jObject = (JObject)JsonConvert.DeserializeObject(text);
+                    foreach (var jToken in jObject["instrumentation"])
+                    {
+                        _assemblies.TryAdd(jToken["assemblyName"].ToString(), new AssemblyInfoCache
+                        {
+                            AssemblyName = jToken["targetAssemblyName"].ToString()
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine(ex);
             }
         }
 
@@ -155,7 +164,7 @@ namespace ClrProfiler.Trace
         /// <returns></returns>
         private FunctionInfoCache GetFunctionInfoFromCache(uint functionToken, TraceMethodInfo traceMethodInfo)
         {
-            var functionInfo = FunctionInfosCache.GetOrAdd(functionToken, token =>
+            var functionInfo = _functionInfosCache.GetOrAdd(functionToken, token =>
             {
                 var methodBase = traceMethodInfo.Type.Module.ResolveMethod((int) token);
                 var functionInfoCache = new FunctionInfoCache

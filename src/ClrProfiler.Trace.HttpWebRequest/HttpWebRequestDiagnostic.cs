@@ -5,6 +5,7 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -12,6 +13,7 @@ using System.Runtime.CompilerServices;
 using OpenTracing;
 using OpenTracing.Tag;
 using OpenTracing.Propagation;
+using ClrProfiler.Trace.Extensions;
 
 namespace ClrProfiler.Trace.HttpWebRequest
 {
@@ -38,10 +40,11 @@ namespace ClrProfiler.Trace.HttpWebRequest
 
         private ITracer _tracer;
         static readonly ConditionalWeakTable<object, GCNotice> gcNotificationMap = new ConditionalWeakTable<object, GCNotice>();
+        private static readonly Exception HttpException = new Exception("Http Connection Error");
 
         class GCNotice
         {
-            private readonly System.Net.HttpWebRequest _request;
+            private System.Net.HttpWebRequest _request;
             private readonly ISpan _span;
 
             public GCNotice(System.Net.HttpWebRequest request, ISpan span)
@@ -57,11 +60,22 @@ namespace ClrProfiler.Trace.HttpWebRequest
 
             ~GCNotice()
             {
-                gcNotificationMap.Remove(_request);
+                try
+                {
+                    object trackedObject = _request;
+                    _request = null;
+                    gcNotificationMap.Remove(trackedObject);
+                    _span?.SetException(HttpException);
+                    _span?.Finish();
+                }
+                catch
+                {
+                    // ignored
+                }
             }
         }
 
-        public void Initialize(ITracer tracer, System.Net.HttpWebRequest request)
+        public void Initialize(ITracer tracer)
         {
             if (!this.initialized)
             {
@@ -87,11 +101,6 @@ namespace ClrProfiler.Trace.HttpWebRequest
                     }
                 }
             }
-
-            if (!gcNotificationMap.TryGetValue(request, out var gcNotice))
-            {
-                gcNotificationMap.Add(request, new GCNotice(request, tracer.ActiveSpan));
-            }
         }
 
         #region private methods
@@ -107,14 +116,8 @@ namespace ClrProfiler.Trace.HttpWebRequest
             }
             request.Headers[RequestIdHeaderName] = string.Empty;
 
-            gcNotificationMap.TryGetValue(request, out var gcNotice);
-            if (gcNotice == null)
-            {
-                return;
-            }
-
             var span = _tracer.BuildSpan("http.out")
-                .AsChildOf(gcNotice.GetSpan())
+                .AsChildOf(_tracer.ActiveSpan)
                 .WithTag(Tags.SpanKind, Tags.SpanKindClient)
                 .WithTag(Tags.Component, "HttpClient")
                 .WithTag(Tags.HttpMethod, request.Method)
@@ -125,9 +128,10 @@ namespace ClrProfiler.Trace.HttpWebRequest
 
             _tracer.Inject(span.Context, BuiltinFormats.HttpHeaders, new HttpHeadersInjectAdapter(request.Headers));
 
-            gcNotificationMap.Remove(request);
-
-            Spans.TryAdd(request.GetHashCode(), span);
+            if (!gcNotificationMap.TryGetValue(request, out var gcNotice))
+            {
+                gcNotificationMap.Add(request, new GCNotice(request, span));
+            }
         }
 
         private static readonly ConcurrentDictionary<int, ISpan> Spans = new ConcurrentDictionary<int, ISpan>();
@@ -139,14 +143,20 @@ namespace ClrProfiler.Trace.HttpWebRequest
             // based on response StatusCode and number or redirects done so far
             if (request.Headers[RequestIdHeaderName] != null && IsLastResponse(request, response.StatusCode))
             {
-                Spans.TryRemove(request.GetHashCode(), out var span);
-                if (span == null)
+                if(gcNotificationMap.TryGetValue(request, out var gcNotice))
                 {
-                    return;
-                }
+                    GC.SuppressFinalize(gcNotice);
 
-                span.SetTag(Tags.HttpStatus, (int)response.StatusCode);
-                span.Finish();
+                    Debug.Assert(gcNotificationMap.Remove(request));
+                    var span = gcNotice.GetSpan();
+                    if (span == null)
+                    {
+                        return;
+                    }
+
+                    span.SetTag(Tags.HttpStatus, (int)response.StatusCode);
+                    span.Finish();
+                }
             }
         }
 
@@ -157,14 +167,20 @@ namespace ClrProfiler.Trace.HttpWebRequest
             // based on response StatusCode and number or redirects done so far
             if (request.Headers[RequestIdHeaderName] != null && IsLastResponse(request, statusCode))
             {
-                Spans.TryRemove(request.GetHashCode(), out var span);
-                if (span == null)
+                if (gcNotificationMap.TryGetValue(request, out var gcNotice))
                 {
-                    return;
-                }
+                    GC.SuppressFinalize(gcNotice);
 
-                span.SetTag(Tags.HttpStatus, (int)statusCode);
-                span.Finish();
+                    Debug.Assert(gcNotificationMap.Remove(request));
+                    var span = gcNotice.GetSpan();
+                    if (span == null)
+                    {
+                        return;
+                    }
+
+                    span.SetTag(Tags.HttpStatus, (int)statusCode);
+                    span.Finish();
+                }
             }
         }
 

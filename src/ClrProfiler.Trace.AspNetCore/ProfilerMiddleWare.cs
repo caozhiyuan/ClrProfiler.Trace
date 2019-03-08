@@ -46,7 +46,14 @@ namespace ClrProfiler.Trace.AspNetCore
             {
                 await _next(context);
 
-                scope.Span.SetTag(Tags.HttpStatus, context.Response.StatusCode);
+                if (context.Response != null)
+                {
+                    scope.Span.SetTag(Tags.HttpStatus, context.Response.StatusCode);
+                    if (context.Response.StatusCode >= 400)
+                    {
+                        scope.Span.SetTag(Tags.Error, true);
+                    }
+                }
             }
             catch (Exception ex)
             {

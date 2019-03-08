@@ -1,5 +1,6 @@
 ﻿using System.Web;
 using OpenTracing;
+using OpenTracing.Tag;
 
 namespace ClrProfiler.Trace.AspNet
 {
@@ -21,9 +22,20 @@ namespace ClrProfiler.Trace.AspNet
             if (HttpRuntime.UsingIntegratedPipeline)
             {
                 HttpContext context = traceMethodInfo.InvocationTarget as HttpContext;
-                var scope = context?.Items["ClrProfiler.Trace.AspNet.TraceScope"] as IScope;
-                context?.Items.Remove("ClrProfiler.Trace.AspNet.TraceScope");
-                scope?.Dispose();
+                if (context != null)
+                {
+                    var scope = context.Items["ClrProfiler.Trace.AspNet.TraceScope"] as IScope;
+                    context.Items.Remove("ClrProfiler.Trace.AspNet.TraceScope");
+                    if (scope != null)
+                    {
+                        scope.Span.SetTag(Tags.HttpStatus, context.Response.StatusCode);
+                        if (context.Response.StatusCode >= 400)
+                        {
+                            scope.Span.SetTag(Tags.Error, true);
+                        }
+                        scope.Dispose();
+                    }
+                }
             }
             return null;
         }

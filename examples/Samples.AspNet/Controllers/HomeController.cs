@@ -28,6 +28,23 @@ namespace Samples.AspNet.Controllers
             return Json(await HttpClient.GetStringAsync("http://localhost:40965/test5"));
         }
 
+
+        [HttpGet]
+        [Route("home1")]
+        public async Task<IHttpActionResult> Index1()
+        {
+            //simulate http request error , then raise gc to collect HttpWebRequestDiagnostic GCNotice
+            try
+            {
+                await HttpClient.GetAsync("http://localhost:40962");
+            }
+            catch
+            {
+                GC.Collect();
+            }
+            return Json("1");
+        }
+
         [HttpGet]
         [Route("test1")]
         public async Task<IHttpActionResult> Test1()
