@@ -41,6 +41,13 @@ namespace Samples.AspNet.Controllers
         }
 
         [HttpGet]
+        [Route("test6")]
+        public IHttpActionResult Test6()
+        {
+            return Json(Environment.GetEnvironmentVariables());
+        }
+
+        [HttpGet]
         [Route("test5")]
         public IHttpActionResult Test5()
         {

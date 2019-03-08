@@ -10,6 +10,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\.editorconfig = ..\.editorconfig
 		..\dev.cmd = ..\dev.cmd
 		..\tools\Dll.Repack.cmd = ..\tools\Dll.Repack.cmd
+		..\tools\iisinstall.ps1 = ..\tools\iisinstall.ps1
+		..\tools\iisrestart.cmd = ..\tools\iisrestart.cmd
 		..\LICENSE = ..\LICENSE
 		..\README.md = ..\README.md
 		..\trace.json = ..\trace.json
@@ -37,7 +39,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Samples.Console", "..\examp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClrProfiler.Trace.AspNet", "ClrProfiler.Trace.AspNet\ClrProfiler.Trace.AspNet.csproj", "{659982D9-143F-43D1-93F2-9E6D3682057C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClrProfiler.Trace.HttpWebRequest", "ClrProfiler.Trace.HttpWebRequest\ClrProfiler.Trace.HttpWebRequest.csproj", "{FACA2650-77BB-4917-8708-6ED336A7BD4C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClrProfiler.Trace.HttpWebRequest", "ClrProfiler.Trace.HttpWebRequest\ClrProfiler.Trace.HttpWebRequest.csproj", "{FACA2650-77BB-4917-8708-6ED336A7BD4C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Samples.AspNet", "..\examples\Samples.AspNet\Samples.AspNet.csproj", "{CCDB370C-FC63-4BFB-9848-C24234BDD22B}"
 EndProject
