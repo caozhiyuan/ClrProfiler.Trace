@@ -93,6 +93,7 @@ open http://localhost:16686
 ### About Async Method Trace
 
 if use scope, you should startActive(false) and restore active scope at method end
+
 it's important if you want get ActiveSpan, code like this :
 
 ``` C#
