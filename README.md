@@ -1,5 +1,4 @@
 # CoreCLR Profiler ILReWrite
-==========================================
 
 This sample shows il rewrite (open dev.cmd to develop)
 
@@ -8,7 +7,6 @@ This sample shows il rewrite (open dev.cmd to develop)
 2.add try catch finally in to need trace method
 
 ## Prerequisites
--------------
 
 * CoreCLR Repository (build from source) Dependencies
 * Visual Studio 2017 (C++ Required) 
@@ -16,7 +14,6 @@ This sample shows il rewrite (open dev.cmd to develop)
 * Vcpkg (Windows Linux)
 
 Building
--------------------------
 
 ### Build
 
