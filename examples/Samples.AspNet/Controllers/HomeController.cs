@@ -49,11 +49,16 @@ namespace Samples.AspNet.Controllers
         [Route("test1")]
         public async Task<IHttpActionResult> Test1()
         {
-            var str = await HttpClient.GetAsync("http://localhost:40965/test2?test=1");
-
-
-            await HttpClient.GetAsync("http://localhost:40965/test5");
-
+            var task = HttpClient.GetAsync("http://localhost:40965/Test5?k=1");
+            var task2 = HttpClient.GetAsync("http://localhost:40965/Test5?k=2");
+            var task3 = HttpClient.GetAsync("http://localhost:40965/Test5?k=3");
+            _ = Task.Run(async () =>
+            {
+                await HttpClient.GetAsync("http://localhost:40965/Test5");
+            });
+            var str = await task;
+            await task2;
+            await task3;
             return Json(str);
         }
 

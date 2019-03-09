@@ -62,7 +62,6 @@ namespace ClrProfiler.Trace
                 ITracer tracer = new Tracer.Builder(serviceName)
                     .WithLoggerFactory(loggerFactory)
                     .WithSampler(sampler)
-                    .WithScopeManager(new TraceScopeManager())
                     .Build();
 
                 GlobalTracer.Register(tracer);

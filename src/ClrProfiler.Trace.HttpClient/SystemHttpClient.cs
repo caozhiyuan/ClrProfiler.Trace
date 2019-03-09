@@ -33,15 +33,19 @@ namespace ClrProfiler.Trace.HttpClient
                 .WithTag(Tags.HttpUrl, request.RequestUri.ToString())
                 .WithTag(Tags.PeerHostname, request.RequestUri.Host)
                 .WithTag(Tags.PeerPort, request.RequestUri.Port)
-                .StartActive();
+                .StartActive(false);
 
             _tracer.Inject(scope.Span.Context, BuiltinFormats.HttpHeaders, new HttpHeadersInjectAdapter(request.Headers));
 
             traceMethodInfo.TraceContext = scope;
 
             return delegate(object returnValue, Exception ex)
-            {
+            { 
                 DelegateHelper.AsyncMethodEnd(Leave, traceMethodInfo, ex, returnValue);
+
+                // for async method , at method end restore active scope, important
+                var tempScope = (IScope)traceMethodInfo.TraceContext;
+                tempScope.Dispose();
             };
         }
 
@@ -59,7 +63,7 @@ namespace ClrProfiler.Trace.HttpClient
                 scope.Span.SetTag(Tags.HttpStatus, (int)response.StatusCode);
             }
 
-            scope.Dispose();
+            scope.Span.Finish();
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)

@@ -1,4 +1,4 @@
-CoreCLR Profiler ILReWrite
+# CoreCLR Profiler ILReWrite
 ==========================================
 
 This sample shows il rewrite (open dev.cmd to develop)
@@ -7,7 +7,7 @@ This sample shows il rewrite (open dev.cmd to develop)
 
 2.add try catch finally in to need trace method
 
-Prerequisites
+## Prerequisites
 -------------
 
 * CoreCLR Repository (build from source) Dependencies
@@ -88,7 +88,50 @@ open http://localhost:16686
 
 ```
 
-Help Links:
+## Notice
+
+### About Async Method Trace
+
+if use scope, you should startActive(false) and restore active scope at method end
+it's important if you want get ActiveSpan, code like this :
+
+``` C#
+ public EndMethodDelegate BeforeWrappedMethod(TraceMethodInfo traceMethodInfo)
+ {
+     var dbCommand = (DbCommand)traceMethodInfo.InvocationTarget;
+     var scope = _tracer.BuildSpan("mssql.command")
+         .WithTag(Tags.SpanKind, Tags.SpanKindClient)
+         .WithTag(Tags.Component, "SqlServer")
+         .WithTag(Tags.DbInstance, dbCommand.Connection.ConnectionString)
+         .WithTag(Tags.DbStatement, dbCommand.CommandText)
+         .WithTag(TagMethod, traceMethodInfo.MethodBase.Name)
+         .WithTag(TagIsAsync, true)
+         .StartActive(false);
+
+     traceMethodInfo.TraceContext = scope;
+
+     return delegate (object returnValue, Exception ex)
+     {
+         DelegateHelper.AsyncMethodEnd(Leave, traceMethodInfo, ex, returnValue);
+
+         // for async method , at method end restore active scope, important
+         var tempScope = (IScope)traceMethodInfo.TraceContext;
+         tempScope.Dispose();
+     };
+ }
+
+ private void Leave(TraceMethodInfo traceMethodInfo, object ret, Exception ex)
+ {
+     var scope = (IScope)traceMethodInfo.TraceContext;
+     if (ex != null)
+     {
+         scope.Span.SetException(ex);
+     }
+     scope.Span.Finish();
+ }
+```
+
+## Help Links:
 -------------
 
 https://www.ecma-international.org/publications/files/ECMA-ST/ECMA-335.pdf

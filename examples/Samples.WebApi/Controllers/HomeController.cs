@@ -28,11 +28,16 @@ namespace Samples.WebApi.Controllers
         [Route("test1")]
         public async Task<IActionResult> Test1()
         {
-            var str = await HttpClient.GetAsync("http://127.0.0.1:8787/home/Test2").ConfigureAwait(false);
+            var task = HttpClient.GetAsync("http://127.0.0.1:8787/home/Test2?k=1");
+            var task2 = HttpClient.GetAsync("http://127.0.0.1:8787/home/Test2?k=2");
+            var task3 = HttpClient.GetAsync("http://127.0.0.1:8787/home/Test2?k=3");
             _ = Task.Run(async () =>
             {
                 await HttpClient.GetAsync("http://127.0.0.1:8787/home/Test2");
             });
+            var str = await task;
+            await task2;
+            await task3;
             return Json(str);
         }
 

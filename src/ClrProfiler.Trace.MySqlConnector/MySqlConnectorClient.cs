@@ -32,13 +32,17 @@ namespace ClrProfiler.Trace.MySqlConnector
                 .WithTag(Tags.DbInstance, dbCommand.Connection.ConnectionString)
                 .WithTag(Tags.DbStatement, dbCommand.CommandText)
                 .WithTag(TagMethod, traceMethodInfo.MethodBase.Name)
-                .StartActive();
+                .StartActive(false);
 
             traceMethodInfo.TraceContext = scope;
 
             return delegate (object returnValue, Exception ex)
             {
                 DelegateHelper.AsyncMethodEnd(Leave, traceMethodInfo, ex, returnValue);
+
+                // for async method , at method end restore active scope, important
+                var tempScope = (IScope)traceMethodInfo.TraceContext;
+                tempScope.Dispose();
             };
         }
 
@@ -49,7 +53,7 @@ namespace ClrProfiler.Trace.MySqlConnector
             {
                 scope.Span.SetException(ex);
             }
-            scope.Dispose();
+            scope.Span.Finish();
         }
 
         public bool CanWrap(TraceMethodInfo traceMethodInfo)

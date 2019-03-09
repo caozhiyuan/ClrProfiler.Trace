@@ -33,7 +33,8 @@ namespace ClrProfiler.Trace.AspNet
                         {
                             scope.Span.SetTag(Tags.Error, true);
                         }
-                        scope.Dispose();
+                        //asyncLocal lost , so use scope.Span.Finish()
+                        scope.Span.Finish();
                     }
                 }
             }
