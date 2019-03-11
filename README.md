@@ -12,7 +12,9 @@ This sample shows il rewrite (open dev.cmd to develop)
 * Visual Studio 2017 (C++ Required) 
 * CLang3.9 (Linux)
 * Vcpkg (Windows Linux)
-
+* [WiX Toolset 3.11.1](http://wixtoolset.org/releases/) or newer to build Windows installer (msi)
+  * [WiX Toolset VS2017 Extension](https://marketplace.visualstudio.com/items?itemName=RobMensching.WixToolsetVisualStudio2017Extension) to build installer from VS2017
+  
 Building
 
 ### Build
