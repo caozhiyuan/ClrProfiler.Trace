@@ -15,7 +15,8 @@ This sample shows il rewrite (open dev.cmd to develop)
 * [WiX Toolset 3.11.1](http://wixtoolset.org/releases/) to build Windows installer (msi)
 * [WiX Toolset VS2017 Extension](https://marketplace.visualstudio.com/items?itemName=RobMensching.WixToolsetVisualStudio2017Extension)
   
-Building
+  
+## Building
 
 ### Build
 
