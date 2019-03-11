@@ -34,8 +34,6 @@
             <UIRef Id="WixUI_Minimal" />
         </UI>
 
-        <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
-
         <CustomAction Id="IIS_RESTART" Directory="INSTALLFOLDER" Execute="commit" Impersonate="no" ExeCommand="cmd.exe /k &quot;iisrestart.cmd&quot;" Return="asyncNoWait" />
 
         <InstallExecuteSequence>

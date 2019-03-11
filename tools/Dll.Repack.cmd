@@ -33,9 +33,6 @@ cd /d %~dp0
 SET BuildType=%1
 if "%BuildType%"=="Release" (SET BuildType=Release) else (SET BuildType=Debug)
 
-SET BuildFramework=%2
-if "%BuildFramework%"=="net461" (SET BuildFramework=net461) else (SET BuildFramework=netstandard2.0)
-
 SET WorkDir=%~dp0
 
 SET OUTDLL=ClrProfiler.Trace.dll
@@ -52,18 +49,21 @@ cd ../src
 "%_VSPATH%\MSBuild\15.0\Bin\MSBuild.exe" /p:Configuration="%BuildType%"
 
 cd ClrProfiler.Trace
-dotnet publish -c %BuildType% -f %BuildFramework% -o bin\%BuildType%\%BuildFramework%
 
-cd bin\%BuildType%\%BuildFramework%
-
+dotnet publish -c %BuildType% -f net461 -o bin\%BuildType%\net461
+cd bin\%BuildType%\net461
 %WorkDir%ILRepack.exe /keyfile:%~dp0\clrprofiler.snk /ver:1.0.0 /copyattrs /xmldocs /ndebug /internalize /out:%OUTDLL% %DLLS%
 
+%WorkDir%gacutil.exe /uf ClrProfiler.Trace
+%WorkDir%gacutil.exe /i ClrProfiler.Trace.dll
+%WorkDir%gacutil.exe /i OpenTracing.dll
+%WorkDir%gacutil.exe /i netstandard.dll
 
-if "%BuildFramework%"=="net461" (
-  %WorkDir%gacutil.exe /uf ClrProfiler.Trace
-  %WorkDir%gacutil.exe /i ClrProfiler.Trace.dll
-  %WorkDir%gacutil.exe /i OpenTracing.dll
-  %WorkDir%gacutil.exe /i netstandard.dll
-)
+cd ../../../
+
+dotnet publish -c %BuildType% -f netstandard2.0 -o bin\%BuildType%\netstandard2.0
+cd bin\%BuildType%\netstandard2.0
+%WorkDir%ILRepack.exe /keyfile:%~dp0\clrprofiler.snk /ver:1.0.0 /copyattrs /xmldocs /ndebug /internalize /out:%OUTDLL% %DLLS%
+
 
 cd /d %~dp0

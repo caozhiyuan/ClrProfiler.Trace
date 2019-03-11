@@ -24,7 +24,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Config.wxi" />
-    <Content Include="license.rtf" />
     <Content Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>

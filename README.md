@@ -72,9 +72,9 @@ SET COR_PROFILER_PATH=%WorkDir%src\ClrProfiler\x64\Debug\ClrProfiler.dll
 SET COR_PROFILER_HOME=%WorkDir%src\ClrProfiler.Trace\bin\Debug\net461
 
 cd tools
-Dll.Repack.cmd Debug netstandard2.0
+Dll.Repack.cmd Debug 
 
-: BuildType(Debug Release) BuildFramework(netstandard2.0 net461) , net framework need run admin cmd for GAC
+: or Dll.Repack.cmd Release
 
 download https://github.com/jaegertracing/jaeger/releases/download/v1.9.0/jaeger-1.9.0-windows-amd64.tar.gz
 run jaeger-all-in-one.exe
