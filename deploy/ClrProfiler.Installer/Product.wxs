@@ -31,13 +31,25 @@
         </Feature>
         
         <UI>
-            <UIRef Id="WixUI_Minimal" />
+            <UIRef Id="WixUI_InstallDir" />
+
+            <!-- Skip license dialog -->
+            <Publish Dialog="WelcomeDlg"
+                     Control="Next"
+                     Event="NewDialog"
+                     Value="InstallDirDlg"
+                     Order="2">1</Publish>
+            <Publish Dialog="InstallDirDlg"
+                     Control="Back"
+                     Event="NewDialog"
+                     Value="WelcomeDlg"
+                     Order="2">1</Publish>
         </UI>
 
         <CustomAction Id="IIS_RESTART" Directory="INSTALLFOLDER" Execute="commit" Impersonate="no" ExeCommand="cmd.exe /k &quot;iisrestart.cmd&quot;" Return="asyncNoWait" />
 
         <InstallExecuteSequence>
-            <Custom Action="IIS_RESTART" After="InstallInitialize" />
+            <Custom Action="IIS_RESTART" After="InstallInitialize" >NOT Installed</Custom>
         </InstallExecuteSequence>
 	</Product>
 
@@ -175,6 +187,10 @@
         </ComponentGroup>
 
         <ComponentGroup Id="Files.Root" Directory="INSTALLFOLDER">
+            <Component Id="INSTALLFOLDER.Root" Guid="{8A5234ED-EE92-468A-A765-27E5747705DB}">
+                <CreateFolder />
+                <RemoveFile Id="PurgeClrProfiler" Name="ClrProfiler.dll" On="uninstall" />
+            </Component>
             <Component Win64="$(var.Win64)">
                 <File Id="ClrProfiler.dll"
                       Source="$(var.NativeDllPath)\ClrProfiler.dll"
