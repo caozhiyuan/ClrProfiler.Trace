@@ -42,6 +42,13 @@ namespace Samples.WebApi.Controllers
         }
 
         [HttpGet]
+        [Route("test6")]
+        public IActionResult Test6()
+        {
+            return Json(Environment.GetEnvironmentVariables());
+        }
+
+        [HttpGet]
         [Route("test5")]
         public IActionResult Test5()
         {

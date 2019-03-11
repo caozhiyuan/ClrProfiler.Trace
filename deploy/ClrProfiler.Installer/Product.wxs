@@ -34,8 +34,13 @@
             <UIRef Id="WixUI_Minimal" />
         </UI>
 
-        <Property Id="WixShellExecTarget" Value="$(var.ToolsPath)\iisrestart.cmd" />
-        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+        <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
+
+        <CustomAction Id="IIS_RESTART" Directory="INSTALLFOLDER" Execute="commit" Impersonate="no" ExeCommand="cmd.exe /k &quot;iisrestart.cmd&quot;" Return="asyncNoWait" />
+
+        <InstallExecuteSequence>
+            <Custom Action="IIS_RESTART" After="InstallInitialize" />
+        </InstallExecuteSequence>
 	</Product>
 
     <Fragment>
@@ -54,6 +59,17 @@
     <!-- Assembly=".net" add dll to GAC -->
     <Fragment>
         <ComponentGroup Id="Files.Managed.NET461" Directory="INSTALLFOLDER_NET461">
+            <Component Id="Permission.INSTALLFOLDER_NET461" Guid="{7C5234ED-EE92-468A-A765-27E5747705DB}">
+                <CreateFolder>
+                    <Permission ChangePermission="yes" GenericAll="yes" User="Administrators"/>
+                    <Permission User="Everyone" WriteExtendedAttributes="yes" WriteAttributes="yes" CreateFile="yes" CreateChild="yes" GenericWrite="yes" GenericRead="yes" GenericExecute="yes"/>
+                </CreateFolder>
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_trace.json"
+                      Source="$(var.ManagedDllPath)\net461\trace.json"
+                      KeyPath="yes" Checksum="yes"/>
+            </Component>
             <Component Win64="$(var.Win64)">
                 <File Id="net461_ClrProfiler.Trace.dll"
                       Source="$(var.ManagedDllPath)\net461\ClrProfiler.Trace.dll"
@@ -107,6 +123,17 @@
         </ComponentGroup>
 
         <ComponentGroup Id="Files.Managed.NETCORE" Directory="INSTALLFOLDER_NETCORE">
+            <Component Id="Permission.INSTALLFOLDER_NETCORE" Guid="{8C5234ED-EE92-468A-A765-27E5747705DB}">
+                <CreateFolder>
+                    <Permission ChangePermission="yes" GenericAll="yes" User="Administrators"/>
+                    <Permission User="Everyone" WriteExtendedAttributes="yes" WriteAttributes="yes" CreateFile="yes" CreateChild="yes" GenericWrite="yes" GenericRead="yes" GenericExecute="yes"/>
+                </CreateFolder>
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="netcore_trace.json"
+                      Source="$(var.ManagedDllPath)\netstandard2.0\trace.json"
+                      KeyPath="yes" Checksum="yes"/>
+            </Component>
             <Component Win64="$(var.Win64)">
                 <File Id="netcore_ClrProfiler.Trace.dll"
                       Source="$(var.ManagedDllPath)\netstandard2.0\ClrProfiler.Trace.dll"
@@ -179,7 +206,7 @@
                 <Environment Id="CORECLR_PROFILER" Name="CORECLR_PROFILER" Action="set" Permanent="no" System="yes" Value="{cf0d821e-299b-5307-a3d8-b283c03916dd}" Part="all" />
                 <Environment Id="CORECLR_ENABLE_PROFILING" Name="CORECLR_ENABLE_PROFILING" Action="set" Permanent="no" System="yes" Value="1" Part="all" />
                 <Environment Id="CORECLR_PROFILER_PATH" Name="CORECLR_PROFILER_PATH" Action="set" Permanent="no" System="yes" Value="[INSTALLFOLDER]ClrProfiler.dll" Part="all" />
-                <Environment Id="CORECLR_PROFILER_HOME" Name="CORECLR_PROFILER_HOME" Action="set" Permanent="no" System="yes" Value="[INSTALLFOLDER]netstardard2.0" Part="all" />
+                <Environment Id="CORECLR_PROFILER_HOME" Name="CORECLR_PROFILER_HOME" Action="set" Permanent="no" System="yes" Value="[INSTALLFOLDER]netstandard2.0" Part="all" />
             </Component>
         </ComponentGroup>
 
