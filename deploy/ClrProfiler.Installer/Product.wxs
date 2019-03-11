@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <?include $(sys.CURRENTDIR)\Config.wxi?>
+    <Product Id="*" 
+             Name="$(var.ProductName)" 
+             Language="1033" 
+             Version="$(var.InstallerVersion)"
+             Manufacturer="$(var.ArpManufacturer)"
+             UpgradeCode="14385cff-be63-476d-b534-81adac63ca9b">
+		<Package InstallerVersion="200" 
+                 Compressed="yes" 
+                 InstallScope="perMachine" 
+                 Description="$(var.ProductName)"/>
+
+        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER"/>
+
+        <Property Id="INSTALLFOLDER">
+            <RegistrySearch Id="RegistrySearch" Type="raw" Root="HKLM" Win64="$(var.Win64)" Key="Software\$(var.Company)\$(var.ProductName)" Name="InstallPath"/>
+        </Property>
+
+        <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."/>
+        <MediaTemplate EmbedCab="yes"/>
+
+        <Feature Id="ProductFeature" Title="ClrProfiler" Level="1">
+            <ComponentGroupRef Id="Files.Root"/>
+            <ComponentGroupRef Id="Files.Managed.NET461"/>
+            <ComponentGroupRef Id="Files.Managed.NETCORE"/>
+            <ComponentGroupRef Id="Registry"/>
+            <ComponentGroupRef Id="EnvironmentVariables.Machine"/>
+            <ComponentGroupRef Id="EnvironmentVariables.User"/>
+        </Feature>
+        
+        <UI>
+            <UIRef Id="WixUI_Minimal" />
+        </UI>
+
+        <Property Id="WixShellExecTarget" Value="$(var.ToolsPath)\iisrestart.cmd" />
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+	</Product>
+
+    <Fragment>
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="$(var.PlatformProgramFilesFolder)">
+                <Directory Id="ProgramFilesFolder.ClrProfiler" Name="$(var.Company)">
+                    <Directory Id="INSTALLFOLDER" Name="$(var.BaseProductName)">
+                        <Directory Id="INSTALLFOLDER_NET461" Name="net461"/>
+                        <Directory Id="INSTALLFOLDER_NETCORE" Name="netstandard2.0"/>
+                    </Directory>
+                </Directory>
+            </Directory>
+        </Directory>
+    </Fragment>
+
+    <!-- Assembly=".net" add dll to GAC -->
+    <Fragment>
+        <ComponentGroup Id="Files.Managed.NET461" Directory="INSTALLFOLDER_NET461">
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_ClrProfiler.Trace.dll"
+                      Source="$(var.ManagedDllPath)\net461\ClrProfiler.Trace.dll"
+                      KeyPath="yes" Checksum="yes" Assembly=".net"/>
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_OpenTracing.dll"
+                      Source="$(var.ManagedDllPath)\net461\OpenTracing.dll"
+                      KeyPath="yes" Checksum="yes" Assembly=".net"/>
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_netstandard.dll"
+                      Source="$(var.ManagedDllPath)\net461\netstandard.dll"
+                      KeyPath="yes" Checksum="yes" Assembly=".net"/>
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_ClrProfiler.Trace.AspNet.dll"
+                      Source="$(var.ManagedDllPath)\net461\ClrProfiler.Trace.AspNet.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_ClrProfiler.Trace.AspNetCore.dll"
+                      Source="$(var.ManagedDllPath)\net461\ClrProfiler.Trace.AspNetCore.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_ClrProfiler.Trace.HttpWebRequest.dll"
+                      Source="$(var.ManagedDllPath)\net461\ClrProfiler.Trace.HttpWebRequest.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_ClrProfiler.Trace.MySqlConnector.dll"
+                      Source="$(var.ManagedDllPath)\net461\ClrProfiler.Trace.MySqlConnector.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_ClrProfiler.Trace.MySqlData.dll"
+                      Source="$(var.ManagedDllPath)\net461\ClrProfiler.Trace.MySqlData.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_ClrProfiler.Trace.StackExchangeRedis.dll"
+                      Source="$(var.ManagedDllPath)\net461\ClrProfiler.Trace.StackExchangeRedis.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="net461_ClrProfiler.Trace.SystemDataSqlClient.dll"
+                      Source="$(var.ManagedDllPath)\net461\ClrProfiler.Trace.SystemDataSqlClient.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+        </ComponentGroup>
+
+        <ComponentGroup Id="Files.Managed.NETCORE" Directory="INSTALLFOLDER_NETCORE">
+            <Component Win64="$(var.Win64)">
+                <File Id="netcore_ClrProfiler.Trace.dll"
+                      Source="$(var.ManagedDllPath)\netstandard2.0\ClrProfiler.Trace.dll"
+                      KeyPath="yes" Checksum="yes"/>
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="netcore_OpenTracing.dll"
+                      Source="$(var.ManagedDllPath)\netstandard2.0\OpenTracing.dll"
+                      KeyPath="yes" Checksum="yes"/>
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="netcore_ClrProfiler.Trace.AspNetCore.dll"
+                      Source="$(var.ManagedDllPath)\netstandard2.0\ClrProfiler.Trace.AspNetCore.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="netcore_ClrProfiler.Trace.HttpWebRequest.dll"
+                      Source="$(var.ManagedDllPath)\netstandard2.0\ClrProfiler.Trace.HttpClient.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="netcore_ClrProfiler.Trace.MySqlConnector.dll"
+                      Source="$(var.ManagedDllPath)\netstandard2.0\ClrProfiler.Trace.MySqlConnector.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="netcore_ClrProfiler.Trace.MySqlData.dll"
+                      Source="$(var.ManagedDllPath)\netstandard2.0\ClrProfiler.Trace.MySqlData.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="netcore_ClrProfiler.Trace.StackExchangeRedis.dll"
+                      Source="$(var.ManagedDllPath)\netstandard2.0\ClrProfiler.Trace.StackExchangeRedis.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="netcore_ClrProfiler.Trace.SystemDataSqlClient.dll"
+                      Source="$(var.ManagedDllPath)\netstandard2.0\ClrProfiler.Trace.SystemDataSqlClient.dll"
+                      KeyPath="yes" Checksum="yes" />
+            </Component>
+        </ComponentGroup>
+
+        <ComponentGroup Id="Files.Root" Directory="INSTALLFOLDER">
+            <Component Win64="$(var.Win64)">
+                <File Id="ClrProfiler.dll"
+                      Source="$(var.NativeDllPath)\ClrProfiler.dll"
+                      Checksum="yes">
+                </File>
+            </Component>
+            <Component Win64="$(var.Win64)">
+                <File Id="iisrestart.cmd"
+                      Source="$(var.ToolsPath)\iisrestart.cmd"
+                      Checksum="yes">
+                </File>
+            </Component>
+        </ComponentGroup>
+
+        <ComponentGroup Id="Registry" Directory="INSTALLFOLDER">
+            <Component Win64="$(var.Win64)">
+                <CreateFolder/>
+                <RegistryKey Root="HKLM" Key="Software\$(var.Company)\$(var.ProductName)">
+                    <RegistryValue Type="string" Name="InstallPath" Value="[INSTALLFOLDER]" Action="write"/>
+                </RegistryKey>
+            </Component>
+        </ComponentGroup>
+
+        <ComponentGroup Id="EnvironmentVariables.Machine" Directory="INSTALLFOLDER">
+            <Component Id="EnvironmentVariablesShared" Guid="{C314A305-9C24-4E46-9ECF-E5EEA703BDEA}" Win64="$(var.Win64)">
+                <CreateFolder/>
+                <Environment Id="CORECLR_PROFILER" Name="CORECLR_PROFILER" Action="set" Permanent="no" System="yes" Value="{cf0d821e-299b-5307-a3d8-b283c03916dd}" Part="all" />
+                <Environment Id="CORECLR_ENABLE_PROFILING" Name="CORECLR_ENABLE_PROFILING" Action="set" Permanent="no" System="yes" Value="1" Part="all" />
+                <Environment Id="CORECLR_PROFILER_PATH" Name="CORECLR_PROFILER_PATH" Action="set" Permanent="no" System="yes" Value="[INSTALLFOLDER]ClrProfiler.dll" Part="all" />
+                <Environment Id="CORECLR_PROFILER_HOME" Name="CORECLR_PROFILER_HOME" Action="set" Permanent="no" System="yes" Value="[INSTALLFOLDER]netstardard2.0" Part="all" />
+            </Component>
+        </ComponentGroup>
+
+        <ComponentGroup Id="EnvironmentVariables.User" Directory="INSTALLFOLDER">
+            <Component Id="Registry.EnvironmentVariables.W3SVC" Guid="{702DB265-F33E-47F4-A6B0-E21FA0FC21C1}" Win64="$(var.Win64)">
+                <CreateFolder/>
+                <RegistryKey Root="HKLM"
+                             Key="System\CurrentControlSet\Services\W3SVC">
+                    <RegistryValue Type="multiString" Name="Environment" Value="COR_ENABLE_PROFILING=1[~]COR_PROFILER={af0d821e-299b-5307-a3d8-b283c03916dd}[~]COR_PROFILER_PATH=[INSTALLFOLDER]ClrProfiler.dll[~]COR_PROFILER_HOME=[INSTALLFOLDER]net461" Action="append"/>
+                </RegistryKey>
+            </Component>
+
+            <Component Id="Registry.EnvironmentVariables.WAS" Guid="{6CF8AB88-240E-4A0A-B630-43119C064AD4}" Win64="$(var.Win64)">
+                <RegistryKey Root="HKLM"
+                             Key="System\CurrentControlSet\Services\WAS">
+                    <RegistryValue Type="multiString" Name="Environment" Value="COR_ENABLE_PROFILING=1[~]COR_PROFILER={af0d821e-299b-5307-a3d8-b283c03916dd}[~]COR_PROFILER_PATH=[INSTALLFOLDER]ClrProfiler.dll[~]COR_PROFILER_HOME=[INSTALLFOLDER]net461" Action="append"/>
+                </RegistryKey>
+            </Component>
+        </ComponentGroup>
+    </Fragment>
+</Wix>

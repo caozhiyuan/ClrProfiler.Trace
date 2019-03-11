@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Include>
+  <?define BaseProductName = ".NET Tracer" ?>
+  <?define ArpManufacturer = "ClrProfiler" ?>
+  <?define Company = "ClrProfiler" ?>
+  <?define ManagedDllPath = "$(sys.CURRENTDIR)..\..\src\ClrProfiler.Trace\bin\$(var.Configuration)" ?>
+  <?define NativeDllPath = "$(sys.CURRENTDIR)..\..\src\ClrProfiler\x64\$(var.Configuration)" ?>
+  <?define ToolsPath = "$(sys.CURRENTDIR)..\..\tools" ?>
+  <?define ProductName = "ClrProfiler $(var.BaseProductName) 64-bit" ?>
+  <?define Win64 = "yes" ?>
+  <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+  <?define InstallerVersion = "1.0.0" ?>
+</Include>
