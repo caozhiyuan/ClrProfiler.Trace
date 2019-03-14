@@ -6,7 +6,7 @@
              Language="1033" 
              Version="$(var.InstallerVersion)"
              Manufacturer="$(var.ArpManufacturer)"
-             UpgradeCode="14385cff-be63-476d-b534-81adac63ca9b">
+             UpgradeCode="24385cff-be63-476d-b534-81adac63ca9a">
 		<Package InstallerVersion="200" 
                  Compressed="yes" 
                  InstallScope="perMachine" 
@@ -69,7 +69,7 @@
     <!-- Assembly=".net" add dll to GAC -->
     <Fragment>
         <ComponentGroup Id="Files.Managed.NET461" Directory="INSTALLFOLDER_NET461">
-            <Component Id="Permission.INSTALLFOLDER_NET461" Guid="{7C5234ED-EE92-468A-A765-27E5747705DB}">
+            <Component Id="Permission.INSTALLFOLDER_NET461" Guid="{7C5234ED-EE92-468A-1765-27E5747705DB}">
                 <CreateFolder>
                     <Permission ChangePermission="yes" GenericAll="yes" User="Administrators"/>
                     <Permission User="Everyone" WriteExtendedAttributes="yes" WriteAttributes="yes" CreateFile="yes" CreateChild="yes" GenericWrite="yes" GenericRead="yes" GenericExecute="yes"/>
@@ -133,7 +133,7 @@
         </ComponentGroup>
 
         <ComponentGroup Id="Files.Managed.NETCORE" Directory="INSTALLFOLDER_NETCORE">
-            <Component Id="Permission.INSTALLFOLDER_NETCORE" Guid="{8C5234ED-EE92-468A-A765-27E5747705DB}">
+            <Component Id="Permission.INSTALLFOLDER_NETCORE" Guid="{8C5234ED-EE92-168A-A765-27E5747705DB}">
                 <CreateFolder>
                     <Permission ChangePermission="yes" GenericAll="yes" User="Administrators"/>
                     <Permission User="Everyone" WriteExtendedAttributes="yes" WriteAttributes="yes" CreateFile="yes" CreateChild="yes" GenericWrite="yes" GenericRead="yes" GenericExecute="yes"/>
@@ -215,7 +215,7 @@
         </ComponentGroup>
 
         <ComponentGroup Id="EnvironmentVariables.Machine" Directory="INSTALLFOLDER">
-            <Component Id="EnvironmentVariablesShared" Guid="{C314A305-9C24-4E46-9ECF-E5EEA703BDEA}" Win64="$(var.Win64)">
+            <Component Id="EnvironmentVariablesShared" Guid="{C304A305-9C24-4E46-9ECF-E5EEA703BDE0}" Win64="$(var.Win64)">
                 <CreateFolder/>
                 <Environment Id="CORECLR_PROFILER" Name="CORECLR_PROFILER" Action="set" Permanent="no" System="yes" Value="{cf0d821e-299b-5307-a3d8-b283c03916dd}" Part="all" />
                 <Environment Id="CORECLR_ENABLE_PROFILING" Name="CORECLR_ENABLE_PROFILING" Action="set" Permanent="no" System="yes" Value="1" Part="all" />
@@ -225,18 +225,22 @@
         </ComponentGroup>
 
         <ComponentGroup Id="EnvironmentVariables.User" Directory="INSTALLFOLDER">
-            <Component Id="Registry.EnvironmentVariables.W3SVC" Guid="{702DB265-F33E-47F4-A6B0-E21FA0FC21C1}" Win64="$(var.Win64)">
+            <Component Id="Registry.EnvironmentVariables.W3SVC" Guid="{7022B265-F33E-47F4-A6B0-E21FA0F021C1}" Win64="$(var.Win64)">
                 <CreateFolder/>
                 <RegistryKey Root="HKLM"
-                             Key="System\CurrentControlSet\Services\W3SVC">
+                             Key="System\CurrentControlSet\Services\W3SVC" ForceCreateOnInstall="yes">
                     <RegistryValue Type="multiString" Name="Environment" Value="COR_ENABLE_PROFILING=1[~]COR_PROFILER={af0d821e-299b-5307-a3d8-b283c03916dd}[~]COR_PROFILER_PATH=[INSTALLFOLDER]ClrProfiler.dll[~]COR_PROFILER_HOME=[INSTALLFOLDER]net461" Action="append"/>
+                </RegistryKey>
+                <RegistryKey Root="HKLM" Key="System\CurrentControlSet\Services\W3SVC\Environment" ForceDeleteOnUninstall="yes">
                 </RegistryKey>
             </Component>
 
-            <Component Id="Registry.EnvironmentVariables.WAS" Guid="{6CF8AB88-240E-4A0A-B630-43119C064AD4}" Win64="$(var.Win64)">
+            <Component Id="Registry.EnvironmentVariables.WAS" Guid="{6C18AB88-240E-4A0A-A630-43119C064AD4}" Win64="$(var.Win64)">
                 <RegistryKey Root="HKLM"
-                             Key="System\CurrentControlSet\Services\WAS">
+                             Key="System\CurrentControlSet\Services\WAS" ForceCreateOnInstall="yes">
                     <RegistryValue Type="multiString" Name="Environment" Value="COR_ENABLE_PROFILING=1[~]COR_PROFILER={af0d821e-299b-5307-a3d8-b283c03916dd}[~]COR_PROFILER_PATH=[INSTALLFOLDER]ClrProfiler.dll[~]COR_PROFILER_HOME=[INSTALLFOLDER]net461" Action="append"/>
+                </RegistryKey>
+                <RegistryKey Root="HKLM" Key="System\CurrentControlSet\Services\WAS\Environment" ForceDeleteOnUninstall="yes">
                 </RegistryKey>
             </Component>
         </ComponentGroup>
