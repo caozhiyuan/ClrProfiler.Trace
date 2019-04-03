@@ -19,3 +19,26 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+=======================================================================
+LICENSE 3rdparty:
+
+this project contains LICENSE 3rdparty with separate copyright
+notices and license terms. Your use of the source code for the these
+LICENSE is subject to the terms and conditions of the following
+licenses.
+
+========================================================================
+MIT licenses
+========================================================================
+
+The following components are provided under the MIT License. See project link for details.
+The text of each license is also included at licenses/LICENSE-[project].txt.
+     
+	 MicrosoftArchive/clrprofiler: https://github.com/MicrosoftArchive/clrprofiler MIT
+	 dotnet/coreclr: https://github.com/dotnet/coreclr MIT
+	 Microsoft/clr-samples: https://github.com/Microsoft/clr-samples MIT
+     DataDog/dd-trace-dotnet: https://github.com/DataDog/dd-trace-dotnet MIT (ccomptr util string clr_helpers some code from dd-trace-dotnet)
+	 nlohmann/json: https://github.com/nlohmann/json  MIT
+	 gabime/spdlog: https://github.com/gabime/spdlog MIT
+     
