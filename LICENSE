@@ -32,8 +32,7 @@ licenses.
 MIT licenses
 ========================================================================
 
-The following components are provided under the MIT License. See project link for details.
-The text of each license is also included at licenses/LICENSE-[project].txt.
+The following components are provided under the MIT License.
      
 	 MicrosoftArchive/clrprofiler: https://github.com/MicrosoftArchive/clrprofiler MIT
 	 dotnet/coreclr: https://github.com/dotnet/coreclr MIT
